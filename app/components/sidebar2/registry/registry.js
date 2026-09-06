@@ -266,5 +266,8 @@ FunctionRegistry.registerMany([
   { function: 'handleOpenFile',        icon: 'folder_open',           name: 'Open File',             under: ['document'], batch: 'app', onclick: 'handleOpenFile()' },
   { function: 'debug',                 icon: 'bug_report',            name: 'Debug',                 under: ['document'], batch: 'app', onclick: 'debug()' },
   { function: 'forceSyncToCloud',      icon: 'cloud_upload',          name: 'Force Sync to Cloud',   under: ['document'], batch: 'app', onclick: 'forceSyncToCloud()' },
-
+{ function: 'foldAll',                   icon: 'unfold_less',   name: 'Fold All',                    under: ['document'], onclick: 'foldAll()' },
+{ function: 'unfoldAll',                 icon: 'unfold_more',   name: 'Unfold All',                  under: ['document'], onclick: 'unfoldAll()' },
+{ function: 'removeContentInsideFolds',  icon: 'compress',      name: 'Remove Folded Contents',      under: ['document'], onclick: 'removeContentInsideFolds()' },
+    
 ]);
