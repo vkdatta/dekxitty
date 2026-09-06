@@ -5,9 +5,9 @@
  * Falls back gracefully if CM is not yet initialised.
  */
 function getCM() {
-  return window.__codeMirrorInstance || null;
+  if (window.dexEditor && window.dexEditor.cm) return window.dexEditor.cm;
+  return null;
 }
-
 /**
  * Walk every line of the editor and run a fold / unfold operation on it.
  * @param {"fold"|"unfold"} action
