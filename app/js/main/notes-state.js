@@ -135,7 +135,7 @@ function updateDocumentInfo() {
   const signedIn = isSignedIn();
 
   if (!currentNote) {
-    if (n) n.textContent = "Dex Labs | " + (signedIn ? "Drive" : "Local");
+    if (n) n.textContent = "Dekxitty | " + (signedIn ? "Drive" : "Local");
     if (e) e.textContent = "-";
     if (t) t.textContent =
       "Char (ex. Spaces): 0\nChar (in. Spaces): 0\nTotal Words: 0\nReading time: 0m\nFile Size: 0kb";
@@ -150,7 +150,7 @@ function updateDocumentInfo() {
   const readingTime = minutes < 60 ? minutes + "m" : (minutes / 60).toFixed(1) + "h";
   const bytes = new Blob([content || ""]).size;
 
-  if (n) n.textContent = "Dex Labs | " + (signedIn ? "Drive" : "Local");
+  if (n) n.textContent = "Dekxitty | " + (signedIn ? "Drive" : "Local");
   if (e) e.textContent = title + (extension ? "." + extension : "");
   if (t) t.textContent =
     "Char (ex. Spaces): " + ces + "\n" +

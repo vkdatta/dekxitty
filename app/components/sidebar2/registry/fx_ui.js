@@ -43,7 +43,7 @@
     // Visually hidden but in the DOM — existing code can update by ID
     holder.style.cssText = 'display:none !important; position:absolute; pointer-events:none;';
     holder.innerHTML =
-      '<div id="infoDexLabs">Dex Labs | Local</div>' +
+      '<div id="infoDexLabs">Dekxitty | Local</div>' +
       '<div id="infoName">-</div>' +
       '<div id="infoStats" style="white-space:pre-line">' +
         'Char (ex. Spaces): 0\n' +
@@ -171,7 +171,7 @@
               <div class="gf-info-section-label">Note</div>
               <div class="gf-info-row">
                 <span class="gf-info-label">Status</span>
-                <span class="gf-info-val" id="gfNoteInfoDex">Dex Labs | Local</span>
+                <span class="gf-info-val" id="gfNoteInfoDex">Dekxitty | Local</span>
               </div>
               <div class="gf-info-row">
                 <span class="gf-info-label">File</span>
@@ -673,7 +673,7 @@
     const statsEl = document.getElementById('infoStats');
 
     set('gfNoteInfoName', nameEl ? (nameEl.textContent.trim() || '-')                : '-');
-    set('gfNoteInfoDex',  dexEl  ? (dexEl.textContent.trim()  || 'Dex Labs | Local') : 'Dex Labs | Local');
+    set('gfNoteInfoDex',  dexEl  ? (dexEl.textContent.trim()  || 'Dekxitty | Local') : 'Dekxitty | Local');
 
     // Stats: parse multi-line text → individual gf-info-row entries
     // Covers chars, words, reading time, file size (download meta)

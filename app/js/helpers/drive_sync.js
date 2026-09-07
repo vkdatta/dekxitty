@@ -77,11 +77,11 @@ function renderUserAvatar() {
 
 function updateAuthUI() {
   if (currentUser) {
-    welcomeMessage.textContent = `Welcome to Dex Labs, ${capitalizeName(currentUser.name || "User")}!`;
+    welcomeMessage.textContent = `Welcome to Dekxitty, ${capitalizeName(currentUser.name || "User")}!`;
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "inline-block";
   } else {
-    welcomeMessage.textContent = "Welcome to Dex Labs";
+    welcomeMessage.textContent = "Welcome to Dekxitty";
     if (loginBtn) loginBtn.style.display = "inline-block";
     if (logoutBtn) logoutBtn.style.display = "none";
   }
