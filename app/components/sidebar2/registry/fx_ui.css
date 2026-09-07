@@ -511,7 +511,7 @@
 @media (max-width: 520px) {
   .gf-rail { width: 44px; padding: 8px 2px; }
   .gf-rail-btn { width: 36px; height: 36px; }
-  .gf-header-tabs .gf-tab span:not(.ic-icon) { display: none; }
+  .gf-header-tabs .gf-tab span:not(delluna-icon) { display: none; }
   .gf-title { display: none; }
-  .gf-db-btn span:not(.gf-db-count):not(.ic-icon) { display: none; }
+  .gf-db-btn span:not(.gf-db-count):not(delluna-icon) { display: none; }
 }

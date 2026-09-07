@@ -16,7 +16,7 @@
 }
 #voldemortToggle.active i,
 #voldemortToggle.active span,
-#voldemortToggle.active .ic-icon {
+#voldemortToggle.active delluna-icon {
   color: var(--c-black) !important;
 }
 

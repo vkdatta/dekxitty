@@ -28,6 +28,7 @@ function isVisibleFile(n) {
 function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+function dellunaIcon(name) { return '<delluna-icon name="' + name + '"></delluna-icon>'; }
 function isSel(k) { return selected.has(k); }
 function toggleSel(k) { selected.has(k) ? selected.delete(k) : selected.add(k); renderSidebar(); }
 
@@ -99,13 +100,13 @@ function openSortMenu(anchor) {
   const sep = document.createElement("div"); sep.className = "dex-sort-sep"; menu.appendChild(sep);
   const chk = document.createElement("div");
   chk.className = "dex-sort-item dex-sort-toggle" + (sortMixed ? " on" : "");
-  chk.innerHTML = '<span class="dex-mini-check">' + (sortMixed ? IC.tick : "") + "</span>Files &amp; folders at same level";
+  chk.innerHTML = '<span class="dex-mini-check">' + (sortMixed ? dellunaIcon("tick") : "") + "</span>Files &amp; folders at same level";
   chk.onclick = (e) => {
     e.stopPropagation();
     sortMixed = !sortMixed;
     localStorage.setItem("dexSortMixed", sortMixed ? "1" : "0");
     chk.classList.toggle("on", sortMixed);
-    chk.querySelector(".dex-mini-check").innerHTML = sortMixed ? IC.tick : "";
+    chk.querySelector(".dex-mini-check").innerHTML = sortMixed ? dellunaIcon("tick") : "";
     renderSidebar();
   };
   menu.appendChild(chk);
@@ -132,7 +133,7 @@ function buildSidebar() {
     '<div class="dex-head"><div class="dex-crumbs" id="dexCrumbs"></div><div class="dex-tools" id="dexTools"></div></div>' +
     '<div class="dex-subhead">' +
       '<input class="dex-search" id="dexSearch" placeholder="Search files & folders" autocomplete="off" spellcheck="false" />' +
-      '<div class="dex-sort" id="dexSortBtn" title="Sort">' + IC.sort + '</div>' +
+      '<div class="dex-sort" id="dexSortBtn" title="Sort">' + dellunaIcon("sort") + '</div>' +
     '</div>' +
     '<div class="dex-tree" id="noteTree"></div>';
   const si = document.getElementById("dexSearch");
@@ -158,22 +159,22 @@ function renderTools() {
   let html = "";
   if (clipboard) {
     const n = (clipboard.noteIds.length + clipboard.folderIds.length);
-    html += '<div class="dex-tool accent" title="Paste ' + n + ' here" onclick="sidebarPaste()">' + IC.paste + '</div>';
-    html += '<div class="dex-tool" title="New file or folder" onclick="sidebarAddItems()">' + IC.plus + '</div>';
-    if (currentFolderId) html += '<div class="dex-tool" title="Up one level" onclick="dexMoveOut()">' + IC.up + '</div>';
-    html += '<div class="dex-tool" title="Cancel" onclick="sidebarCancelClipboard()">' + IC.x + '</div>';
+    html += '<div class="dex-tool accent" title="Paste ' + n + ' here" onclick="sidebarPaste()">' + dellunaIcon("paste") + '</div>';
+    html += '<div class="dex-tool" title="New file or folder" onclick="sidebarAddItems()">' + dellunaIcon("plus") + '</div>';
+    if (currentFolderId) html += '<div class="dex-tool" title="Up one level" onclick="dexMoveOut()">' + dellunaIcon("up") + '</div>';
+    html += '<div class="dex-tool" title="Cancel" onclick="sidebarCancelClipboard()">' + dellunaIcon("x") + '</div>';
   } else if (selectMode) {
-    html += '<div class="dex-tool" title="Select all" onclick="sidebarSelectAll()">' + IC.selectAll + '</div>';
-    html += '<div class="dex-tool" title="Move (cut)" onclick="sidebarStartMove()">' + IC.move + '</div>';
-    html += '<div class="dex-tool" title="Copy" onclick="sidebarStartCopy()">' + IC.copy + '</div>';
-    html += '<div class="dex-tool" title="Batch apply" onclick="window.openBatchApply && window.openBatchApply()">' + IC.bolt + '</div>';
-    html += '<div class="dex-tool" title="Download" onclick="sidebarDownloadSelected()">' + IC.download + '</div>';
-    html += '<div class="dex-tool danger" title="Delete" onclick="sidebarDeleteSelected()">' + IC.trash + '</div>';
-    html += '<div class="dex-tool" title="Cancel" onclick="sidebarToggleSelect()">' + IC.x + '</div>';
+    html += '<div class="dex-tool" title="Select all" onclick="sidebarSelectAll()">' + dellunaIcon("selectAll") + '</div>';
+    html += '<div class="dex-tool" title="Move (cut)" onclick="sidebarStartMove()">' + dellunaIcon("move") + '</div>';
+    html += '<div class="dex-tool" title="Copy" onclick="sidebarStartCopy()">' + dellunaIcon("copy") + '</div>';
+    html += '<div class="dex-tool" title="Batch apply" onclick="window.openBatchApply && window.openBatchApply()">' + dellunaIcon("bolt") + '</div>';
+    html += '<div class="dex-tool" title="Download" onclick="sidebarDownloadSelected()">' + dellunaIcon("download") + '</div>';
+    html += '<div class="dex-tool danger" title="Delete" onclick="sidebarDeleteSelected()">' + dellunaIcon("trash") + '</div>';
+    html += '<div class="dex-tool" title="Cancel" onclick="sidebarToggleSelect()">' + dellunaIcon("x") + '</div>';
   } else {
-    html += '<div class="dex-tool" title="New file or folder" onclick="sidebarAddItems()">' + IC.plus + '</div>';
-    html += '<div class="dex-tool" title="Select" onclick="sidebarToggleSelect()">' + IC.select + '</div>';
-    if (currentFolderId) html += '<div class="dex-tool" title="Up one level" onclick="dexMoveOut()">' + IC.up + '</div>';
+    html += '<div class="dex-tool" title="New file or folder" onclick="sidebarAddItems()">' + dellunaIcon("plus") + '</div>';
+    html += '<div class="dex-tool" title="Select" onclick="sidebarToggleSelect()">' + dellunaIcon("select") + '</div>';
+    if (currentFolderId) html += '<div class="dex-tool" title="Up one level" onclick="dexMoveOut()">' + dellunaIcon("up") + '</div>';
   }
   t.innerHTML = html;
 }
@@ -182,7 +183,7 @@ function closeSidebar() {
   const sb = document.getElementById("sidebar1");
   const tog = document.getElementById("sidebar1Toggle");
   if (sb) sb.classList.remove("open");
-  if (tog) tog.innerHTML = '<i class="ic-icon" data-icon="view_object_track"></i>';
+  if (tog) tog.innerHTML = '<delluna-icon name="view_object_track"></delluna-icon>';
   const m = document.getElementById("dexSortMenu"); if (m) m.remove();
   clipboard = null;
 }
@@ -195,13 +196,13 @@ function renderFileRow(n) {
   const pickActive = window.__dexNotePick && String(window.__dexPickActiveNoteId) === String(n.id);
   row.className = "dex-row" + (isSel("n:" + n.id) ? " sel" : "") + (cur ? " dex-current" : "") + (pickActive ? " dex-pick-active" : "");
   let html = "";
-  if (selectMode) html += '<div class="dex-check' + (isSel("n:" + n.id) ? " on" : "") + '">' + (isSel("n:" + n.id) ? IC.tick : "") + "</div>";
-  html += '<div class="dex-ic">' + IC.file + "</div>";
+  if (selectMode) html += '<div class="dex-check' + (isSel("n:" + n.id) ? " on" : "") + '">' + (isSel("n:" + n.id) ? dellunaIcon("tick") : "") + "</div>";
+  html += '<div class="dex-ic">' + dellunaIcon("file") + "</div>";
   html += '<div class="dex-name">' + escapeHtml(n.title || ("note " + n.id)) + "</div>";
   html += '<div class="dex-badge">' + (n.content || "").length + "c \u00b7 ." + (n.extension || "txt") + "</div>";
   if (!selectMode) {
-    html += '<div class="dex-add" data-rename="1" title="Rename">' + IC.edit + "</div>";
-    html += '<div class="dex-add" data-dl="1" title="Download">' + IC.download + "</div>";
+    html += '<div class="dex-add" data-rename="1" title="Rename">' + dellunaIcon("edit") + "</div>";
+    html += '<div class="dex-add" data-dl="1" title="Download">' + dellunaIcon("download") + "</div>";
   }
   row.innerHTML = html;
   row.onclick = (e) => {
@@ -232,16 +233,16 @@ function renderFolderNode(f) {
   const isOpen = expanded.has(f.id);
   const count = foldersInFolder(f.id).length + notesInFolder(f.id).length;
   let html = "";
-  if (selectMode) html += '<div class="dex-check' + (isSel("f:" + f.id) ? " on" : "") + '">' + (isSel("f:" + f.id) ? IC.tick : "") + "</div>";
-  else html += '<div class="dex-chev' + (isOpen ? " open" : "") + (pathFolderIds.has(f.id) ? " onpath" : "") + '" data-chev="1">' + IC.chev + "</div>";
-  html += '<div class="dex-ic dex-ic-folder">' + IC.folder + "</div>";
+  if (selectMode) html += '<div class="dex-check' + (isSel("f:" + f.id) ? " on" : "") + '">' + (isSel("f:" + f.id) ? dellunaIcon("tick") : "") + "</div>";
+  else html += '<div class="dex-chev' + (isOpen ? " open" : "") + (pathFolderIds.has(f.id) ? " onpath" : "") + '" data-chev="1">' + dellunaIcon("chev") + "</div>";
+  html += '<div class="dex-ic dex-ic-folder">' + dellunaIcon("folder") + "</div>";
   html += '<div class="dex-name folder">' + escapeHtml(f.name) + "</div>";
   html += '<div class="dex-badge">' + count + "</div>";
   if (!selectMode) {
-    html += '<div class="dex-add" data-rename="1" title="Rename folder">' + IC.edit + "</div>";
-    html += '<div class="dex-add" data-dl="1" title="Download folder">' + IC.download + "</div>";
+    html += '<div class="dex-add" data-rename="1" title="Rename folder">' + dellunaIcon("edit") + "</div>";
+    html += '<div class="dex-add" data-dl="1" title="Download folder">' + dellunaIcon("download") + "</div>";
   }
-  html += '<div class="dex-add" data-enter="1" title="Open folder">' + IC.enter + "</div>";
+  html += '<div class="dex-add" data-enter="1" title="Open folder">' + dellunaIcon("enter") + "</div>";
   row.innerHTML = html;
   row.onclick = (e) => {
     if (e.target.closest("[data-rename]")) { sidebarRename("folder", f.id); return; }
@@ -328,9 +329,9 @@ function renderFolderMatchRow(f) {
   row.className = "dex-row" + (isSel("f:" + f.id) ? " sel" : "");
   row.title = pathLabel(f.parentId || null);
   let html = "";
-  if (selectMode) html += '<div class="dex-check' + (isSel("f:" + f.id) ? " on" : "") + '">' + (isSel("f:" + f.id) ? IC.tick : "") + "</div>";
-  html += '<div class="dex-ic">' + IC.folder + "</div><div class=\"dex-name folder\">" + escapeHtml(f.name) + "</div>";
-  if (!selectMode) html += '<div class="dex-add" title="Open">' + IC.enter + "</div>";
+  if (selectMode) html += '<div class="dex-check' + (isSel("f:" + f.id) ? " on" : "") + '">' + (isSel("f:" + f.id) ? dellunaIcon("tick") : "") + "</div>";
+  html += '<div class="dex-ic">' + dellunaIcon("folder") + "</div><div class=\"dex-name folder\">" + escapeHtml(f.name) + "</div>";
+  if (!selectMode) html += '<div class="dex-add" title="Open">' + dellunaIcon("enter") + "</div>";
   row.innerHTML = html;
   row.onclick = () => { if (selectMode) { toggleSel("f:" + f.id); return; } navigateTo(f.id); };
   item.appendChild(row);

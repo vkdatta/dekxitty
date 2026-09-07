@@ -9,7 +9,7 @@ function setupEventListeners() {
     const willOpen = !sidebar1.classList.contains("open");
     if (willOpen) {
       sidebar1.classList.add("open");
-      sidebar1Toggle.innerHTML = '<i class="ic-icon" data-icon="close"></i>';
+      sidebar1Toggle.innerHTML = '<delluna-icon name="x"></delluna-icon>';
     } else if (typeof closeSidebar === "function") {
       closeSidebar();
     }

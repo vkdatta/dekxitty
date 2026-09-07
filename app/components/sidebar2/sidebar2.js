@@ -52,7 +52,7 @@
     overlay.classList.add('visible');
     sidebar.setAttribute('aria-hidden', 'false');
     hamburger.setAttribute('aria-expanded', 'true');
-    hamburger.innerHTML = '<i class="ic-icon" data-icon="close"></i>';
+    hamburger.innerHTML = '<delluna-icon name="x"></delluna-icon>';
   }
 
   function closeSidebar() {
@@ -60,7 +60,7 @@
     overlay.classList.remove('visible');
     sidebar.setAttribute('aria-hidden', 'true');
     hamburger.setAttribute('aria-expanded', 'false');
-    hamburger.innerHTML = '<i class="ic-icon" data-icon="view_cozy"></i>';
+    hamburger.innerHTML = '<delluna-icon name="view_cozy"></delluna-icon>';
   }
 
   hamburger.addEventListener('click', (e) => {
@@ -124,11 +124,11 @@
     fsc.className = 'secondary-sidebar-item font-size-control';
     fsc.innerHTML = `
       <button onclick="decreaseFontSize()" style="background:var(--matte)">
-        <i class="ic-icon" data-icon="remove"></i>
+        <delluna-icon name="remove"></delluna-icon>
       </button>
       <span>Font Size</span>
       <button onclick="increaseFontSize()" style="background:var(--matte)">
-        <i class="ic-icon" data-icon="add"></i>
+        <delluna-icon name="plus"></delluna-icon>
       </button>`;
     cardScroll.appendChild(fsc);
 
@@ -136,17 +136,17 @@
     const grid = document.createElement('div');
     grid.className = 'secondary-sidebar-grid';
     const gridItems = [
-      { icon: 'select_all',    onclick: 'handleSelectAll()' },
-      { icon: 'content_copy',  onclick: 'handleCopyNote()' },
+      { icon: 'selectAll',    onclick: 'handleSelectAll()' },
+      { icon: 'copy',  onclick: 'handleCopyNote()' },
       { icon: 'content_cut',   onclick: 'handleCutNote()' },
       { icon: 'clear_all',     onclick: 'handleClearNote()' },
-      { icon: 'content_paste', onclick: 'handlePasteNote()' },
+      { icon: 'paste', onclick: 'handlePasteNote()' },
     ];
     gridItems.forEach(it => {
       const btn = document.createElement('div');
       btn.className = 'secondary-sidebar-grid-item';
       btn.setAttribute('onclick', it.onclick);
-      btn.innerHTML = `<i class="ic-icon" data-icon="${it.icon}"></i>`;
+      btn.innerHTML = `<delluna-icon name="${it.icon}"></delluna-icon>`;
       grid.appendChild(btn);
     });
     cardScroll.appendChild(grid);
@@ -175,9 +175,8 @@
       const left = document.createElement('span');
       left.className = 'secondary-sidebar-left';
 
-      const ic = document.createElement('span');
-      ic.className = 'ic-icon';
-      ic.setAttribute('data-icon', it.icon);
+      const ic = document.createElement('delluna-icon');
+      ic.setAttribute('name', it.icon);
 
       const label = document.createElement('span');
       label.className   = 'secondary-sidebar-label';
@@ -207,10 +206,10 @@
     outerHeader.setAttribute('aria-expanded', 'true');
     outerHeader.innerHTML = `
       <span class="secondary-sidebar-left">
-        <span class="ic-icon" data-icon="category"></span>
+        <delluna-icon name="category"></delluna-icon>
         <span class="secondary-sidebar-label">Categories</span>
       </span>
-      <span class="ic-icon secondary-sidebar-chevron" data-icon="expand_more"></span>`;
+      <delluna-icon name="expand_more" class="secondary-sidebar-chevron"></delluna-icon>`;
 
     const outerContent = document.createElement('div');
     outerContent.id        = 'sidebar2Categories';
@@ -274,7 +273,7 @@
 
     // Only L1 nodes have a registered icon; deeper nodes are text-only labels
     const iconHtml = node.icon
-      ? `<span class="ic-icon" data-icon="${escHtml(node.icon)}"></span>`
+      ? `<delluna-icon name="${escHtml(node.icon)}"></delluna-icon>`
       : '';
 
     toggle.innerHTML = `
@@ -282,7 +281,7 @@
         ${iconHtml}
         <span class="secondary-sidebar-label">${escHtml(node.name)}</span>
       </span>
-      <span class="ic-icon secondary-sidebar-chevron" data-icon="expand_more"></span>`;
+      <delluna-icon name="expand_more" class="secondary-sidebar-chevron"></delluna-icon>`;
 
     const subList = document.createElement('div');
     subList.className = 'secondary-sidebar-sub-list';
@@ -469,9 +468,8 @@
     const left = document.createElement('span');
     left.className = 'secondary-sidebar-left';
 
-    const ic = document.createElement('span');
-    ic.className = 'ic-icon';
-    ic.setAttribute('data-icon', 'apps');
+    const ic = document.createElement('delluna-icon');
+    ic.setAttribute('name', 'apps');
 
     const label = document.createElement('span');
     label.className   = 'secondary-sidebar-label';
@@ -505,9 +503,8 @@
     if (onclickJs)    btn.setAttribute('onclick', onclickJs);
     if (indentPx !== undefined) btn.style.paddingLeft = indentPx + 'px';
 
-    const ic = document.createElement('span');
-    ic.className = 'ic-icon';
-    ic.setAttribute('data-icon', icon);
+    const ic = document.createElement('delluna-icon');
+    ic.setAttribute('name', icon);
     btn.appendChild(ic);
     btn.appendChild(document.createTextNode(text));
 

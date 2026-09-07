@@ -4,12 +4,12 @@
 
   const MENU_DELAY_MS = 1000;
   // IC here is the real global DexIcons proxy (window.IC, set by icons.js) —
-  // every IC.xxx call below (copy, cut, paste, selectAll, delete, swap,
+  // every 'xxx' call below (copy, cut, paste, selectAll, delete, swap,
   // bookmark, swapSaved, save, closeDpad) is a valid key on it already,
   // either directly or through DexIcons' own ALIASES table. A local IC
   // object used to shadow it here, mapping each of those to a plain icon-name
   // *string* instead of rendered SVG — renderMenu() was embedding that raw
-  // string as literal text inside the ic-icon span instead of an icon.
+  // string as literal text inside the delluna-icon span instead of an icon.
 
   function $(id) { return document.getElementById(id); }
 
@@ -122,7 +122,7 @@
     actions.forEach((a, i) => {
       if (a.sep) { html += '<div class="dex-nm-sep"></div>'; return; }
       html += '<button type="button" class="dex-nm-item' + (a.danger ? ' dex-nm-danger' : '') + '" data-nm-idx="' + i + '">' +
-              '<span class="ic-icon">' + (a.icon || '') + '</span><span>' + a.label + '</span></button>';
+              '<delluna-icon name="' + (a.icon || '') + '"></delluna-icon><span>' + a.label + '</span></button>';
     });
     menu.innerHTML = html;
     menu.querySelectorAll('[data-nm-idx]').forEach((btn) => {
@@ -199,13 +199,13 @@
   function codeMirrorActions(cm, range, opts) {
     const source = opts && opts.source;
     const actions = [
-      { label: 'Copy', icon: IC.copy, run: async () => { notify((await clipboardWrite(range.text)) ? 'Copied' : 'Copy failed'); } },
-      { label: 'Cut', icon: IC.cut, run: async () => {
+      { label: 'Copy', icon: 'copy', run: async () => { notify((await clipboardWrite(range.text)) ? 'Copied' : 'Copy failed'); } },
+      { label: 'Cut', icon: 'cut', run: async () => {
           if (!(await clipboardWrite(range.text))) { notify('Cut failed'); return; }
           cm.operation(() => { cm.replaceRange('', range.from, range.to); });
           notify('Cut');
         } },
-      { label: 'Paste', icon: IC.paste, run: async () => {
+      { label: 'Paste', icon: 'paste', run: async () => {
           const text = await clipboardRead();
           // FIX #20/#21: undefined = permission denied; null = other failure; '' = valid empty string
           if (text === undefined) { notify('Clipboard access denied'); return; }
@@ -213,11 +213,11 @@
           cm.operation(() => { cm.replaceRange(text, range.from, range.to); });
           notify('Pasted');
         } },
-      { label: 'Select All', icon: IC.selectAll, run: () => {
+      { label: 'Select All', icon: 'selectAll', run: () => {
           const lastLine = cm.lineCount() - 1;
           cm.setSelection({ line: 0, ch: 0 }, { line: lastLine, ch: cm.getLine(lastLine).length });
         } },
-      { label: 'Delete', icon: IC.delete, danger: true, run: () => {
+      { label: 'Delete', icon: 'delete', danger: true, run: () => {
           cm.operation(() => { cm.replaceRange('', range.from, range.to); });
           notify('Deleted');
         } }
@@ -226,23 +226,23 @@
     // dropping that menu doesn't drop functionality.
     if (currentMode() === 'diffusion') {
       actions.push({ sep: true });
-      actions.push({ label: 'Swap Raw ↔ Morph', icon: IC.swap, run: () => { if (typeof diffSwapTexts === 'function') diffSwapTexts(); } });
-      actions.push({ label: 'Save selection to pane', icon: IC.save, run: () => {
+      actions.push({ label: 'Swap Raw ↔ Morph', icon: 'swap', run: () => { if (typeof diffSwapTexts === 'function') diffSwapTexts(); } });
+      actions.push({ label: 'Save selection to pane', icon: 'save', run: () => {
           if (typeof diffCommitPane === 'function') { diffCommitPane(window.dexMode ? window.dexMode.activePane : 'raw'); notify('Saved'); }
         } });
-      actions.push({ label: 'Copy Raw', icon: IC.copy, run: () => { if (typeof diffCopyText === 'function') diffCopyText('raw'); } });
-      actions.push({ label: 'Copy Morph', icon: IC.copy, run: () => { if (typeof diffCopyText === 'function') diffCopyText('morph'); } });
-      actions.push({ label: 'Paste to Raw', icon: IC.paste, run: () => { if (typeof diffPasteText === 'function') diffPasteText('raw'); } });
-      actions.push({ label: 'Paste to Morph', icon: IC.paste, run: () => { if (typeof diffPasteText === 'function') diffPasteText('morph'); } });
-      actions.push({ label: 'Clear Raw', icon: IC.delete, danger: true, run: () => { if (typeof diffClearText === 'function') diffClearText('raw'); } });
-      actions.push({ label: 'Clear Morph', icon: IC.delete, danger: true, run: () => { if (typeof diffClearText === 'function') diffClearText('morph'); } });
+      actions.push({ label: 'Copy Raw', icon: 'copy', run: () => { if (typeof diffCopyText === 'function') diffCopyText('raw'); } });
+      actions.push({ label: 'Copy Morph', icon: 'copy', run: () => { if (typeof diffCopyText === 'function') diffCopyText('morph'); } });
+      actions.push({ label: 'Paste to Raw', icon: 'paste', run: () => { if (typeof diffPasteText === 'function') diffPasteText('raw'); } });
+      actions.push({ label: 'Paste to Morph', icon: 'paste', run: () => { if (typeof diffPasteText === 'function') diffPasteText('morph'); } });
+      actions.push({ label: 'Clear Raw', icon: 'delete', danger: true, run: () => { if (typeof diffClearText === 'function') diffClearText('raw'); } });
+      actions.push({ label: 'Clear Morph', icon: 'delete', danger: true, run: () => { if (typeof diffClearText === 'function') diffClearText('morph'); } });
     }
     // The dpad's own "Close D-Pad" action only makes sense when the menu was
     // opened from a D-pad/touch interaction, not from a real text selection.
     // FIX #11: isDpadSource covers 'dpad', 'doubletap', and 'longpress'.
     if (isDpadSource(source)) {
       actions.push({ sep: true });
-      actions.push({ label: 'Close D-Pad', icon: IC.closeDpad, danger: true, run: () => {
+      actions.push({ label: 'Close D-Pad', icon: 'x', danger: true, run: () => {
           if (typeof window.dexHideDpad === 'function') window.dexHideDpad();
         } });
     }
@@ -254,7 +254,7 @@
   // menu keeps that when opened from the dpad, anchored at the cursor.
   function cursorActions(cm, source) {
     const actions = [
-      { label: 'Paste', icon: IC.paste, run: async () => {
+      { label: 'Paste', icon: 'paste', run: async () => {
           const text = await clipboardRead();
           if (text === undefined) { notify('Clipboard access denied'); return; }
           if (text === null) { notify('Clipboard unavailable'); return; }
@@ -262,7 +262,7 @@
           cm.operation(() => { cm.replaceRange(text, pos); });
           notify('Pasted');
         } },
-      { label: 'Select All', icon: IC.selectAll, run: () => {
+      { label: 'Select All', icon: 'selectAll', run: () => {
           const lastLine = cm.lineCount() - 1;
           cm.setSelection({ line: 0, ch: 0 }, { line: lastLine, ch: cm.getLine(lastLine).length });
         } }
@@ -270,7 +270,7 @@
     // FIX #11: isDpadSource covers 'dpad', 'doubletap', and 'longpress'.
     if (isDpadSource(source)) {
       actions.push({ sep: true });
-      actions.push({ label: 'Close D-Pad', icon: IC.closeDpad, danger: true, run: () => {
+      actions.push({ label: 'Close D-Pad', icon: 'x', danger: true, run: () => {
           if (typeof window.dexHideDpad === 'function') window.dexHideDpad();
         } });
     }
@@ -444,12 +444,12 @@
 
   function diffViewActions(sel) {
     const actions = [
-      { label: 'Save selection', icon: IC.bookmark, run: () => {
+      { label: 'Save selection', icon: 'bookmark', run: () => {
           diffSavedText = sel.text;
           const st = $('diffStatSaved');
           if (st) st.textContent = diffSavedText;
         } },
-      { label: 'Swap corresponding line(s)', icon: IC.swap, run: () => {
+      { label: 'Swap corresponding line(s)', icon: 'swap', run: () => {
           if (sel.startLine < 0) return;
           try {
             const isSourceRaw = sel.viewId === 'diffDiff1View';
@@ -462,7 +462,7 @@
         } }
     ];
     if (diffSavedText) {
-      actions.push({ label: 'Swap with saved text', icon: IC.swapSaved, run: () => {
+      actions.push({ label: 'Swap with saved text', icon: 'swapSaved', run: () => {
           if (!diffSavedText || sel.startLine < 0) return;
           try {
             const isSourceRaw = sel.viewId === 'diffDiff1View';
@@ -580,7 +580,7 @@
 
   function genericActions(text) {
     return [
-      { label: 'Copy', icon: IC.copy, run: async () => { notify((await clipboardWrite(text)) ? 'Copied' : 'Copy failed'); } }
+      { label: 'Copy', icon: 'copy', run: async () => { notify((await clipboardWrite(text)) ? 'Copied' : 'Copy failed'); } }
     ];
   }
 

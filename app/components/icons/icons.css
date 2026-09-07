@@ -15,10 +15,10 @@
 
 /* Sizing (width/height) is main.css's job via --icon-size — this file only
    owns layout/plasma concerns, so it must not fight that cascade with its
-   own width/height on the same .ic-icon selector (both files load as plain
+   own width/height on the same delluna-icon selector (both files load as plain
    stylesheets with equal specificity; whichever link tag comes second wins,
    which silently overrode --icon-size on every icon site-wide). */
-.ic-icon svg {
+delluna-icon svg {
   width: 100%;
   height: 100%;
   display: block;

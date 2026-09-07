@@ -170,7 +170,7 @@
   background: color-mix(in srgb, var(--c-black) 03%, transparent);
   color: var(--c-text-dim);
 }
-.secondary-sidebar .ic-icon {
+.secondary-sidebar delluna-icon {
   color: var(--c-text-dim);
   transition: transform var(--transition-speed);
 }
@@ -269,7 +269,7 @@
   align-items: center;
   justify-content: center;
 }
-.font-size-control .ic-icon { width: 14px; height: 14px; }
+.font-size-control delluna-icon { width: 14px; height: 14px; }
 .font-size-control span {
   font-size: 14px !important;
 }
@@ -346,7 +346,7 @@
 }
 /* Matches the 23px signed-in profile photo (see drive-sync.js
    renderUserAvatar) so the placeholder doesn't jump size on sign-in. */
-.info-avatar .ic-icon { width: 23px; height: 23px; }
+.info-avatar delluna-icon { width: 23px; height: 23px; }
 .info-item {
   gap: 10px;
   width: fit-content;

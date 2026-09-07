@@ -49,10 +49,10 @@
   background: var(--diff-accent);
   color: var(--c-white);
 }
-.diff-topbar .ic-icon {
+.diff-topbar delluna-icon {
   color: var(--c-text-faint);
 }
-.diff-topbar-button.active .ic-icon {
+.diff-topbar-button.active delluna-icon {
   color: var(--c-white);
 }
 .diff-viewport {

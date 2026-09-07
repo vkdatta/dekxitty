@@ -22,16 +22,16 @@ if (window.__dexToolbar2Loaded) {
   ctx.ICONS = {
     down: 'expand_more', up: 'expand_less',
     left: 'chevron_left', right: 'chevron_right',
-    copy: 'content_copy', paste: 'content_paste', cut: 'content_cut',
+    copy: 'copy', paste: 'paste', cut: 'content_cut',
     delete: 'delete',
-    close: 'close',
+    close: 'x',
     close_fullscreen: 'close_fullscreen', 
     dbl_up: 'keyboard_double_arrow_up',
     dbl_down: 'keyboard_double_arrow_down',
     dbl_left: 'keyboard_double_arrow_left',
     dbl_right: 'keyboard_double_arrow_right',
     drag: 'drag_indicator',
-    select_all: 'select_all',
+    select_all: 'selectAll',
     chevron_right: 'chevron_right',
     back: 'arrow_back',
     swap: 'swap_horiz',
@@ -109,7 +109,7 @@ if (window.__dexToolbar2Loaded) {
   btn.type = 'button';
   btn.id = 'dexToolbarBtn';
   btn.setAttribute('aria-label', 'Open editor toolbar');
-  function icoSpan(name, id) { return '<span class="ic-icon"' + (id ? ' id="' + id + '"' : '') + ' data-icon="' + name + '"></span>'; }
+  function icoSpan(name, id) { return '<delluna-icon name="' + name + '" ' + (id ? ' id="' + id + '"' : '') + '></delluna-icon>'; }
 
   btn.innerHTML = icoSpan(ICONS.down, 'dexToolbarBtnIcon');
   btn.style.display = 'none';
