@@ -109,7 +109,7 @@ if (window.__dexToolbar2Loaded) {
   btn.type = 'button';
   btn.id = 'dexToolbarBtn';
   btn.setAttribute('aria-label', 'Open editor toolbar');
-  function icoSpan(name, id) { return '<span class="ic-icon"' + (id ? ' id="' + id + '"' : '') + ' data-icon="' + name + '"></span>'; }
+  function icoSpan(name, id) { return '<delluna-icon name="' + name + '" ' + (id ? ' id="' + id + '"' : '') + '></delluna-icon>'; }
 
   btn.innerHTML = icoSpan(ICONS.down, 'dexToolbarBtnIcon');
   btn.style.display = 'none';

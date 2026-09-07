@@ -121,7 +121,7 @@ body:has(#sidebar1.open) #dexCursorControls {
 /* This 26px radial D-pad control is too small to host the standard
    --icon-size/--btn-padding without breaking its octagon clip-path, so it
    keeps its own compact icon size as a deliberate exception. */
-#dexCursorControls .dex-cursor-btn .ic-icon {
+#dexCursorControls .dex-cursor-btn delluna-icon {
   width: 15px;
   height: 15px;
   margin: 0;

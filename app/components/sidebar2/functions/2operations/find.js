@@ -264,8 +264,7 @@ export function createFindAndReplace() {
     els.menuContainer.classList.toggle("find-replace-mode-replace", state.mode === "replace");
     if (els.modeIcon) {
       const name = modeIconMap[state.mode];
-      els.modeIcon.innerHTML = (window.IC && window.IC[name]) || "";
-      els.modeIcon.setAttribute("data-icon", name);
+      els.modeIcon.setAttribute("name", name);
     }
     if (els.findControls)     els.findControls.classList.toggle("find-replace-hidden", state.mode === "replace");
     if (els.replaceControls)  els.replaceControls.classList.toggle("find-replace-hidden", state.mode === "find");

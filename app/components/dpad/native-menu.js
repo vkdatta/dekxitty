@@ -9,7 +9,7 @@
   // either directly or through DexIcons' own ALIASES table. A local IC
   // object used to shadow it here, mapping each of those to a plain icon-name
   // *string* instead of rendered SVG — renderMenu() was embedding that raw
-  // string as literal text inside the ic-icon span instead of an icon.
+  // string as literal text inside the delluna-icon span instead of an icon.
 
   function $(id) { return document.getElementById(id); }
 
@@ -122,7 +122,7 @@
     actions.forEach((a, i) => {
       if (a.sep) { html += '<div class="dex-nm-sep"></div>'; return; }
       html += '<button type="button" class="dex-nm-item' + (a.danger ? ' dex-nm-danger' : '') + '" data-nm-idx="' + i + '">' +
-              '<span class="ic-icon">' + (a.icon || '') + '</span><span>' + a.label + '</span></button>';
+              '<delluna-icon name="' + (a.icon || '') + '"></delluna-icon><span>' + a.label + '</span></button>';
     });
     menu.innerHTML = html;
     menu.querySelectorAll('[data-nm-idx]').forEach((btn) => {

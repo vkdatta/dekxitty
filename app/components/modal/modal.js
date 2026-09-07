@@ -13,7 +13,7 @@ function renderDropdownMenuPortal(trigger, options, callback) {
   searchContainer.className = "dropdown-search";
   searchContainer.innerHTML = `
     <div class="search-wrapper">
-      <span class="ic-icon search-icon" data-icon="search"></span>
+      <delluna-icon name="search" class="search-icon"></delluna-icon>
       <input type="text" class="search-input" placeholder="Search..." autocomplete="off">
     </div>
   `;
@@ -244,7 +244,7 @@ window.showModal = function (options = {}) {
       if (typeof options.header === "string") headerDiv.innerHTML = options.header;
       else headerDiv.appendChild(options.header);
     } else {
-      headerDiv.innerHTML = `<h3 class="modal-title">${options.title || ""}</h3><button class="modal-close"><span class="ic-icon" data-icon="close"></span></button>`;
+      headerDiv.innerHTML = `<h3 class="modal-title">${options.title || ""}</h3><button class="modal-close"><delluna-icon name="close"></delluna-icon></button>`;
       headerDiv.querySelector(".modal-close").addEventListener("click", () => closeModal());
     }
 

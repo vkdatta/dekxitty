@@ -182,7 +182,7 @@ function closeSidebar() {
   const sb = document.getElementById("sidebar1");
   const tog = document.getElementById("sidebar1Toggle");
   if (sb) sb.classList.remove("open");
-  if (tog) tog.innerHTML = '<i class="ic-icon" data-icon="view_object_track"></i>';
+  if (tog) tog.innerHTML = '<delluna-icon name="view_object_track"></delluna-icon>';
   const m = document.getElementById("dexSortMenu"); if (m) m.remove();
   clipboard = null;
 }

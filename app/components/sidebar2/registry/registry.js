@@ -45,7 +45,7 @@
    * @param {Object} def
    * @param {string} def.id    - stable unique id, e.g. 'formatting'
    * @param {string} def.name  - display label
-   * @param {string} def.icon  - ic-icon name
+   * @param {string} def.icon  - delluna-icon name
    */
   function registerLevel1(def) {
     if (!def || !def.id) throw new Error('registerLevel1: id required');
@@ -60,7 +60,7 @@
    * Register a leaf function.
    * @param {Object} def
    * @param {string}   def.function  - function name / key
-   * @param {string}   def.icon      - ic-icon name
+   * @param {string}   def.icon      - delluna-icon name
    * @param {string}   def.name      - display label
    * @param {string[]} def.under     - hierarchy path, e.g. ['formatting','basic']
    *                                   def.under[0] must match a registerLevel1 id

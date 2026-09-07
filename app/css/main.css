@@ -110,7 +110,7 @@
 
 /* The site's one icon system: inline SVGs painted via IC (noteappjs/icons/icons.js),
    sized uniformly here instead of each context picking its own font-size. */
-.ic-icon {
+delluna-icon {
   width: var(--icon-size);
   height: var(--icon-size);
   display: inline-flex;
@@ -119,7 +119,7 @@
   flex-shrink: 0;
   line-height: 0;
 }
-.ic-icon svg { width: 100%; height: 100%; display: block; }
+delluna-icon svg { width: 100%; height: 100%; display: block; }
 
 html[data-theme="light"] {
   --c-black:      #f7ecd6;
@@ -482,8 +482,8 @@ body.mode-diffusion .diff-bottombar:not(.mermaid-bottombar) { display: flex; }
   background: var(--diff-accent);
   color: var(--c-white);
 }
-.diff-bottombar .ic-icon { color: var(--c-text-faint); }
-.diff-bottombar .diff-topbar-button.active .ic-icon { color: var(--c-white); }
+.diff-bottombar delluna-icon { color: var(--c-text-faint); }
+.diff-bottombar .diff-topbar-button.active delluna-icon { color: var(--c-white); }
 @media (max-width: 600px) {
   .diff-bottombar { width: 95%; padding: 6px 10px; border-radius: 20px; }
   .diff-bottombar .diff-topbar-button { min-width: 0; flex: 1; padding: 4px; }
@@ -589,7 +589,7 @@ html[data-cm-tone="light"] .CodeMirror-linenumber {
 #textAreaWrapper.pane-empty .CodeMirror { visibility: hidden; }
 /* Deliberately larger than --icon-size: this is a decorative empty-state
    graphic, not a UI/button icon, so it sits outside the icon-size unification. */
-.ic-icon.pane-empty-icon { width: 42px; height: 42px; color: var(--c-text-faint); opacity: 0.6; }
+delluna-icon.pane-empty-icon { width: 42px; height: 42px; color: var(--c-text-faint); opacity: 0.6; }
 .pane-empty-text { font-size: 14px; color: var(--c-text-faint); }
 
 /* Diffusion's raw/morph pane header — mirrors mermaid's panel-header, shown

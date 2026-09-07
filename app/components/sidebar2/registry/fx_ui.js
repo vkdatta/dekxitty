@@ -88,7 +88,7 @@
 
   // ── Icon helper ───────────────────────────────────────────────────────────
   function icIcon(name) {
-    return `<span class="ic-icon" data-icon="${name}"></span>`;
+    return `<delluna-icon name="${name}"></delluna-icon>`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
