@@ -1,12 +1,12 @@
 /**
- * DexLabs Grand Functions
+ * DexLabs Functions
  * ─────────────────────────────────────────────────────────────────────────────
  * Fullpage overlay for browsing and running functions from the registry.
  * Styled to match DexLabs site style (sidebar1/sidebar2 CSS variables).
  *
  * FIXES applied (vs. bugged version):
  *   1. L1 rail — icon only, no text label
- *   2. Whole gf-fn-item row is clickable (runs function); action btns stop propagation
+ *   2. Whole gf-fn-item row is clickable (runs function); action btns stop propagation; no separate run button
  *   3. renderStaticItems uses top-level category-header style, not sub-item
  *   4. --vline-left / --line-top set on category groups
  *   5. Level 2+ navigation uses .custom-dropdown/.custom-dropdown-trigger (not <select>)
@@ -21,7 +21,7 @@
 
   // ── Constants ─────────────────────────────────────────────────────────────
   const PIN_KEY       = 'dexPinnedFunctions';
-  const GF_OVERLAY_ID = 'grandFunctionsOverlay';
+  const GF_OVERLAY_ID = 'functionsOverlay';
 
   // ── State ─────────────────────────────────────────────────────────────────
   let gfState = {
@@ -102,13 +102,13 @@
     overlay.className = 'gf-overlay';
     overlay.setAttribute('aria-hidden', 'true');
     overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-label', 'Grand Functions');
+    overlay.setAttribute('aria-label', 'Functions');
 
     overlay.innerHTML = `
       <div class="gf-header">
         <div class="gf-header-left">
           ${icIcon('apps')}
-          <span class="gf-title">Grand Functions</span>
+          <span class="gf-title">Functions</span>
         </div>
         <div class="gf-header-tabs">
           <button class="gf-tab active" data-view="functions">${icIcon('code')} Functions</button>
@@ -116,7 +116,7 @@
         </div>
         <div class="gf-header-right">
           <button class="gf-db-btn" id="gfDbBtn" title="Switch database">
-            ${icIcon('swap_horiz')}
+            ${icIcon('square_swap')}
             <span id="gfDbLabel">MASTER</span>
             <span class="gf-db-count" id="gfDbCount">0</span>
           </button>
@@ -559,7 +559,7 @@
           <div class="gf-fn-actions">
             <button class="gf-pin-btn${pinned ? ' pinned' : ''}" data-fn-id="${fn.id}"
               title="${pinned ? 'Unpin from sidebar' : 'Pin to sidebar'}"
-            >${icIcon(pinned ? 'star' : 'star_border')}</button>
+            >${pinned ? `<delluna-icon name="star-fill" style="color:#f5c518"></delluna-icon>` : icIcon('star_border')}</button>
             ${!isUser
               ? `<button class="gf-add-btn${inUser ? ' added' : ''}" data-fn-id="${fn.id}"
                    title="${inUser ? 'In User DB' : 'Add to User DB'}"${inUser ? ' disabled' : ''}
@@ -568,9 +568,7 @@
                    title="Remove from User DB"
                  >${icIcon('remove')}</button>`
             }
-            <button class="gf-run-btn" data-fn-id="${fn.id}" title="Run">
-              ${icIcon('play_arrow')}
-            </button>
+
           </div>
         </div>
       `;
@@ -601,7 +599,7 @@
         togglePin({ onclick: fn.onclick, icon: fn.icon, text: fn.name });
         const nowPinned = isPinned(fn.onclick);
         btn.classList.toggle('pinned', nowPinned);
-        btn.innerHTML = icIcon(nowPinned ? 'star' : 'star_border');
+        btn.innerHTML = nowPinned ? `<delluna-icon name="star-fill" style="color:#f5c518"></delluna-icon>` : icIcon('star_border');
         btn.title     = nowPinned ? 'Unpin from sidebar' : 'Pin to sidebar';
       });
     });
@@ -642,13 +640,7 @@
       });
     });
 
-    // ── Run buttons ────────────────────────────────────────────────────────
-    container.querySelectorAll('.gf-run-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        runFnById(btn.dataset.fnId);
-      });
-    });
+
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -711,6 +703,6 @@
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
-  global.GrandFunctions = { open, close, loadUserDb, loadPins, isPinned, togglePin };
+  global.Functions = { open, close, loadUserDb, loadPins, isPinned, togglePin };
 
 })(window);

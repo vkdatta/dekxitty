@@ -1,7 +1,7 @@
 /**
  * DexLabs Function Registry
  * ─────────────────────────────────────────────────────────────────────────────
- * Central registry for all Sidebar 2 / Grand Functions.
+ * Central registry for all Sidebar 2 Functions.
  * Designed to scale to 2000+ functions without touching any HTML.
  *
  * USAGE:
@@ -103,7 +103,7 @@
   }
 
   /**
-   * Build the full tree structure expected by GrandFunctions renderer.
+   * Build the full tree structure expected by Functions renderer.
    * Returns an array of Level-1 nodes, each with a nested 'children' tree.
    */
   function buildTree() {

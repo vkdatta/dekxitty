@@ -2,14 +2,14 @@
  * DexLabs Sidebar 2 — Revamped
  * ─────────────────────────────────────────────────────────────────────────────
  * No static function HTML in index.html.
- * Everything is driven by FunctionRegistry + GrandFunctions.
+ * Everything is driven by FunctionRegistry + Functions.
  *
  * Structure inside the sidebar card — matches OG sidebar order:
  *   1. Search bar              ← top (restored to OG position)
  *   2. Quick-action grid       (font-size, clipboard)
  *   3. Static items            (Settings, Rename, Download) — top-level style
  *   4. Categories              (functions added to userDb from GF)
- *   5. [Grand Functions]       → opens GrandFunctions overlay
+ *   5. [Functions]             → opens Functions overlay
  *
  * Fixes vs. broken version:
  *   - FIX 1: Search moved back to top (OG: insertSearchAndPinnedUI ran first)
@@ -19,8 +19,8 @@
  *   - FIX 5: Sub-items get paddingLeft: 32px (depth-1: 12 + 20)
  *   - FIX 6: --vline-left hardcoded to 19px (OG formula: totalLeft + 7 = 19)
  *            instead of rAF getBoundingClientRect which fires too late
- *   - FIX 7: Grand Functions rendered as plain non-collapse tree item
- *            (no divider, no sb2-grand-btn border/bg, no right arrow icon)
+ *   - FIX 7: Functions rendered as plain non-collapse tree item
+ *            (no divider, no special border/bg, no right arrow icon)
  *
  * Recursive tree rendering (v2):
  *   - refreshCategories() now calls FunctionRegistry.buildTree() and renders
@@ -79,6 +79,14 @@
     catch (e) { return new Map(); }
   }
 
+  // ── Favourites loader — returns a Set of pinned onclick strings ───────────
+  function loadFavouritedIds() {
+    try {
+      const pins = JSON.parse(localStorage.getItem('dexPinnedFunctions') || '[]');
+      return new Set(pins.map(p => p.onclick));
+    } catch (e) { return new Set(); }
+  }
+
   // ── Search state ──────────────────────────────────────────────────────────
   let currentQuery = '';
 
@@ -91,7 +99,7 @@
     renderStaticItems();       // 2  Settings / Rename / Download — top-level style
     renderSearchBar();         // 3  search — below Download Note, above Categories
     renderCategoriesGroup();   // 4  "Categories" collapsible wrapper (OG icon + structure)
-    renderGrandFunctionsBtn(); // 5  Grand Functions launch row
+    renderFunctionsBtn(); // 5  Functions launch row
   }
 
   // ── 1. Search ─────────────────────────────────────────────────────────────
@@ -433,9 +441,17 @@
     let tree = FunctionRegistry.buildTree();
     if (!tree.length) return;
 
-    // ── FIX 1: Only show functions that the user has starred in userDb ────
-    const userDb     = loadUserDb();
-    const starredIds = new Set(userDb.keys());
+    // Only show USER functions (in userDb) that are ALSO favourited (pinned/starred).
+    // Master functions never appear here, even if starred.
+    // User functions only appear here if both in userDb AND pinned.
+    const userDb  = loadUserDb();
+    const pins    = loadFavouritedIds(); // onclickAttr set from loadPins()
+    // Build a set of ids that are: (a) in userDb AND (b) pinned/favourited
+    const starredIds = new Set(
+      Array.from(userDb.entries())
+        .filter(([, fn]) => pins.has(fn.onclick))
+        .map(([id]) => id)
+    );
     tree = tree.map(l1 => pruneToStarred(l1, starredIds)).filter(Boolean);
     if (!tree.length) return;
 
@@ -453,10 +469,10 @@
     });
   }
 
-  // ── 5. Grand Functions button ─────────────────────────────────────────────
+  // ── 5. Functions button ───────────────────────────────────────────────────
   // FIX 7: Plain non-collapse tree item — no divider, no special border/bg,
   //         no right arrow. Identical structure to Settings/Rename/Download.
-  function renderGrandFunctionsBtn() {
+  function renderFunctionsBtn() {
     const group = document.createElement('div');
     group.className = 'secondary-sidebar-category-group';
 
@@ -469,11 +485,11 @@
     left.className = 'secondary-sidebar-left';
 
     const ic = document.createElement('delluna-icon');
-    ic.setAttribute('name', 'apps');
+    ic.setAttribute('name', 'function_arrow');
 
     const label = document.createElement('span');
     label.className   = 'secondary-sidebar-label';
-    label.textContent = 'Grand Functions';
+    label.textContent = 'Functions';
 
     left.append(ic, label);
     btn.appendChild(left);
@@ -481,9 +497,9 @@
     group.appendChild(btn);
 
     btn.addEventListener('click', () => {
-      if (window.GrandFunctions) {
+      if (window.Functions) {
         closeSidebar();
-        window.GrandFunctions.open();
+        window.Functions.open();
       }
     });
 
@@ -572,7 +588,7 @@
     );
   }
 
-  // ── Public refresh hooks (called by GrandFunctions after add/remove) ──────
+  // ── Public refresh hooks (called by Functions overlay after add/remove) ────
   window.renderSidebar2Categories = () => {
     // sidebar2Categories is the inner content div inside the Categories collapsible
     const section = document.getElementById('sidebar2Categories');
