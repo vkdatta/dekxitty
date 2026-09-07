@@ -588,12 +588,18 @@
     );
   }
 
-  // ── Public refresh hooks (called by Functions overlay after add/remove) ────
-  window.renderSidebar2Categories = () => {
-    // sidebar2Categories is the inner content div inside the Categories collapsible
+  // ── Public refresh hooks (called by Functions overlay after add/remove/pin) ─
+  function refreshSidebarCategories() {
     const section = document.getElementById('sidebar2Categories');
     refreshCategories(section);
-  };
+  }
+
+  // Called by add/remove buttons in the overlay
+  window.renderSidebar2Categories = refreshSidebarCategories;
+
+  // Called by togglePin in fx_ui.js after starring/unstarring —
+  // must exist or favourites never propagate to the sidebar product box
+  window.renderSidebar2PinnedSection = refreshSidebarCategories;
 
   // ── Initial build ─────────────────────────────────────────────────────────
   buildSidebar2();

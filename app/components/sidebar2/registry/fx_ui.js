@@ -81,8 +81,11 @@
     const idx  = list.findIndex(p => p.onclick === entry.onclick);
     if (idx === -1) list.push(entry); else list.splice(idx, 1);
     savePins(list);
+    // Refresh sidebar — both hook names covered for safety
     if (typeof window.renderSidebar2PinnedSection === 'function') {
       window.renderSidebar2PinnedSection();
+    } else if (typeof window.renderSidebar2Categories === 'function') {
+      window.renderSidebar2Categories();
     }
   }
 
