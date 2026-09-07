@@ -4,8 +4,8 @@
 // else, so they're the only entries that need listing. Everything not named
 // here (x, copy, download, bolt, home_app_logo, fullscreen, view_object_track,
 // view_cozy, bolt, ... 35 icons total) inherits 'plasma' from the default.
-if (window.DexIcons) {
-  window.DexIcons.configure({
+if (window.Delluna) {
+  window.Delluna.configure({
     variant: 'plasma',
     icons: {
       folder: { variant: 'circuit' },
