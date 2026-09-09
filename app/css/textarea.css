@@ -24,7 +24,6 @@
   contain: layout style paint;
   will-change: scroll-position;
 }
-.note-backdrop,
 .note-textarea {
   position: absolute;
   top: 0;
@@ -54,14 +53,6 @@
   contain: layout style;
   will-change: scroll-position;
 }
-.note-backdrop {
-  background: transparent;
-  color: var(--color);
-  pointer-events: none;
-  z-index: 1;
-  user-select: none;
-  -webkit-user-select: none;
-}
 .note-textarea {
   background: transparent;
   color: transparent;
@@ -70,21 +61,15 @@
   -webkit-text-fill-color: transparent;
   text-fill-color: transparent;
 }
-.note-textarea::-webkit-scrollbar,
-.note-backdrop::-webkit-scrollbar {
+.note-textarea::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-.note-textarea::-webkit-scrollbar-thumb,
-.note-backdrop::-webkit-scrollbar-thumb {
+.note-textarea::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--c-white) 30%, transparent);
   border-radius: 4px;
 }
-.note-backdrop::-webkit-scrollbar {
-  display: none;
-}
-#noteTextarea,
-#noteBackdrop {
+#noteTextarea {
   font-family: "Source Code Pro", monospace;
   font-size: 14px;
   line-height: 1.5;
@@ -107,12 +92,6 @@
   caret-color: var(--color);
   z-index: 2;
 }
-#noteBackdrop {
-  background: transparent;
-  color: var(--c-white);
-  z-index: 1;
-  pointer-events: none;
-}
 @media (max-width: 600px) {
-  #noteTextarea, #noteBackdrop { padding: 24px; }
+  #noteTextarea { padding: 24px; }
 }

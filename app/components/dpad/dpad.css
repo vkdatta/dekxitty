@@ -236,16 +236,6 @@ body:has(#sidebar1.open) #dexCursorControls {
   pointer-events: none;
 }
 
-.CodeMirror-selected { background: var(--c-border) !important; }
-.CodeMirror-focused .CodeMirror-selected { background: var(--c-border) !important; }
-.CodeMirror-line ::selection,
-.CodeMirror-line > span ::selection,
-.CodeMirror-line > span > span ::selection { background: var(--c-border) !important; color: var(--c-black) !important; }
-.CodeMirror-line ::-moz-selection,
-.CodeMirror-line > span ::-moz-selection,
-.CodeMirror-line > span > span ::-moz-selection { background: var(--c-border) !important; color: var(--c-black) !important; }
-.CodeMirror .CodeMirror-selectedtext { color: var(--c-black) !important; }
-
 #dexCursorControls.dpad-collapsed {
   width: 40px;
   height: 40px;

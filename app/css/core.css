@@ -1,5 +1,9 @@
+@import "./root.css";
 @import "./main.css";
 @import "./find.css";
 @import "./misc.css";
 @import "./textarea.css";
 @import "./topbar.css";
+@import "./home.css";
+@import "./asteroid.css"
+@import "./selection.css"

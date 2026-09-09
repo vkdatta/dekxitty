@@ -1,0 +1,5 @@
+*
+!README.md
+!app/
+!app/**
+!.gitignore

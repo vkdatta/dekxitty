@@ -1,0 +1,45 @@
+.asteroid-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 501;
+  flex-direction: column;
+  background: var(--primary);
+}
+.asteroid-overlay.open { display: flex; }
+.asteroid-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text-dim);
+  font-size: 13px;
+}
+.asteroid-close {
+  background: transparent;
+  border: none;
+  color: var(--c-text-dim);
+  cursor: pointer;
+  display: flex;
+  padding: 4px;
+  border-radius: 8px;
+}
+.asteroid-close:hover { color: var(--c-white); background: var(--c-panel-2); }
+#asteroidCanvas { flex: 1; width: 100%; touch-action: none; }
+.asteroid-empty {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--c-text-faint);
+  font-size: 13.5px;
+  text-align: center;
+  max-width: 320px;
+  padding: 0 20px;
+}
+.asteroid-empty code {
+  background: var(--c-panel-2);
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-family: 'Source Code Pro', monospace;
+}

@@ -1,187 +1,3 @@
-:root {
-  --primary: #000;
-  --color: #cacaca;
-  --accent: #181C1F;
-  --transition-speed: 0.1s;
-  --topbar-height: 60px;
-  --selection-color: #606060;
-  --gap: 3vw;
-  --matte: #181C1F;
-  --blueink: #9aa8b7;
-  --accent2: #373737;
-  --danger: #ff6b6b;
-  --border: rgba(255, 255, 255, 0.06);
-  --shadow: 0 10px 30px rgba(2, 6, 23, 0.6);
-  --radius: 12px;
-  --gap: 12px;
-  --transition-speed: 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
-  --z-modal: 100000;
-  --focus-ring: 3px;
-  --modalinput: #000;
-  --category-box-width: 300px;
-  --user-font-size: 14px;
-}
-
-
-
-:root {
-  --c-black:      #000000;
-  --c-white:      #ecdfc3;
-  --c-panel:      #171717;
-  --c-panel-2:    #181c1f;
-  --c-panel-3:    #272727;
---c-panel-4:    #373737;
-  /* Every foreground token below (text-dim/faint, the five semantic colors,
-     the folder-icon color) is picked so it hits >=10:1 contrast against the
-     WORST-CASE background it appears on — panel-3, the lightest of the dark
-     surfaces. That's a much stricter floor than WCAG AAA (7:1) and is why
-     "dim" and "faint" text collapse to effectively the same color: once a
-     color is pushed to the 10:1 floor there's no headroom left to dim it
-     any further without falling back under the line. Same logic pushes the
-     five accent/status colors to pale, low-saturation tints instead of
-     their original vivid mid-tones — a mid-tone color mathematically cannot
-     reach 10:1 against a mid-tone panel. */
-  --c-text-dim:   color-mix(in srgb, var(--c-white) 96%, var(--c-black));
-  --c-text-faint: color-mix(in srgb, var(--c-white) 96%, var(--c-black));
-  --c-border:     color-mix(in srgb, var(--c-white) 10%, transparent);
-  --c-border-soft:color-mix(in srgb, var(--c-white) 5%,  transparent);
-  --c-accent:     #c6d3ff;
-  --c-green:      #b4ddcb;
-  --c-blue:       #b9d9e6;
-  --c-danger:     #ffc6c6;
-  --c-warn:       #ecd19e;
-  --c-folder-icon:#e1c280;
-
-  --primary:                   var(--c-black);
-  --color:                     var(--c-white);
-  --accent:                    var(--c-panel-2);
-  --accent2:                   var(--c-panel-2);
-  --matte:                     var(--c-panel);
-  --border:                    var(--c-border);
-  --shadow:                    0 1px 0 var(--c-panel-3);
-  --modalinput:                var(--c-black);
-  --blueink:                   var(--c-blue);
-  --selection-color:           var(--c-border-soft);
-  --selection-text:            var(--c-white);
-
-  --diff-primary:              var(--c-black);
-  --diff-matte:                var(--c-panel);
-  --diff-accent:               var(--c-panel-2);
-  --diff-border:               var(--c-panel-3);
-  --diff-color:                var(--c-text-dim);
-  --diff-removed-text:         var(--c-danger);
-  --diff-added-text:           var(--c-green);
-  --diff-removed-strong:       var(--c-danger);
-  --diff-added-strong:         var(--c-green);
-
-  --removed-bg:                color-mix(in srgb, var(--c-danger) 12%, transparent);
-  --removed-text:              var(--c-danger);
-  --added-bg:                  color-mix(in srgb, var(--c-green) 14%, transparent);
-  --added-text:                var(--c-green);
-
-  --editor-bg-dark:            var(--c-black);
-  --editor-gutter-dark:        var(--c-panel-3);
-  --editor-gutter-border-dark: color-mix(in srgb, var(--c-white) 06%, transparent);
-  --editor-bg-light:           var(--c-text-dim);
-  --editor-gutter-light:       var(--c-white);
-  --editor-gutter-border-light:color-mix(in srgb, var(--c-black) 08%, transparent);
-
-  --c-accent-green-vold-1:     var(--c-green);
-  /* Was color-mix(c-green, c-black) — darkening it toward c-black used to
-     stay mid-tone-safe against the old vivid c-green, but c-green is now
-     itself an extreme tint/shade (see the >=10:1 note above), and mixing
-     toward c-black pulls it back toward mid-tone, which no longer
-     guarantees contrast against the toggle icon. Kept flat instead. */
-  --c-accent-green-vold-2:     var(--c-green);
-
-  --diff-topbar-height:        70px;
-  --diff-topbar-gap:           2vh;
-  --diff-topbar-total:         calc(var(--diff-topbar-height) + var(--diff-topbar-gap) + 16px);
-
-  /* Single global standard, sourced from sidebar1/filemanager's "ic" icons
-     and its search-bar padding — every icon and every button (outside the
-     homepage and modals) reads these two tokens instead of picking its own
-     size/padding. */
-  --icon-size:                 18px;
-  --btn-padding:                8px 10px;
-
-  color: var(--color);
-}
-
-/* The site's one icon system: inline SVGs painted via IC (noteappjs/icons/icons.js),
-   sized uniformly here instead of each context picking its own font-size. */
-delluna-icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  line-height: 0;
-}
-delluna-icon svg { width: 100%; height: 100%; display: block; }
-
-html[data-theme="light"] {
-  --c-black:      #f7ecd6;
-  --c-white:      #000000;
-  --c-panel:      #fffaf0;
-  --c-panel-2:    #fbf3e2;
-  --c-panel-3:    #f3e6c8;
---c-panel-4:    #e8d7b0;
-  /* Same >=10:1-against-panel-3 floor as the dark palette above, mirrored:
-     dim/faint text collapses together, and the semantic colors become deep,
-     low-saturation shades instead of vivid mid-tones. Pushed a bit darker
-     than the panel-3 floor alone would require, because sidebar1.css tints
-     row backgrounds with these same colors at ~12-14% opacity (.dex-current,
-     .dex-pick-active) — an icon sitting on a low-opacity tint of its own
-     color is the tightest case, tighter than any flat panel. */
-  --c-text-dim:   color-mix(in srgb, var(--c-white) 80%, var(--c-black));
-  --c-text-faint: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
-  --c-border:     color-mix(in srgb, var(--c-white) 10%, transparent);
-  --c-border-soft:color-mix(in srgb, var(--c-white) 5%,  transparent);
-  --c-accent:     #0c262f;
-  --c-green:      #0c281f;
-  --c-blue:       #0c262f;
-  --c-danger:     #42140f;
-  --c-warn:       #321f03;
-  --c-folder-icon:#2f240b;
-
-  --c-accent-green-vold-1:     var(--c-green);
-  /* Was color-mix(c-green, c-black) — darkening it toward c-black used to
-     stay mid-tone-safe against the old vivid c-green, but c-green is now
-     itself an extreme tint/shade (see the >=10:1 note above), and mixing
-     toward c-black pulls it back toward mid-tone, which no longer
-     guarantees contrast against the toggle icon. Kept flat instead. */
-  --c-accent-green-vold-2:     var(--c-green);
-
-  --selection-color:           color-mix(in srgb, var(--c-accent) 20%, transparent);
-  --shadow:                    0 1px 0 var(--c-panel-3);
-
-  --editor-bg-light:           var(--c-black);
-  --editor-gutter-light:       var(--c-panel);
-  --editor-gutter-border-light: var(--c-border);
-
-  color: var(--color);
-}
-
-html[data-theme="light"] .homepage-button {
-  background: var(--matte);
-  color: var(--color);
-  border: 1px solid var(--border);
-}
-
-.diff-lines .diff-content-cell,
-.diff-lines .diff-gutter-cell,
-.diff-editor,
-.diff-editor-gutter { font-size: var(--user-font-size, 14px) !important; }
-
-/* Issue 7: no browser-native selection toolbar/callout anywhere on the
-   site — every surface renders its own native menu (main/native-menu.js)
-   instead. Genuine typed-input fields (search boxes, modal inputs, etc.) are
-   exempted so users keep native OS copy/paste while actually typing, since
-   our custom menu doesn't support typing into them. CodeMirror's internal
-   input is re-suppressed — it's already handled by native-menu.js's own
-   CodeMirror surface (shared by base mode, diffusion, and mermaid). */
 html,
 body,
 * {
@@ -195,37 +11,12 @@ input, textarea, [contenteditable] {
   -webkit-touch-callout: none !important;
 }
 
-.CodeMirror-selected {
-  background: var(--c-green) !important;
-  color: var(--c-black) !important;
-}
-.CodeMirror-focused .CodeMirror-selected {
-  background: var(--c-green) !important;
-  color: var(--c-black) !important;
-}
-
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
-}
-::-webkit-selection, ::selection {
-  background: var(--selection-color);
-  color: var(--selection-text);
-}
-button, image {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-input, textarea {
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  user-select: text;
 }
 input::placeholder { text-transform: none; }
 
@@ -255,261 +46,13 @@ button { font-family: classy; }
   padding-top: calc(var(--topbar-height) + 2vh);
   margin: 0;
 }
-.homepage {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  text-align: center;
-  gap: 20px;
-  font-family: 'classy', sans-serif;
-}
-.homepage-button, .google-login-button, .google-logout-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent);
-  color: var(--c-white);
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-family: 'classy', sans-serif;
-  font-size: 1rem;
-}
-.docs-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  align-items: center;
-  justify-content: center;
-  padding: 4vh 4vw;
-  background: color-mix(in srgb, var(--c-black) 55%, transparent);
-}
-.docs-overlay.open { display: flex; }
-.docs-card {
-  width: min(680px, 100%);
-  max-height: 92vh;
-  overflow-y: auto;
-  border-radius: 16px;
-  background: var(--c-panel);
-  border: 1px solid var(--c-border);
-  background: var(--c-panel);
-  border-bottom: 1px solid var(--c-border);
-  font-weight: 600;
-  color: var(--c-white);
-}
-.docs-close {
-  background: transparent;
-  border: none;
-  color: var(--c-text-dim);
-  cursor: pointer;
-  display: flex;
-  padding: 4px;
-  border-radius: 8px;
-}
-.docs-close:hover { color: var(--c-white); background: var(--c-panel-2); }
-.docs-body {
-  padding: 4px 24px 28px;
-  color: var(--c-text-dim);
-  font-size: 14px;
-  line-height: 1.65;
-  text-align: left;
-}
-.docs-body h2 {
-  color: var(--c-white);
-  font-size: 16px;
-  margin: 22px 0 8px;
-}
-.docs-body p, .docs-body ul { margin: 0 0 10px; }
-.docs-body ul { padding-left: 20px; }
-.docs-body code {
-  background: var(--c-panel-2);
-  padding: 1px 6px;
-  border-radius: 5px;
-  font-family: 'Source Code Pro', monospace;
-  font-size: 0.9em;
-}
 
-.asteroid-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 501;
-  flex-direction: column;
-  background: var(--primary);
-}
-.asteroid-overlay.open { display: flex; }
-.asteroid-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--c-border);
-  color: var(--c-text-dim);
-  font-size: 13px;
-}
-.asteroid-close {
-  background: transparent;
-  border: none;
-  color: var(--c-text-dim);
-  cursor: pointer;
-  display: flex;
-  padding: 4px;
-  border-radius: 8px;
-}
-.asteroid-close:hover { color: var(--c-white); background: var(--c-panel-2); }
-#asteroidCanvas { flex: 1; width: 100%; touch-action: none; }
-.asteroid-empty {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--c-text-faint);
-  font-size: 13.5px;
-  text-align: center;
-  max-width: 320px;
-  padding: 0 20px;
-}
-.asteroid-empty code {
-  background: var(--c-panel-2);
-  padding: 1px 6px;
-  border-radius: 5px;
-  font-family: 'Source Code Pro', monospace;
-}
 
-.google-login-button { border-radius: 500px; }
-.google-logout-button {
-  color: var(--c-danger);
-  border-radius: 500px;
-  display: none;
-}
-.google-login-button svg, .google-logout-button i {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  line-height: 1;
-  margin-right: 8px;
-  position: relative;
-}
-.google-login-button svg { top: -2px; width: 20px; height: 20px; }
-.google-logout-button i { top: -1px; width: 20px; height: 20px; }
-
-.welcome-message {
-  font-size: 200%;
-  font-weight: bold;
-  text-shadow: 0 4px 6px color-mix(in srgb, var(--c-black) 10%, transparent);
-  max-width: 90%;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.8s ease-out forwards;
-  font-family: 'classy', sans-serif;
-}
-@keyframes fadeInUp {
-  to { opacity: 1; transform: translateY(0); }
-}
 #noteAppContainer { display: none; }
 
 #notification { pointer-events: none; }
 #notification.show { pointer-events: auto; }
 
-#diffViewport {
-  position: absolute;
-  inset: 0;
-  padding-top: calc(var(--topbar-height) + 2vh);
-  padding-bottom: calc(var(--diff-topbar-height, 70px) + 4vh);
-  background: var(--primary);
-  display: none;
-  z-index: 5;
-}
-.diff-bottombar {
-  position: fixed;
-  bottom: var(--diff-topbar-gap, 2vh);
-  left: 50%;
-  transform: translateX(-50%);
-  width: fit-content;
-  background: var(--diff-matte);
-  padding: 6px 16px;
-  display: none;
-  align-items: center;
-  border-radius: 30px;
-  z-index: 1000;
-  height: var(--diff-topbar-height, 70px);
-  border: 1px solid var(--diff-border);
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-}
-.diff-bottombar * {
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-body.mode-diffusion .diff-bottombar:not(.mermaid-bottombar) { display: flex; }
-.diff-bottombar .diff-topbar-section {
-  display: flex; align-items: center; gap: 4px;
-}
-.diff-bottombar .diff-topbar-button {
-  background: var(--diff-matte);
-  border: none;
-  color: var(--diff-color);
-  cursor: pointer;
-  min-width: 56px;
-  height: 56px;
-  padding: var(--btn-padding);
-  box-sizing: border-box;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: 0 4px;
-  font-family: 'classy', sans-serif;
-  font-size: 11px;
-  gap: 4px;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-appearance: none;
-  appearance: none;
-}
-.diff-bottombar .diff-topbar-button > * { pointer-events: none; }
-.diff-bottombar .diff-topbar-button.active {
-  background: var(--diff-accent);
-  color: var(--c-white);
-}
-.diff-bottombar delluna-icon { color: var(--c-text-faint); }
-.diff-bottombar .diff-topbar-button.active delluna-icon { color: var(--c-white); }
-@media (max-width: 600px) {
-  .diff-bottombar { width: 95%; padding: 6px 10px; border-radius: 20px; }
-  .diff-bottombar .diff-topbar-button { min-width: 0; flex: 1; padding: 4px; }
-}
-
-.diff-shadow-host { position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
-
-body.diff-fullscreen #topbar { display: none !important; }
-body.diff-fullscreen #sidebar1 { display: none !important; }
-body.diff-fullscreen .note-app-container { padding-top: 0 !important; }
-body.diff-fullscreen #diffViewport {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--diff-topbar-height, 70px) + 4vh);
-  padding: 0 !important;
-  z-index: 500;
-  display: block !important;
-}
-body.diff-fullscreen .diff-view.active {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-}
-body.diff-fullscreen .diff-lines-container { height: 100%; overflow: auto; }
 
 .text-area-wrapper .CodeMirror {
   position: absolute;
@@ -555,11 +98,7 @@ html[data-cm-tone="dark"] .CodeMirror-linenumber,
 html:not([data-cm-tone]) .CodeMirror-linenumber {
   color: var(--c-text-faint) !important;
 }
-/* --editor-gutter-light is deliberately light-toned in BOTH app themes (a
-   light CodeMirror syntax theme needs a light gutter regardless of dark/light
-   app mode) — unlike --c-text-faint, which flips with the app theme. Using
-   text-faint here would pair near-white-on-near-white in dark app mode, so
-   this needs its own theme-invariant dark ink instead. */
+
 html[data-cm-tone="light"] .CodeMirror-linenumber {
   color: #1a1a1a !important;
 }
@@ -570,8 +109,6 @@ html[data-cm-tone="light"] .CodeMirror-linenumber {
 
 .CodeMirror.ink-vanish, .CodeMirror.ink-appear { pointer-events: none; }
 
-/* Shared "select a file" empty state — used by diffusion's raw/morph panes
-   and mermaid's code pane whenever no note is bound to the active surface. */
 .pane-empty-state {
   display: none;
   position: absolute;
@@ -587,64 +124,19 @@ html[data-cm-tone="light"] .CodeMirror-linenumber {
 }
 .pane-empty-state.show { display: flex; }
 #textAreaWrapper.pane-empty .CodeMirror { visibility: hidden; }
-/* Deliberately larger than --icon-size: this is a decorative empty-state
-   graphic, not a UI/button icon, so it sits outside the icon-size unification. */
+
 delluna-icon.pane-empty-icon { width: 42px; height: 42px; color: var(--c-text-faint); opacity: 0.6; }
 .pane-empty-text { font-size: 14px; color: var(--c-text-faint); }
 
-/* Diffusion's raw/morph pane header — mirrors mermaid's panel-header, shown
-   above the shared note textarea only while diffusion mode is active. */
-.diff-pane-header {
-  display: none;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  background: var(--diff-matte);
-  border-bottom: 1px solid var(--diff-border);
-  font-size: 13px;
-  flex-shrink: 0;
+button, image {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
-.diff-pane-header.active { display: flex; }
-.diff-pane-header .header-label {
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-faint);
-  flex-shrink: 0;
-}
-.diff-pane-header .pane-header-file {
-  flex: 1;
-  color: var(--diff-color);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.diff-pane-header .diff-btn-action {
-  padding: var(--btn-padding);
-  font-size: 12.5px;
-  flex-shrink: 0;
-}
-
-.diff-pick-banner {
-  position: sticky; top: 0; z-index: 5;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; padding: 14px 14px; margin-top: 25px;
-  background: var(--c-panel); border-bottom: 1px solid color-mix(in srgb, var(--c-blue) 30%, transparent);
-  color: var(--c-white); font-size: 13.5px;
-}
-.diff-pick-banner b { color: var(--c-blue); }
-.diff-pick-banner button {
-  background: var(--c-panel-2); border: 1px solid var(--c-panel-3); color: var(--c-text-dim);
-  border-radius: 7px; padding: var(--btn-padding); font-family: inherit;
-  font-size: 12.5px; cursor: pointer;
-}
-.diff-settings-row input[type="checkbox"]{
-  -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
-  border-radius: 5px; border: 1.5px solid var(--c-border); background: transparent;
-  cursor: pointer; position: relative; flex-shrink: 0; margin: 0;
-}
-.diff-settings-row input[type="checkbox"]:checked{ background: var(--c-accent); border-color: var(--c-accent); }
-.diff-settings-row input[type="checkbox"]:checked::after{
-  content: ''; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px;
-  border: solid var(--c-black); border-width: 0 2px 2px 0; transform: rotate(45deg);
+input, textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
