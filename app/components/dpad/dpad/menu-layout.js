@@ -17,27 +17,26 @@
   // of the old #dexToolbarMenu.
 
   function menuOpen() {
-    return typeof window.dexNativeMenuOpen === 'function' && window.dexNativeMenuOpen();
+    const m = document.getElementById('dexNativeMenu');
+    return !!(m && m.classList.contains('open'));
   }
   ctx.menuOpen = menuOpen;
 
   function openMenu() {
-    if (typeof window.dexRequestCurrentSelectionMenu === 'function') {
-      window.dexRequestCurrentSelectionMenu();
-    } else if (typeof window.dexOpenMenuForSelection === 'function') {
-      window.dexOpenMenuForSelection();
+    if (typeof window.dexOpenMenuForSelection === 'function') {
+      window.dexOpenMenuForSelection('dpad');
     }
   }
-  function closeNativeMenu() {
+  function closeMenu() {
     if (typeof window.dexCloseNativeMenu === 'function') window.dexCloseNativeMenu();
   }
-  function toggleMenu() { menuOpen() ? closeNativeMenu() : openMenu(); }
+  function toggleMenu() { menuOpen() ? closeMenu() : openMenu(); }
 
   ctx.openMenu = openMenu;
-  ctx.closeMenu = closeNativeMenu;
+  ctx.closeMenu = closeMenu;
   ctx.toggleMenu = toggleMenu;
 
   window.dexOpenToolbar   = openMenu;
-  window.dexCloseToolbar  = closeNativeMenu;
+  window.dexCloseToolbar  = closeMenu;
   window.dexToggleToolbar = toggleMenu;
 })();

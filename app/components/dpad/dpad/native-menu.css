@@ -4,7 +4,7 @@
   border: 1px solid color-mix(in srgb, var(--c-white) 08%, transparent);
   border-radius: 14px;
   padding: 6px;
-  z-index: 700;
+  z-index: 10050;
   display: none;
   flex-direction: column;
   min-width: 190px;

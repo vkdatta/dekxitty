@@ -1,0 +1,34 @@
+.CodeMirror-selected {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+.CodeMirror-focused .CodeMirror-selected {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+::-webkit-selection,
+::selection {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+.CodeMirror-line ::selection,
+.CodeMirror-line > span ::selection,
+.CodeMirror-line > span > span ::selection {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+.CodeMirror-line ::-moz-selection,
+.CodeMirror-line > span ::-moz-selection,
+.CodeMirror-line > span > span ::-moz-selection {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+.CodeMirror .CodeMirror-selectedtext {
+  background: #707070 !important;
+  color: #fff !important;
+}

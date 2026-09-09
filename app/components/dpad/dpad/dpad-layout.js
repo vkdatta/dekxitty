@@ -50,7 +50,7 @@ if (window.__dexToolbar2Loaded) {
 
   const particleCanvas = document.createElement('canvas');
   particleCanvas.id = 'dexParticleCanvas';
-  (document.body || document.documentElement).appendChild(particleCanvas);
+  document.body.appendChild(particleCanvas);
   const pCtx = particleCanvas.getContext('2d');
   const particles = [];
 
@@ -113,8 +113,9 @@ if (window.__dexToolbar2Loaded) {
 
   btn.innerHTML = icoSpan(ICONS.down, 'dexToolbarBtnIcon');
   btn.style.display = 'none';
-  (document.body || document.documentElement).appendChild(btn);
+  document.body.appendChild(btn);
   ctx.btn = btn;
+
   const cursorControls = document.createElement('div');
   cursorControls.id = 'dexCursorControls';
   cursorControls.innerHTML =
@@ -127,15 +128,20 @@ if (window.__dexToolbar2Loaded) {
     '<button type="button" class="dex-cursor-btn cmp-w"  id="dexCurLeft"     aria-label="Left">'       + icoSpan(ICONS.left)      + '</button>' +
     '<button type="button" class="dex-cursor-btn cmp-nw" id="dexCurDblLeft"  aria-label="Fast left">'  + icoSpan(ICONS.dbl_left)  + '</button>' +
     '<div class="dex-center-drag" id="dexCenterDrag" aria-label="Drag to select"></div>';
-  (document.body || document.documentElement).appendChild(cursorControls);
+  document.body.appendChild(cursorControls);
 
   const centerHandle = document.getElementById('dexCenterDrag');
   ctx.cursorControls = cursorControls;
   ctx.centerHandle = centerHandle;
 
+  const selectionPreview = document.createElement('div');
+  selectionPreview.id = 'dexSelectionPreview';
+  document.body.appendChild(selectionPreview);
+  ctx.selectionPreview = selectionPreview;
+
   const snapIndicator = document.createElement('div');
   snapIndicator.id = 'dexSnapIndicator';
-  (document.body || document.documentElement).appendChild(snapIndicator);
+  document.body.appendChild(snapIndicator);
   ctx.snapIndicator = snapIndicator;
 
   // Canonical parser for the "/note/<id>/<mode>" URL scheme — the single
@@ -166,23 +172,16 @@ if (window.__dexToolbar2Loaded) {
 
   function updateToolbarVisibility() {
     if (shouldHideDpad()) {
-      hideDpad();
+      if (ctx.closeMenu) ctx.closeMenu();
       cursorControls.style.display = 'none';
-      if (typeof window.dexHideSelectionHandles === 'function') window.dexHideSelectionHandles();
-      return;
+    } else {
+      cursorControls.style.display = 'flex';
+      updateCenterHandle();
     }
-    cursorControls.style.display = 'flex';
   }
   ctx.isHomepage = isHomepage;
   ctx.shouldHideDpad = shouldHideDpad;
   ctx.updateToolbarVisibility = updateToolbarVisibility;
-  window.addEventListener('popstate', updateToolbarVisibility);
-  window.addEventListener('hashchange', updateToolbarVisibility);
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', updateToolbarVisibility, { once: true });
-  } else {
-    updateToolbarVisibility();
-  }
 
   (function watchSidebarVisibility() {
     function onSidebarChange() {
@@ -207,7 +206,7 @@ if (window.__dexToolbar2Loaded) {
         tryAttach();
         if (attached.sb1 && attached.sb2) bodyMo.disconnect();
       });
-      bodyMo.observe(document.body || document.documentElement, { childList: true, subtree: true });
+      bodyMo.observe(document.body, { childList: true, subtree: true });
     }
   })();
 
@@ -280,7 +279,6 @@ if (window.__dexToolbar2Loaded) {
     cursorControls.classList.add('dpad-collapsed');
     clearInactivityTimer();
     if (ctx.menuOpen && ctx.menuOpen()) ctx.closeMenu();
-    if (ctx.clearSelectionAnchor) ctx.clearSelectionAnchor();
     const clamped = clampCursor(shifted.left, shifted.top);
     applyCursorPos(clamped);
     saveCursorPos(clamped.left, clamped.top);
@@ -300,20 +298,13 @@ if (window.__dexToolbar2Loaded) {
       saveCursorPos(clamped.left, clamped.top);
     });
     resetInactivityTimer();
-    if (typeof window.dexRefreshNativeMenu === 'function') window.dexRefreshNativeMenu();
   }
 
   function hideDpad() {
     if (ctx.menuOpen && ctx.menuOpen()) ctx.closeMenu();
     collapseDpad();
-    cursorControls.style.display = 'none';
-    if (typeof window.dexHideSelectionHandles === 'function') window.dexHideSelectionHandles();
   }
   function showDpad() {
-    if (shouldHideDpad()) {
-      hideDpad();
-      return;
-    }
     cursorControls.style.display = 'flex';
     if (ctx.dpadState !== 'expanded') {
       ctx.dpadState = 'collapsed';
@@ -322,7 +313,6 @@ if (window.__dexToolbar2Loaded) {
     const clamped = clampCursor(cursorControls.offsetLeft, cursorControls.offsetTop);
     applyCursorPos(clamped);
   }
-  ctx.isDpadOpen = () => (ctx.dpadState === 'expanded' && cursorControls.style.display !== 'none' && !shouldHideDpad());
 
   ctx.collapseDpad = collapseDpad;
   ctx.expandDpad = expandDpad;
@@ -459,34 +449,43 @@ if (window.__dexToolbar2Loaded) {
   });
 
   let selectionAnchor = null;
-  let selectionAnchorEditor = null;
   ctx.getSelectionAnchor = () => selectionAnchor;
-  ctx.setSelectionAnchor = (v, cm) => {
-    selectionAnchor = v ? { line: v.line, ch: v.ch } : null;
-    if (cm) selectionAnchorEditor = cm;
-  };
-  ctx.clearSelectionAnchor = () => {
-    selectionAnchor = null;
-    selectionAnchorEditor = null;
-  };
+  ctx.setSelectionAnchor = (v) => { selectionAnchor = v; };
   ctx.ensureAnchor = function (cm) {
-    if (!cm) return null;
-    if (selectionAnchor && selectionAnchorEditor === cm) {
-      try {
-        const maxLine = Math.max(0, cm.lineCount() - 1);
-        const line = Math.max(0, Math.min(maxLine, selectionAnchor.line));
-        const maxCh = cm.getLine(line).length;
-        const ch = Math.max(0, Math.min(maxCh, selectionAnchor.ch));
-        selectionAnchor = { line, ch };
-        return selectionAnchor;
-      } catch (_e) {
-        selectionAnchor = null;
-      }
-    }
-    selectionAnchorEditor = cm;
-    selectionAnchor = cm.somethingSelected() ? cm.getCursor('anchor') : cm.getCursor('head');
+    if (selectionAnchor) return selectionAnchor;
+    selectionAnchor = cm.getSelection() ? cm.getCursor('anchor') : cm.getCursor('head');
     return selectionAnchor;
   };
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  ctx.escapeHtml = escapeHtml;
+
+  function updateCenterHandle() {
+  }
+  ctx.updateCenterHandle = updateCenterHandle;
+
+  function updateSelectionPreview() {
+    const ed = window.dexEditor;
+    const cm = ed && ed.cm ? ed.cm : null;
+    if (!cm) { selectionPreview.classList.remove('visible'); return; }
+    const sel = cm.getSelection();
+    if (!sel || sel.length === 0) { selectionPreview.classList.remove('visible'); return; }
+    const preview = sel.length > 30 ? sel.slice(0, 30) + '...' : sel;
+    selectionPreview.innerHTML =
+      '<span>' + escapeHtml(preview) + '</span>' +
+      '<span class="dex-preview-count">' + sel.length + ' chars</span>';
+    const toCoords = cm.charCoords(cm.getCursor('to'), 'window');
+    const px = toCoords.right + 8;
+    const py = toCoords.top - 40;
+    selectionPreview.style.left = Math.max(4, Math.min(window.innerWidth - 250, px)) + 'px';
+    selectionPreview.style.top  = Math.max(4, py) + 'px';
+    selectionPreview.classList.add('visible');
+  }
+  ctx.updateSelectionPreview = updateSelectionPreview;
 
   function setDragDirection(dir) {
     centerHandle.classList.remove('dragging-right', 'dragging-left', 'dragging-up', 'dragging-down');
