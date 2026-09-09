@@ -471,7 +471,18 @@ if (window.__dexToolbar2Loaded) {
   };
   ctx.ensureAnchor = function (cm) {
     if (!cm) return null;
-    if (selectionAnchor && selectionAnchorEditor === cm) return selectionAnchor;
+    if (selectionAnchor && selectionAnchorEditor === cm) {
+      try {
+        const maxLine = Math.max(0, cm.lineCount() - 1);
+        const line = Math.max(0, Math.min(maxLine, selectionAnchor.line));
+        const maxCh = cm.getLine(line).length;
+        const ch = Math.max(0, Math.min(maxCh, selectionAnchor.ch));
+        selectionAnchor = { line, ch };
+        return selectionAnchor;
+      } catch (_e) {
+        selectionAnchor = null;
+      }
+    }
     selectionAnchorEditor = cm;
     selectionAnchor = cm.somethingSelected() ? cm.getCursor('anchor') : cm.getCursor('head');
     return selectionAnchor;

@@ -9,7 +9,6 @@
 }
 
 ::-webkit-selection,
-::-webkit-selection,
 ::selection {
   background: #707070 !important;
   color: #fff !important;
@@ -17,8 +16,7 @@
 
 .CodeMirror-line ::selection,
 .CodeMirror-line > span ::selection,
-.CodeMirror-line > span > span ::-webkit-selection,
-::selection {
+.CodeMirror-line > span > span ::selection {
   background: #707070 !important;
   color: #fff !important;
 }
@@ -68,4 +66,13 @@
   border-radius: 50%;
   background: var(--c-accent);
   border: 2px solid var(--c-panel-2);
+}
+
+
+/* Keep the two selection endpoints explicit: start is the left edge, end is the right edge. */
+.dex-sel-handle-start {
+  transform: translateX(0);
+}
+.dex-sel-handle-end {
+  transform: translateX(0);
 }

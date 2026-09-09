@@ -45,7 +45,6 @@
   let activeSurface = null;
   let menuSerial = 0;
   let selectionTimer = null;
-  let genericSelectionTimer = null;
   let baseActions = null;
   let lastMenuRect = null;
 
@@ -63,10 +62,6 @@
     if (selectionTimer !== null) {
       clearTimeout(selectionTimer);
       selectionTimer = null;
-    }
-    if (genericSelectionTimer !== null) {
-      clearTimeout(genericSelectionTimer);
-      genericSelectionTimer = null;
     }
   }
 
@@ -186,18 +181,27 @@
   };
   window.dexRenderNativeMenu = window.dexOpenSelectionMenu;
 
-  function scheduleMenu(getActionsAndRect) {
+  // All automatic selection menus use this single delayed dispatcher.
+  // Callers provide a builder so the final selection and D-pad state are
+  // evaluated at the moment the menu actually opens.
+  window.dexScheduleSelectionMenu = function (getActionsAndRect, surface, delay) {
     clearPendingMenu();
     if (menu && menu.classList.contains('open')) closeMenu();
-
     const serial = ++menuSerial;
+    const wait = Number.isFinite(delay) ? Math.max(0, delay) : MENU_DELAY_MS;
     selectionTimer = setTimeout(() => {
       selectionTimer = null;
       if (serial !== menuSerial) return;
       const result = typeof getActionsAndRect === 'function' ? getActionsAndRect() : null;
-      if (!result || !result.actions || !result.actions.length) return;
-      window.dexOpenSelectionMenu(result.actions, result.rect, SURFACE_CODEMIRROR);
-    }, MENU_DELAY_MS);
+      if (!result || !Array.isArray(result.actions) || !result.actions.length) return;
+      window.dexOpenSelectionMenu(result.actions, result.rect, surface || SURFACE_CODEMIRROR);
+    }, wait);
+    return true;
+  };
+
+  function scheduleMenu(getActionsAndRect) {
+    if (menu && menu.classList.contains('open')) closeMenu();
+    return window.dexScheduleSelectionMenu(getActionsAndRect, SURFACE_CODEMIRROR, MENU_DELAY_MS);
   }
 
   function getCodeMirror() {
@@ -317,6 +321,23 @@
 
   window.dexOpenMenuForSelection = openForCurrentSelection;
 
+  window.dexRequestCurrentSelectionMenu = function () {
+    return window.dexScheduleSelectionMenu(() => {
+      const cm = getCodeMirror();
+      if (!cm || !cm.somethingSelected()) return null;
+      const range = {
+        from: cm.getCursor('from'),
+        to: cm.getCursor('to'),
+        text: cm.getSelection()
+      };
+      if (!range.text) return null;
+      return {
+        actions: codeMirrorActions(cm, range),
+        rect: selectionRect(cm, range.to)
+      };
+    }, SURFACE_CODEMIRROR, MENU_DELAY_MS);
+  };
+
 
   function hookCodeMirror() {
     const cm = getCodeMirror();
@@ -419,28 +440,25 @@
       const rect = range.getBoundingClientRect();
       if (!rect.width && !rect.height) return;
 
-      // selectionchange fires repeatedly while a drag is in progress. Wait
-      // until the selection settles, then recapture it so the menu represents
-      // the final range rather than an intermediate drag state.
-      genericSelectionTimer = setTimeout(() => {
-        genericSelectionTimer = null;
+      // selectionchange fires repeatedly while a drag is in progress. Use the
+      // common delayed selection-menu dispatcher so every surface settles once.
+      window.dexScheduleSelectionMenu(() => {
         const current = window.getSelection();
-        if (!current || current.isCollapsed || !current.rangeCount) return;
+        if (!current || current.isCollapsed || !current.rangeCount) return null;
         const currentRange = current.getRangeAt(0);
         const currentElement = currentRange.commonAncestorContainer.nodeType === Node.TEXT_NODE
           ? currentRange.commonAncestorContainer.parentElement
           : currentRange.commonAncestorContainer;
-        if (isFormField(currentElement) || isDedicatedSurface(currentElement)) return;
+        if (isFormField(currentElement) || isDedicatedSurface(currentElement)) return null;
         const currentText = current.toString();
-        if (!currentText) return;
+        if (!currentText) return null;
         const currentRect = currentRange.getBoundingClientRect();
-        if (!currentRect.width && !currentRect.height) return;
-        window.dexOpenSelectionMenu(
-          [makeCopyAction(() => currentText)],
-          { left: currentRect.left, top: currentRect.top, bottom: currentRect.bottom },
-          'generic'
-        );
-      }, MENU_DELAY_MS);
+        if (!currentRect.width && !currentRect.height) return null;
+        return {
+          actions: [makeCopyAction(() => currentText)],
+          rect: { left: currentRect.left, top: currentRect.top, bottom: currentRect.bottom }
+        };
+      }, 'generic', MENU_DELAY_MS);
     });
   }
 

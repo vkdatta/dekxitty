@@ -22,7 +22,9 @@
   ctx.menuOpen = menuOpen;
 
   function openMenu() {
-    if (typeof window.dexOpenMenuForSelection === 'function') {
+    if (typeof window.dexRequestCurrentSelectionMenu === 'function') {
+      window.dexRequestCurrentSelectionMenu();
+    } else if (typeof window.dexOpenMenuForSelection === 'function') {
       window.dexOpenMenuForSelection();
     }
   }

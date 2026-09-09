@@ -4,7 +4,7 @@
 
   const LONG_PRESS_MS = 450;
   const MOVE_CANCEL_PX = 14;
-  const DBL_TAP_MS = 280;
+  const DBL_TAP_MS = 360;
   const DBL_TAP_DISTANCE = 30;
 
   let handleStart = null;
@@ -21,6 +21,8 @@
   let lastTapTime = 0;
   let lastTapX = 0;
   let lastTapY = 0;
+  let lastPointerType = '';
+  let lastDoubleHandledAt = 0;
 
   // Shared guard: native-menu must not race mobile double-tap/long-press.
   window.__dexTouchSelectionGesture = false;
@@ -189,8 +191,8 @@
     window.__dexSelHandleDragging = false;
 
     const cm = getCm();
-    if (cm && cm.somethingSelected() && typeof window.dexOpenMenuForSelection === 'function') {
-      window.dexOpenMenuForSelection();
+    if (cm && cm.somethingSelected()) {
+      openSelectionMenu();
     }
   }
 
@@ -217,9 +219,11 @@
   }
 
   function openSelectionMenu() {
-    if (typeof window.dexOpenMenuForSelection === 'function') {
-      window.dexOpenMenuForSelection();
+    if (typeof window.dexRequestCurrentSelectionMenu === 'function') {
+      return window.dexRequestCurrentSelectionMenu();
     }
+    if (typeof window.dexOpenMenuForSelection === 'function') return window.dexOpenMenuForSelection();
+    return false;
   }
 
   function firePress(clientX, clientY) {
@@ -253,6 +257,7 @@
   function fireDblTap(clientX, clientY) {
     const cm = getCm();
     if (!cm) return;
+    lastDoubleHandledAt = Date.now();
 
     let pos;
     try {
@@ -282,6 +287,7 @@
     gestureWrapper.removeEventListener('pointermove', gestureHandlers.move);
     gestureWrapper.removeEventListener('pointerup', gestureHandlers.up, true);
     gestureWrapper.removeEventListener('pointercancel', gestureHandlers.cancel);
+    gestureWrapper.removeEventListener('dblclick', gestureHandlers.dblclick, true);
     gestureWrapper = null;
     gestureHandlers = null;
     cancelPress();
@@ -296,18 +302,23 @@
     gestureWrapper = wrapper;
 
     const down = (e) => {
-      if (!isTouchLike(e)) return;
+      if (e.isPrimary === false) return;
+      if (!isTouchLike(e)) {
+        lastPointerType = e.pointerType || 'mouse';
+        return;
+      }
 
       window.__dexTouchSelectionGesture = true;
+      lastPointerType = e.pointerType || 'touch';
       const now = Date.now();
       const nearSameSpot = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < DBL_TAP_DISTANCE;
       if (nearSameSpot && now - lastTapTime < DBL_TAP_MS) {
         lastTapTime = 0;
         cancelPress();
-        window.__dexTouchSelectionGesture = false;
         e.preventDefault();
         e.stopPropagation();
         fireDblTap(e.clientX, e.clientY);
+        window.__dexTouchSelectionGesture = false;
         return;
       }
 
@@ -321,8 +332,8 @@
         const point = { x: pressStart.x, y: pressStart.y };
         pressTimer = null;
         lastTapTime = 0;
-        window.__dexTouchSelectionGesture = false;
         firePress(point.x, point.y);
+        window.__dexTouchSelectionGesture = false;
       }, LONG_PRESS_MS);
     };
 
@@ -342,6 +353,7 @@
         e.preventDefault();
         e.stopPropagation();
       }
+      lastPointerType = e.pointerType || lastPointerType;
     };
 
     const cancel = (e) => {
@@ -350,11 +362,22 @@
       suppressNextPointerUp = false;
     };
 
-    gestureHandlers = { down, move, up, cancel };
+    const dblclick = (e) => {
+      // Desktop mouse fallback. Touch/pen uses the pointer state machine above
+      // so a browser-synthesized dblclick cannot trigger a second menu.
+      if (e.detail !== 2 || lastPointerType === 'touch' || lastPointerType === 'pen') return;
+      if (Date.now() - lastDoubleHandledAt < 600) return;
+      e.preventDefault();
+      e.stopPropagation();
+      fireDblTap(e.clientX, e.clientY);
+    };
+
+    gestureHandlers = { down, move, up, cancel, dblclick };
     wrapper.addEventListener('pointerdown', down, { passive: false, capture: true });
     wrapper.addEventListener('pointermove', move, { passive: true });
     wrapper.addEventListener('pointerup', up, { passive: false, capture: true });
     wrapper.addEventListener('pointercancel', cancel, { passive: true });
+    wrapper.addEventListener('dblclick', dblclick, { passive: false, capture: true });
     return true;
   }
 

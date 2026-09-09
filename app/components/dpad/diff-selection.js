@@ -213,14 +213,9 @@
     };
   }
 
-  let diffSelectionTimer = null;
   let diffSelectionSerial = 0;
 
   function clearDiffSelectionTimer() {
-    if (diffSelectionTimer !== null) {
-      clearTimeout(diffSelectionTimer);
-      diffSelectionTimer = null;
-    }
     diffSelectionSerial++;
   }
 
@@ -244,40 +239,35 @@
       return;
     }
 
-    const serial = diffSelectionSerial;
-    // selectionchange fires continuously while the user drags. Do not rebuild
-    // the menu for every intermediate range; wait for a settled selection.
-    diffSelectionTimer = setTimeout(() => {
-      diffSelectionTimer = null;
-      if (serial !== diffSelectionSerial) return;
+    const serial = ++diffSelectionSerial;
+    if (typeof window.dexScheduleSelectionMenu !== 'function') return;
 
+    window.dexScheduleSelectionMenu(() => {
+      if (serial !== diffSelectionSerial) return null;
       const current = captureSelection();
       if (!current || !current.text) {
         closeDiffMenuIfActive();
-        return;
+        return null;
       }
 
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed || !selection.rangeCount) {
         closeDiffMenuIfActive();
-        return;
+        return null;
       }
       const range = selection.getRangeAt(0);
       const view = findDiffView(range.commonAncestorContainer);
       if (!isDiffView(view)) {
         closeDiffMenuIfActive();
-        return;
+        return null;
       }
 
       const rect = range.getBoundingClientRect();
-      if (!rect.width && !rect.height) return;
-      if (typeof window.dexOpenSelectionMenu !== 'function') return;
-
-      window.dexOpenSelectionMenu(
-        diffActions(current),
-        { left: rect.left, top: rect.top, bottom: rect.bottom },
-        'diff'
-      );
-    }, 180);
+      if (!rect.width && !rect.height) return null;
+      return {
+        actions: diffActions(current),
+        rect: { left: rect.left, top: rect.top, bottom: rect.bottom }
+      };
+    }, 'diff', 1000);
   });
 })();
