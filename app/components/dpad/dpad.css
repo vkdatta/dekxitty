@@ -8,7 +8,7 @@
   border: 1px solid color-mix(in srgb, var(--c-white) 08%, transparent);
   display: flex; align-items: center; justify-content: center;
   cursor: grab;
-  z-index: 9997;
+  z-index: 630;
   
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
@@ -33,7 +33,7 @@
 
 #dexCursorControls {
   position: fixed;
-  z-index: 9996;
+  z-index: 620;
   width: 165px;
   height: 165px;
   border-radius: 50%;
@@ -45,10 +45,6 @@
   cursor: grab;
   padding: 0;
   transition: transform 0.15s ease, width 0.25s ease, height 0.25s ease;
-}
-body:has(.secondary-sidebar.open) #dexCursorControls,
-body:has(#sidebar1.open) #dexCursorControls {
-  display: none !important;
 }
 #dexCursorControls.dragging {
   cursor: grabbing;
@@ -199,40 +195,10 @@ body:has(#sidebar1.open) #dexCursorControls {
   
 }
 
-#dexSelectionPreview {
-  position: fixed;
-  z-index: 9994;
-  background: color-mix(in srgb, var(--c-panel-2) 75%, transparent);
-  border: 1px solid color-mix(in srgb, var(--c-blue) 40%, transparent);
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-family: 'classy', monospace;
-  font-size: 12px;
-  color: var(--c-blue);
-  
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(8px) scale(0.95);
-  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  max-width: 240px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#dexSelectionPreview.visible {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-#dexSelectionPreview .dex-preview-count {
-  color: var(--c-text-faint);
-  font-size: 10px;
-  margin-left: 6px;
-}
-
 #dexParticleCanvas {
   position: fixed;
   inset: 0;
-  z-index: 9993;
+  z-index: 610;
   pointer-events: none;
 }
 
@@ -282,10 +248,6 @@ body:has(#sidebar1.open) #dexCursorControls {
   0%, 100% { opacity: 0.78; }
   50%       { opacity: 1;    }
 }
-  50% {
-    
-  }
-}
 #dexCursorControls.dpad-collapsed .dex-center-drag {
   animation: dexCenterGreenPulse 2.4s ease-in-out infinite;
 }
@@ -296,7 +258,7 @@ body:has(#sidebar1.open) #dexCursorControls {
 
 #dexSnapIndicator {
   position: fixed;
-  z-index: 9992;
+  z-index: 600;
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -307,34 +269,3 @@ body:has(#sidebar1.open) #dexCursorControls {
   transition: opacity 0.1s ease;
 }
 #dexSnapIndicator.visible { opacity: 1; }
-
-.dex-sel-handle {
-  position: fixed;
-  display: none;
-  width: 32px;
-  height: 20px;
-  margin-left: -16px;
-  z-index: 9990;
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.dex-sel-handle::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 0;
-  width: 2px;
-  height: var(--dex-sel-stem-h, 20px);
-  background: var(--c-accent);
-}
-.dex-sel-handle::after {
-  content: '';
-  position: absolute;
-  left: 6px;
-  top: var(--dex-sel-stem-h, 20px);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--c-accent);
-  border: 2px solid var(--c-panel-2);
-}

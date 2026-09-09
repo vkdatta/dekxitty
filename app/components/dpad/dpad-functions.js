@@ -11,7 +11,7 @@
     centerHandle, snapIndicator, THEME,
     HOLD_START_DELAY, HOLD_INITIAL_INTERVAL, HOLD_MIN_INTERVAL, HOLD_ACCEL_STEP,
     spawnParticle, ensureAnchor, resetInactivityTimer,
-    updateCenterHandle, updateSelectionPreview, setDragDirection, recordCenterTap
+    setDragDirection, recordCenterTap
   } = ctx;
 
   const curUp       = document.getElementById('dexCurUp');
@@ -29,7 +29,10 @@
     const cm = ed && ed.cm ? ed.cm : null;
     if (!cm) return;
 
-    const anchor = ensureAnchor(cm);
+    const anchor = cm.somethingSelected()
+      ? cm.getCursor('anchor')
+      : cm.getCursor('head');
+    ctx.setSelectionAnchor(anchor, cm);
     const isVertical = (dir === 'up' || dir === 'down');
     const amount = (dir === 'up' || dir === 'left') ? -multiplier : multiplier;
 
@@ -38,8 +41,6 @@
       ? cm.findPosV(head, amount, 'line')
       : cm.findPosH(head, amount, 'char');
     cm.setSelection(anchor, head);
-    updateCenterHandle();
-    updateSelectionPreview();
   }
   ctx.moveCursor = moveCursor;
 
@@ -132,7 +133,7 @@
     const cm = ed && ed.cm ? ed.cm : null;
     if (!cm) return false;
 
-    if (cm.getSelection()) ctx.setSelectionAnchor(cm.getCursor('anchor'));
+    if (cm.getSelection()) ctx.setSelectionAnchor(cm.getCursor('anchor'), cm);
     else ensureAnchor(cm);
     ctx._lastDragDir = null;
 
@@ -181,8 +182,6 @@
         else                                head = cm.findPosH(head, dir === 'left' ? -1 : 1, 'char');
         cm.setSelection(anchor, head);
         centerDrag.moved = true;
-        updateCenterHandle();
-        updateSelectionPreview();
 
         try {
           const c = cm.charCoords(head, 'window');
@@ -236,6 +235,9 @@
           THEME.accent
         );
       }
+      if (typeof window.dexOpenMenuForSelection === 'function') {
+        window.dexOpenMenuForSelection();
+      }
     }
   }
 
@@ -257,29 +259,6 @@
     if (centerDrag) return;
     if (!startCenterDrag(t.clientX, t.clientY, t.identifier)) return;
     centerTouchId = t.identifier;
-  }, { passive: false, capture: true });
-
-  centerHandle.addEventListener('touchmove', (e) => {
-    if (ctx.dpadState === 'collapsed') {
-      const cId = ctx.getCollapsedCenterTouchId();
-      if (cId === null) return;
-      let t = null;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === cId) { t = e.changedTouches[i]; break; }
-      }
-      if (!t) return;
-      e.preventDefault(); e.stopPropagation();
-      ctx.moveCollapsedCenterDrag(t.clientX, t.clientY);
-      return;
-    }
-    if (!centerDrag || centerTouchId === null) return;
-    let t = null;
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === centerTouchId) { t = e.changedTouches[i]; break; }
-    }
-    if (!t) return;
-    e.preventDefault(); e.stopPropagation();
-    moveCenterDrag(t.clientX, t.clientY);
   }, { passive: false, capture: true });
 
   document.addEventListener('touchmove', (e) => {
@@ -334,10 +313,11 @@
     afterCenterDrag(wasDrag);
     if (!wasDrag) recordCenterTap();
   }
-  centerHandle.addEventListener('touchend',    endCenterTouch, { passive: false, capture: true });
-  centerHandle.addEventListener('touchcancel', endCenterTouch, { passive: false, capture: true });
-  document.addEventListener('touchend',        endCenterTouch, { passive: false, capture: true });
-  document.addEventListener('touchcancel',     endCenterTouch, { passive: false, capture: true });
+  // Move/end are handled at document capture level so the gesture remains
+  // alive when the finger leaves the center handle. There is deliberately no
+  // second target-level move/end path.
+  document.addEventListener('touchend',   endCenterTouch, { passive: false, capture: true });
+  document.addEventListener('touchcancel', endCenterTouch, { passive: false, capture: true });
 
   centerHandle.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') return;
@@ -406,7 +386,7 @@
   ctx.afterCenterDrag = afterCenterDrag;
 
   // FIX (bug #7 / Scenario C): expose the normal (expanded) center-drag active
-  // flag so that native-menu.js and menu-functions.js can guard against
+  // flag so the selection/menu layer can guard against
   // scheduling menu timers or updating D-pad UI while the joystick is dragging.
   // Previously only getCollapsedCenterDrag() was exposed, leaving the normal
   // drag invisible to all external guards — causing the native menu to appear
