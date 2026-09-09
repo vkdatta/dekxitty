@@ -1,0 +1,75 @@
+/* ─── Selection & Selected-State Styles ─────────────────────────────────── */
+
+/* 1. Native text selection — normal text, inputs, textareas */
+::-webkit-selection,
+::selection {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+input::selection,
+textarea::selection {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+/* Firefox */
+input::-moz-selection,
+textarea::-moz-selection {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+/* 2. CodeMirror selection */
+.CodeMirror-selected,
+.CodeMirror-focused .CodeMirror-selected {
+  background: #707070 !important;
+}
+
+.CodeMirror-line ::selection,
+.CodeMirror-line > span ::selection,
+.CodeMirror-line > span > span ::selection,
+.CodeMirror .CodeMirror-selectedtext {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+.CodeMirror-line ::-moz-selection,
+.CodeMirror-line > span ::-moz-selection,
+.CodeMirror-line > span > span ::-moz-selection {
+  background: #707070 !important;
+  color: #fff !important;
+}
+
+/* 3. UI selected states */
+.note-item.selected {
+  background-color: color-mix(in srgb, var(--c-black) 10%, transparent);
+  margin-left: auto;
+}
+
+.dex-row.dex-current {
+  background: color-mix(in srgb, var(--c-blue) 12%, transparent);
+}
+
+.dex-row.dex-current .dex-ic {
+  color: var(--c-blue);
+}
+
+.dex-row.dex-pick-active {
+  background: color-mix(in srgb, var(--c-green) 14%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--c-green) 40%, transparent);
+}
+
+.dex-row.dex-pick-active .dex-ic {
+  color: var(--c-green);
+}
+
+.fp-card.selected {
+  background: var(--c-panel-3);
+  border-color: color-mix(in srgb, var(--c-white) 20%, transparent);
+}
+
+.custom-dropdown-option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--c-accent) 10%, transparent);
+  color: var(--c-white);
+}

@@ -59,10 +59,7 @@
 .note-item:hover {
   background-color: color-mix(in srgb, var(--c-black) 05%, transparent);
 }
-.note-item.selected {
-  background-color: color-mix(in srgb, var(--c-black) 10%, transparent);
-  margin-left: auto;
-}
+
 @media (max-width: 600px) {
   .sidebar { overflow-x: hidden; }
   .note-list { flex-wrap: wrap; }
@@ -144,10 +141,7 @@
 }
 .dex-row:hover { background: color-mix(in srgb, var(--c-white) 04%, transparent); }
 .dex-row.sel   { background: color-mix(in srgb, var(--c-accent) 12%, transparent); }
-.dex-row.dex-current { background: color-mix(in srgb, var(--c-blue) 12%, transparent); }
-.dex-row.dex-current .dex-ic { color: var(--c-blue); }
-.dex-row.dex-pick-active { background: color-mix(in srgb, var(--c-green) 14%, transparent); outline: 1px solid color-mix(in srgb, var(--c-green) 40%, transparent); }
-.dex-row.dex-pick-active .dex-ic { color: var(--c-green); }
+
 .dex-chev.onpath { color: var(--c-blue); }
 
 .dex-ic {

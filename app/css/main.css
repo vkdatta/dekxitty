@@ -1,30 +1,4 @@
 :root {
-  --primary: #000;
-  --color: #cacaca;
-  --accent: #181C1F;
-  --transition-speed: 0.1s;
-  --topbar-height: 60px;
-  --selection-color: #606060;
-  --gap: 3vw;
-  --matte: #181C1F;
-  --blueink: #9aa8b7;
-  --accent2: #373737;
-  --danger: #ff6b6b;
-  --border: rgba(255, 255, 255, 0.06);
-  --shadow: 0 10px 30px rgba(2, 6, 23, 0.6);
-  --radius: 12px;
-  --gap: 12px;
-  --transition-speed: 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
-  --z-modal: 100000;
-  --focus-ring: 3px;
-  --modalinput: #000;
-  --category-box-width: 300px;
-  --user-font-size: 14px;
-}
-
-
-
-:root {
   --c-black:      #000000;
   --c-white:      #ecdfc3;
   --c-panel:      #171717;
@@ -195,25 +169,12 @@ input, textarea, [contenteditable] {
   -webkit-touch-callout: none !important;
 }
 
-.CodeMirror-selected {
-  background: var(--c-green) !important;
-  color: var(--c-black) !important;
-}
-.CodeMirror-focused .CodeMirror-selected {
-  background: var(--c-green) !important;
-  color: var(--c-black) !important;
-}
-
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
-}
-::-webkit-selection, ::selection {
-  background: var(--selection-color);
-  color: var(--selection-text);
 }
 button, image {
   -webkit-user-select: none;

@@ -1,6 +1,3 @@
-::selection {
-  background: color-mix(in srgb, var(--c-white) 15%, transparent);
-}
 .diff-topbar {
   position: fixed;
   top: var(--diff-topbar-gap);

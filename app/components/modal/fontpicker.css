@@ -43,10 +43,7 @@
   transform: translateY(-1px);
   background: color-mix(in srgb, var(--c-white) 05%, transparent);
 }
-.fp-card.selected {
-  background: var(--c-panel-3);
-  border-color: color-mix(in srgb, var(--c-white) 20%, transparent);
-}
+
 .fp-card-title { color: var(--c-white); }
 .fp-card-badge {
   font-size: 0.8em;

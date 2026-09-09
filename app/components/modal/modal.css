@@ -343,10 +343,7 @@ html[data-theme="light"] .modal-input[type="radio"]::before {
 .custom-dropdown-option:hover {
   background: color-mix(in srgb, var(--c-white) 05%, transparent);
 }
-.custom-dropdown-option[aria-selected="true"] {
-  background: color-mix(in srgb, var(--c-accent) 10%, transparent);
-  color: var(--c-white);
-}
+
 .no-results {
   padding: 20px;
   text-align: center;
