@@ -151,12 +151,6 @@
       actions.push({ label: 'Save selection to pane', icon: 'save', run: () => {
           if (typeof diffCommitPane === 'function') { diffCommitPane(window.dexMode ? window.dexMode.activePane : 'raw'); notify('Saved'); }
         } });
-      actions.push({ label: 'Copy Raw', icon: 'copy', run: () => { if (typeof diffCopyText === 'function') diffCopyText('raw'); } });
-      actions.push({ label: 'Copy Morph', icon: 'copy', run: () => { if (typeof diffCopyText === 'function') diffCopyText('morph'); } });
-      actions.push({ label: 'Paste to Raw', icon: 'paste', run: () => { if (typeof diffPasteText === 'function') diffPasteText('raw'); } });
-      actions.push({ label: 'Paste to Morph', icon: 'paste', run: () => { if (typeof diffPasteText === 'function') diffPasteText('morph'); } });
-      actions.push({ label: 'Clear Raw', icon: 'delete', danger: true, run: () => { if (typeof diffClearText === 'function') diffClearText('raw'); } });
-      actions.push({ label: 'Clear Morph', icon: 'delete', danger: true, run: () => { if (typeof diffClearText === 'function') diffClearText('morph'); } });
     }
     if (isDpadSource(source)) {
       actions.push({ sep: true });

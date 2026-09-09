@@ -134,11 +134,6 @@ if (window.__dexToolbar2Loaded) {
   ctx.cursorControls = cursorControls;
   ctx.centerHandle = centerHandle;
 
-  const selectionPreview = document.createElement('div');
-  selectionPreview.id = 'dexSelectionPreview';
-  document.body.appendChild(selectionPreview);
-  ctx.selectionPreview = selectionPreview;
-
   const snapIndicator = document.createElement('div');
   snapIndicator.id = 'dexSnapIndicator';
   document.body.appendChild(snapIndicator);
@@ -467,25 +462,6 @@ if (window.__dexToolbar2Loaded) {
   function updateCenterHandle() {
   }
   ctx.updateCenterHandle = updateCenterHandle;
-
-  function updateSelectionPreview() {
-    const ed = window.dexEditor;
-    const cm = ed && ed.cm ? ed.cm : null;
-    if (!cm) { selectionPreview.classList.remove('visible'); return; }
-    const sel = cm.getSelection();
-    if (!sel || sel.length === 0) { selectionPreview.classList.remove('visible'); return; }
-    const preview = sel.length > 30 ? sel.slice(0, 30) + '...' : sel;
-    selectionPreview.innerHTML =
-      '<span>' + escapeHtml(preview) + '</span>' +
-      '<span class="dex-preview-count">' + sel.length + ' chars</span>';
-    const toCoords = cm.charCoords(cm.getCursor('to'), 'window');
-    const px = toCoords.right + 8;
-    const py = toCoords.top - 40;
-    selectionPreview.style.left = Math.max(4, Math.min(window.innerWidth - 250, px)) + 'px';
-    selectionPreview.style.top  = Math.max(4, py) + 'px';
-    selectionPreview.classList.add('visible');
-  }
-  ctx.updateSelectionPreview = updateSelectionPreview;
 
   function setDragDirection(dir) {
     centerHandle.classList.remove('dragging-right', 'dragging-left', 'dragging-up', 'dragging-down');
