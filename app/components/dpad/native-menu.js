@@ -2,7 +2,7 @@
   if (window.__dexNativeMenuLoaded) return;
   window.__dexNativeMenuLoaded = true;
 
-  const MENU_DELAY_MS = 180;
+  const MENU_DELAY_MS = 1000;
   const SURFACE_CODEMIRROR = 'codemirror';
 
   function notify(message) {
@@ -349,6 +349,9 @@
       if (dpad && typeof dpad.isCenterDragging === 'function' && dpad.isCenterDragging()) return;
       if (dpad && typeof dpad.getCollapsedCenterDrag === 'function' && dpad.getCollapsedCenterDrag()) return;
       if (window.__dexSelHandleDragging) return;
+      // Mobile double-tap/long-press selection owns the gesture until it is
+      // resolved. Do not let the generic cursorActivity path race it.
+      if (window.__dexTouchSelectionGesture) return;
 
       scheduleMenu(() => {
         if (!cm.somethingSelected()) return null;

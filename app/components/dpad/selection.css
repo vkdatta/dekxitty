@@ -8,6 +8,8 @@
   color: #fff !important;
 }
 
+::-webkit-selection,
+::-webkit-selection,
 ::selection {
   background: #707070 !important;
   color: #fff !important;
@@ -15,7 +17,8 @@
 
 .CodeMirror-line ::selection,
 .CodeMirror-line > span ::selection,
-.CodeMirror-line > span > span ::selection {
+.CodeMirror-line > span > span ::-webkit-selection,
+::selection {
   background: #707070 !important;
   color: #fff !important;
 }
@@ -32,9 +35,7 @@
   color: #fff !important;
 }
 
-/* Selection handles are selection.js UI. They are intentionally below the
-   D-pad/menu stacking layers, and selection.js additionally bounds their
-   geometry to the CodeMirror viewport. */
+/* Selection handles. The selection colors above are intentionally unchanged. */
 .dex-sel-handle {
   position: fixed;
   display: none;

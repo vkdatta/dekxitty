@@ -22,6 +22,9 @@
   let lastTapX = 0;
   let lastTapY = 0;
 
+  // Shared guard: native-menu must not race mobile double-tap/long-press.
+  window.__dexTouchSelectionGesture = false;
+
   function isTouchLike(e) {
     return e.pointerType === 'touch' || e.pointerType === 'pen';
   }
@@ -80,29 +83,24 @@
     }
   }
 
-  function placeHandle(el, coords, rect) {
-    const stemHeight = Math.max(4, coords.bottom - coords.top);
-    const handleHeight = stemHeight + 22;
-    const x = coords.left;
-    const y = coords.top;
-
-    // Handles are fixed page UI, so never allow them to render outside the
-    // editor viewport. This prevents selection chrome from leaking over the
-    // surrounding page/D-pad when the selection endpoint is off-screen.
-    const tolerance = 1;
-    if (!rect ||
-        x < rect.left - tolerance ||
-        x > rect.right + tolerance ||
-        y < rect.top - tolerance ||
-        y > rect.bottom - 4) {
+  function placeHandle(el, coords, rect, edge) {
+    if (!rect) {
       el.style.display = 'none';
       return;
     }
 
+    const stemHeight = Math.max(4, coords.bottom - coords.top);
+    const handleHeight = stemHeight + 22;
+    // Start handle belongs to the left edge of the selected range; end handle
+    // belongs to the right edge. At editor boundaries clamp the visual handle
+    // into the editor instead of hiding it.
+    const rawX = edge === 'end' ? coords.right : coords.left;
+    const rawY = coords.top;
     const halfWidth = Math.max(1, (el.offsetWidth || 32) / 2);
-    const clampedX = Math.max(rect.left + halfWidth, Math.min(rect.right - halfWidth, x));
-    const clampedY = Math.max(rect.top, Math.min(rect.bottom - handleHeight, y));
-    if (clampedY < rect.top || clampedY > rect.bottom) {
+    const clampedX = Math.max(rect.left + halfWidth, Math.min(rect.right - halfWidth, rawX));
+    const clampedY = Math.max(rect.top, Math.min(rect.bottom - handleHeight, rawY));
+
+    if (clampedX < rect.left || clampedX > rect.right || clampedY < rect.top || clampedY > rect.bottom) {
       el.style.display = 'none';
       return;
     }
@@ -136,8 +134,8 @@
     try {
       const from = cm.getCursor('from');
       const to = cm.getCursor('to');
-      placeHandle(handleStart, cm.charCoords(from, 'window'), rect);
-      placeHandle(handleEnd, cm.charCoords(to, 'window'), rect);
+      placeHandle(handleStart, cm.charCoords(from, 'window'), rect, 'start');
+      placeHandle(handleEnd, cm.charCoords(to, 'window'), rect, 'end');
     } catch (_e) {
       hideHandles();
     }
@@ -300,11 +298,15 @@
     const down = (e) => {
       if (!isTouchLike(e)) return;
 
+      window.__dexTouchSelectionGesture = true;
       const now = Date.now();
       const nearSameSpot = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < DBL_TAP_DISTANCE;
       if (nearSameSpot && now - lastTapTime < DBL_TAP_MS) {
         lastTapTime = 0;
         cancelPress();
+        window.__dexTouchSelectionGesture = false;
+        e.preventDefault();
+        e.stopPropagation();
         fireDblTap(e.clientX, e.clientY);
         return;
       }
@@ -318,6 +320,8 @@
         if (!pressStart || pressStart.id !== e.pointerId) return;
         const point = { x: pressStart.x, y: pressStart.y };
         pressTimer = null;
+        lastTapTime = 0;
+        window.__dexTouchSelectionGesture = false;
         firePress(point.x, point.y);
       }, LONG_PRESS_MS);
     };
@@ -332,6 +336,7 @@
     const up = (e) => {
       if (!pressStart || e.pointerId !== pressStart.id) return;
       cancelPress();
+      window.__dexTouchSelectionGesture = false;
       if (suppressNextPointerUp) {
         suppressNextPointerUp = false;
         e.preventDefault();
@@ -341,11 +346,12 @@
 
     const cancel = (e) => {
       if (pressStart && e.pointerId === pressStart.id) cancelPress();
+      window.__dexTouchSelectionGesture = false;
       suppressNextPointerUp = false;
     };
 
     gestureHandlers = { down, move, up, cancel };
-    wrapper.addEventListener('pointerdown', down, { passive: true });
+    wrapper.addEventListener('pointerdown', down, { passive: false, capture: true });
     wrapper.addEventListener('pointermove', move, { passive: true });
     wrapper.addEventListener('pointerup', up, { passive: false, capture: true });
     wrapper.addEventListener('pointercancel', cancel, { passive: true });

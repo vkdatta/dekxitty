@@ -115,14 +115,6 @@ if (window.__dexToolbar2Loaded) {
   btn.style.display = 'none';
   (document.body || document.documentElement).appendChild(btn);
   ctx.btn = btn;
-  // Compatibility opener: the host may choose when to reveal this button.
-  // The button itself still has a single authoritative D-pad state path.
-  btn.addEventListener('click', () => {
-    if (typeof ctx.expandDpad !== 'function' || typeof ctx.collapseDpad !== 'function') return;
-    if (ctx.dpadState === 'expanded') ctx.collapseDpad();
-    else ctx.expandDpad();
-  });
-
   const cursorControls = document.createElement('div');
   cursorControls.id = 'dexCursorControls';
   cursorControls.innerHTML =
