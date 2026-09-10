@@ -1,2 +1,2 @@
-import './menu-layout.js';
-import './menu-functions.js';
+import './editor-ui.js';
+import './diff-selection.js';
