@@ -357,38 +357,55 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
-        // Restore fold state. Must run after cm.setValue() (done above) AND
-        // after the syntax mode finishes loading — autoLoadMode fetches mode JS
-        // asynchronously, and foldCode silently does nothing if the mode hasn't
-        // tokenised the document yet.
-        // We attempt the restore, check if any mark actually stuck, and retry
-        // every 40 ms until it works or we hit the 2 s cap (50 attempts).
+        // Restore fold state using exact saved ranges via markText().
+        // We do NOT use foldCode() here — foldCode scans from ch:0 and finds
+        // whatever foldable region it encounters first, which is unpredictable
+        // for XML/HTML tags that don't start at column 0. Instead we recreate
+        // the collapsed TextMarker directly with the exact from/to positions
+        // that were active when the user last saved.
+        // Sort ascending by from.line so outer folds wrap inner ones correctly
+        // (markText doesn't care about order, but it's cleaner).
         try {
           const note = (typeof currentNote !== 'undefined') ? currentNote : null;
-          const lines = (note && Array.isArray(note.foldedLines) && note.foldedLines.length > 0)
-            ? note.foldedLines.slice() : null;
-          if (lines) {
-            // Sort DESCENDING (innermost/deepest lines first) so that inner
-            // folds are applied before outer folds. If we fold an outer range
-            // first it collapses the inner lines, making them unreachable, and
-            // foldCode silently does nothing for those positions.
-            lines.sort((a, b) => b - a);
-            let attempts = 0;
-            const tryRestore = () => {
-              // Clear any partial folds from a previous attempt before retrying,
-              // so we never double-fold or leave a mix of old and new marks.
+          const ranges = (note && Array.isArray(note.foldedRanges) && note.foldedRanges.length > 0)
+            ? note.foldedRanges.slice()
+            : null;
+          if (ranges) {
+            const docLen = cm.lineCount();
+            // Create the fold widget (the ▶ placeholder shown in the gutter).
+            function makeFoldWidget() {
+              const span = document.createElement('span');
+              span.className = 'CodeMirror-foldmarker';
+              span.textContent = '↔';
+              return span;
+            }
+            const tryRestore = (attempts) => {
+              // Wait until CM has tokenised at least the last saved line.
+              const lastLine = Math.max(...ranges.map(r => r.from.line));
+              if (lastLine >= docLen) return; // doc shorter than saved — skip
               cm.getAllMarks().forEach(m => { if (m.collapsed) m.clear(); });
-              lines.forEach(line => {
-                try { cm.foldCode(CodeMirror.Pos(line, 0), null, 'fold'); } catch (_) {}
+              ranges.sort((a, b) => a.from.line - b.from.line);
+              ranges.forEach(({ from, to }) => {
+                try {
+                  cm.markText(from, to, {
+                    collapsed: true,
+                    replacedWith: makeFoldWidget(),
+                    clearOnEnter: false,
+                    inclusiveLeft:  false,
+                    inclusiveRight: false
+                  });
+                } catch (_) {}
               });
-              // Check that every saved line produced a mark. If the count is
-              // less than expected the mode is still loading — retry.
+              // Verify marks stuck — if none did, mode may still be loading.
               const markCount = cm.getAllMarks().filter(m => m.collapsed).length;
-              if (markCount < lines.length && attempts++ < 50) {
-                setTimeout(tryRestore, 40);
+              if (markCount === 0 && attempts < 50) {
+                setTimeout(() => tryRestore(attempts + 1), 40);
+              } else {
+                // Force gutter to repaint fold arrows.
+                try { cm.refresh(); } catch (_) {}
               }
             };
-            tryRestore();
+            tryRestore(0);
           }
         } catch (_) {}
       },
@@ -400,8 +417,7 @@
     };
 
     // Save fold state when user clicks a gutter fold arrow.
-    // 'gutterClick' is the real CM5 event for gutter interactions.
-    // Defer by one tick so CM has finished updating TextMarkers first.
+    // Defer one tick so CM has finished updating TextMarkers first.
     cm.on('gutterClick', () => {
       setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 0);
     });

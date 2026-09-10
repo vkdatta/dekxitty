@@ -29,23 +29,29 @@ function applyFoldToAllLines(action) {
 // ── Fold-state persistence ────────────────────────────────────────────────────
 
 /**
- * Read all currently-folded line numbers from CM, store them on
- * currentNote.foldedLines, and call saveNotes() to persist across refreshes.
- * Called after foldAll/unfoldAll and on gutterClick (via editor.js).
+ * Save the exact from/to ranges of every active fold onto currentNote.foldedRanges
+ * and persist via saveNotes(). We save the full {line,ch} positions so we can
+ * restore using markText() directly — bypassing foldCode() which scans from
+ * ch:0 and unpredictably finds a different range than the one that was folded.
  */
 function saveFoldState() {
   const cm = getCM();
   if (!cm) return;
   if (typeof currentNote === 'undefined' || !currentNote) return;
 
-  const lines = [];
+  const ranges = [];
   cm.getAllMarks().forEach(mark => {
     if (!mark.collapsed) return;
     const range = mark.find();
-    if (range) lines.push(range.from.line);
+    if (range) ranges.push({
+      from: { line: range.from.line, ch: range.from.ch },
+      to:   { line: range.to.line,   ch: range.to.ch   }
+    });
   });
 
-  currentNote.foldedLines = lines;
+  currentNote.foldedRanges = ranges;
+  // keep foldedLines in sync for any external code that reads it
+  currentNote.foldedLines = ranges.map(r => r.from.line);
   if (typeof saveNotes === 'function') saveNotes();
 }
 
