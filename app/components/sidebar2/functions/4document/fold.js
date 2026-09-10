@@ -8,6 +8,7 @@ function getCM() {
   if (window.dexEditor && window.dexEditor.cm) return window.dexEditor.cm;
   return null;
 }
+
 /**
  * Walk every line of the editor and run a fold / unfold operation on it.
  * @param {"fold"|"unfold"} action
@@ -26,6 +27,91 @@ function applyFoldToAllLines(action) {
   }
 }
 
+// ── Fold state persistence ────────────────────────────────────────────────────
+
+/**
+ * Return the localStorage key used to store fold ranges for a note.
+ */
+function foldStateKey(noteId) {
+  return 'dexFolds:' + noteId;
+}
+
+/**
+ * Collect all currently-folded ranges from CodeMirror and persist them in
+ * localStorage, keyed by the current note's id.
+ * Call this after any fold/unfold action so the state survives a page refresh.
+ */
+function saveFoldState() {
+  const cm = getCM();
+  if (!cm) return;
+  // currentNote is a global from notes-state.js
+  const noteId = (typeof currentNote !== 'undefined' && currentNote) ? currentNote.id : null;
+  if (!noteId) return;
+
+  const ranges = cm.getAllMarks()
+    .filter(m => m.collapsed)
+    .map(m => m.find())
+    .filter(Boolean)
+    .map(({ from, to }) => ({ from, to }));
+
+  try {
+    if (ranges.length === 0) {
+      localStorage.removeItem(foldStateKey(noteId));
+    } else {
+      localStorage.setItem(foldStateKey(noteId), JSON.stringify(ranges));
+    }
+  } catch (_) {}
+}
+
+/**
+ * Restore fold ranges previously saved for the given note.
+ * Must be called AFTER the editor content has been set for that note.
+ * @param {string} noteId
+ */
+function restoreFoldState(noteId) {
+  if (!noteId) return;
+  const cm = getCM();
+  if (!cm) return;
+
+  let ranges;
+  try {
+    const raw = localStorage.getItem(foldStateKey(noteId));
+    if (!raw) return;
+    ranges = JSON.parse(raw);
+  } catch (_) {
+    return;
+  }
+
+  if (!Array.isArray(ranges) || ranges.length === 0) return;
+
+  // Use requestAnimationFrame so the editor has finished its own layout pass
+  // before we apply folds (avoids a CM "lineCount mismatch" edge case on
+  // large documents loaded via setValue).
+  requestAnimationFrame(() => {
+    const cmNow = getCM();
+    if (!cmNow) return;
+    cmNow.operation(() => {
+      for (const { from, to } of ranges) {
+        try {
+          cmNow.foldCode(from, null, 'fold');
+        } catch (_) {}
+      }
+    });
+  });
+}
+
+// ── Wire up restore on every note open ───────────────────────────────────────
+// openNote() dispatches "dexNoteOpened" after content is set; we hook into
+// that event to restore persisted folds for the newly-opened note.
+// Guard against double-registration in case fold.js is hot-reloaded.
+if (!window.__dexFoldRestoreWired) {
+  window.__dexFoldRestoreWired = true;
+  window.addEventListener('dexNoteOpened', (e) => {
+    const note = e && e.detail && e.detail.note;
+    if (note && note.id) restoreFoldState(note.id);
+  });
+}
+
 // ── Public actions ────────────────────────────────────────────────────────────
 
 /**
@@ -36,6 +122,7 @@ export const foldAll = (...a) => preserveSelection(async () => {
   if (!cm) { showNotification("Editor not ready"); return; }
 
   applyFoldToAllLines("fold");
+  saveFoldState();
   showNotification("Folded all");
 })(...a);
 
@@ -47,6 +134,7 @@ export const unfoldAll = (...a) => preserveSelection(async () => {
   if (!cm) { showNotification("Editor not ready"); return; }
 
   applyFoldToAllLines("unfold");
+  saveFoldState();
   showNotification("Unfolded all");
 })(...a);
 
@@ -126,6 +214,8 @@ export const removeContentInsideFolds = (...a) => preserveSelection(async () => 
 
   // Ensure nothing is left folded after the destructive edit.
   applyFoldToAllLines("unfold");
+  // Content changed — persisted folds are now stale, clear them.
+  saveFoldState();
 
   if (typeof updateNoteMetadata === "function") updateNoteMetadata();
   showNotification("Removed contents inside folds");
