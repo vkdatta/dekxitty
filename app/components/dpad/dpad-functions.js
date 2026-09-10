@@ -11,7 +11,7 @@
     centerHandle, snapIndicator, THEME,
     HOLD_START_DELAY, HOLD_INITIAL_INTERVAL, HOLD_MIN_INTERVAL, HOLD_ACCEL_STEP,
     spawnParticle, ensureAnchor, resetInactivityTimer,
-    updateCenterHandle, updateSelectionPreview, setDragDirection, recordCenterTap
+    updateCenterHandle, setDragDirection, recordCenterTap
   } = ctx;
 
   const curUp       = document.getElementById('dexCurUp');
@@ -39,7 +39,6 @@
       : cm.findPosH(head, amount, 'char');
     cm.setSelection(anchor, head);
     updateCenterHandle();
-    updateSelectionPreview();
   }
   ctx.moveCursor = moveCursor;
 
@@ -182,7 +181,6 @@
         cm.setSelection(anchor, head);
         centerDrag.moved = true;
         updateCenterHandle();
-        updateSelectionPreview();
 
         try {
           const c = cm.charCoords(head, 'window');

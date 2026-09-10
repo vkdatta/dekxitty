@@ -6,7 +6,7 @@
   }
   if (ctx.__menuFunctionsLoaded) return;
   ctx.__menuFunctionsLoaded = true;
-  const { menuOpen, closeMenu, updateCenterHandle, updateSelectionPreview, updateToolbarVisibility } = ctx;
+  const { menuOpen, closeMenu, updateCenterHandle, updateToolbarVisibility } = ctx;
   function attachCursorActivity() {
     const ed = window.dexEditor;
     const cm = ed && ed.cm ? ed.cm : null;
@@ -26,11 +26,6 @@
       if (!hasSel) {
         if (menuOpen()) closeMenu('codemirror');
         ctx.setSelectionAnchor(cm.getCursor('head'));
-        if (typeof ctx.hideSelectionPreview === 'function') {
-          ctx.hideSelectionPreview();
-        } else {
-          updateSelectionPreview();
-        }
         return;
       }
       const findMenu = document.getElementById('find-replace-menu');
@@ -44,7 +39,6 @@
         if (collapsedDragging || normalDragging) return;
       }
       updateCenterHandle();
-      updateSelectionPreview();
     };
     cm.on('cursorActivity', menuFnHandler);
     cm.__dexMenuFnHandler = menuFnHandler;
