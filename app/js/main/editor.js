@@ -318,15 +318,25 @@
 
       setLineNumbers: (on) => {
         cm.setOption('lineNumbers', !!on);
+        // FIX (empty gutter visibility): toggle a class on the CM wrapper so
+        // the CSS rule below can hide the .CodeMirror-gutters strip entirely
+        // when no gutter columns are present.  Without this the fold-gutter
+        // column (or even an empty container) would still receive the themed
+        // background colour defined in main.css and render as a visible strip.
+        cm.getWrapperElement().classList.toggle('dex-no-gutter', !on);
         // FIX (fold gutter + line numbers): when foldGutter is active the
         // gutters array must include 'CodeMirror-linenumbers' for CM to render
         // the number column. Removing lineNumbers without also removing it from
         // gutters[] leaves a blank gutter; adding it back without re-adding to
         // gutters[] makes the gutter re-appear but mis-sized. Sync them here.
+        // FIX (empty gutter): when line numbers are off, drop CodeMirror-foldgutter
+        // from the array too so CM renders zero gutter columns.  The foldGutter
+        // option stays true — the addon is still active — it just produces no
+        // visible column when its name is absent from gutters[].
         if (hasFoldGutter) {
           const g = on
             ? ['CodeMirror-linenumbers', 'CodeMirror-foldgutter']
-            : ['CodeMirror-foldgutter'];
+            : [];
           cm.setOption('gutters', g);
         }
       },

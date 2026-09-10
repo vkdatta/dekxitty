@@ -128,6 +128,18 @@ html[data-cm-tone="light"] .CodeMirror-linenumber {
 delluna-icon.pane-empty-icon { width: 42px; height: 42px; color: var(--c-text-faint); opacity: 0.6; }
 .pane-empty-text { font-size: 14px; color: var(--c-text-faint); }
 
+/* FIX (empty gutter): when line numbers are disabled, setLineNumbers() sets
+ * the dex-no-gutter class on the CM wrapper and collapses gutters[] to [].
+ * The .CodeMirror-gutters div still exists in the DOM at that point, and the
+ * themed background rules above (which use !important) would otherwise paint
+ * a visible strip even with no columns inside it.  This rule wins via higher
+ * specificity (three class selectors vs the two above) and hides the container
+ * entirely.  The fold-gutter addon remains active; it simply renders no column
+ * while its name is absent from the gutters[] array. */
+.CodeMirror.dex-no-gutter .CodeMirror-gutters {
+  display: none !important;
+}
+
 button, image {
   -webkit-user-select: none;
   -moz-user-select: none;

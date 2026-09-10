@@ -458,7 +458,14 @@
       }
     });
 
-    const wantLineNumbers = localStorage.getItem(LS.LINENUM) === '1';
+    // FIX (line-numbers default): was using === '1', which treats an absent key
+    // as false.  On a first visit localStorage.getItem() returns null, so the
+    // old expression always evaluated to false and overrode the correct ON state
+    // that editor.js and settings.js had already established via dexEditorReady.
+    // Match the null-safe convention used everywhere else: absent key → ON,
+    // stored '0' → OFF, anything else → ON.
+    const _rawLineNum     = localStorage.getItem(LS.LINENUM);
+    const wantLineNumbers = _rawLineNum === null ? true : _rawLineNum !== '0';
     applyLineNumberState(wantLineNumbers);
 
     const prismEnabled = localStorage.getItem('prismEnabled') === '1';
