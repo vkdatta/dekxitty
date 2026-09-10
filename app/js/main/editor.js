@@ -357,23 +357,18 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
-        // Restore persisted fold state. cm.setValue() above clears all
-        // TextMarkers, so this must run last. We saved line numbers and
-        // re-fold from {line, ch:0} — the same position the gutter arrow
-        // uses — so the fold helper can find the opening delimiter.
-        if (id) {
-          try {
-            const raw = localStorage.getItem('dexFolds_' + id);
-            if (raw) {
-              const lines = JSON.parse(raw);
-              if (Array.isArray(lines)) {
-                lines.forEach(line => {
-                  try { cm.foldCode({ line, ch: 0 }, null, 'fold'); } catch (_) {}
-                });
-              }
-            }
-          } catch (_) {}
-        }
+        // Restore fold state. cm.setValue() clears all TextMarkers so this
+        // must run last. foldedLines is stored on the note object itself
+        // (persisted via saveNotes) so it survives a browser refresh.
+        // We use CodeMirror.Pos() — required by foldCode; a plain {line,ch}
+        // object is not equivalent and will silently fail.
+        try {
+          const note = (typeof currentNote !== 'undefined') ? currentNote : null;
+          const lines = (note && Array.isArray(note.foldedLines)) ? note.foldedLines : [];
+          lines.forEach(line => {
+            try { cm.foldCode(CodeMirror.Pos(line, 0), null, 'fold'); } catch (_) {}
+          });
+        } catch (_) {}
       },
       clearHistoryFor: (noteId) => {
         if (noteId != null) delete histories[String(noteId)];
@@ -382,9 +377,13 @@
       _internal: { suppressFlagSetter: (v) => { suppress = !!v; } }
     };
 
-    // Persist fold state when user clicks a gutter arrow or uses Ctrl-Q.
-    cm.on('fold',   () => { if (typeof saveFoldState === 'function') saveFoldState(); });
-    cm.on('unfold', () => { if (typeof saveFoldState === 'function') saveFoldState(); });
+    // Save fold state when the user clicks a gutter fold arrow.
+    // 'gutterClick' is the real CodeMirror 5 event; 'fold'/'unfold' do not
+    // exist in CM5 and silently do nothing. We defer by one tick so CM has
+    // finished updating the TextMarkers before we read them.
+    cm.on('gutterClick', () => {
+      setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 0);
+    });
 
     try { window.dispatchEvent(new Event('dexEditorReady')); } catch (e) {}
   }

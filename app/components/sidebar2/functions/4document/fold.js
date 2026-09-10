@@ -29,18 +29,17 @@ function applyFoldToAllLines(action) {
 // ── Fold-state persistence ────────────────────────────────────────────────────
 
 /**
- * Save the line numbers of all currently-folded regions for the active note.
- * We store the LINE of range.from (not the raw {line,ch} object) because
- * cm.foldCode needs to be called with {line, ch:0} — the same position the
- * gutter arrow uses — so the fold helper can find the opening delimiter.
- * Storing range.from directly would point inside the hidden span, which makes
- * foldCode silently do nothing on restore.
+ * Read all currently-folded line numbers from CM and write them onto
+ * currentNote.foldedLines, then call saveNotes() so they survive a refresh.
+ *
+ * Called after foldAll / unfoldAll, and also wired to the CM 'gutterClick'
+ * event (which IS fired by CodeMirror 5 when the user clicks a fold arrow)
+ * via editor.js after the CM instance is ready.
  */
 function saveFoldState() {
   const cm = getCM();
   if (!cm) return;
-  const noteId = (typeof currentNote !== 'undefined' && currentNote) ? currentNote.id : null;
-  if (!noteId) return;
+  if (typeof currentNote === 'undefined' || !currentNote) return;
 
   const lines = [];
   cm.getAllMarks().forEach(mark => {
@@ -49,12 +48,8 @@ function saveFoldState() {
     if (range) lines.push(range.from.line);
   });
 
-  const key = 'dexFolds_' + noteId;
-  if (lines.length > 0) {
-    localStorage.setItem(key, JSON.stringify(lines));
-  } else {
-    localStorage.removeItem(key);
-  }
+  currentNote.foldedLines = lines.length > 0 ? lines : [];
+  if (typeof saveNotes === 'function') saveNotes();
 }
 
 // ── Public actions ────────────────────────────────────────────────────────────
@@ -160,7 +155,7 @@ export const removeContentInsideFolds = (...a) => preserveSelection(async () => 
 
   // Ensure nothing is left folded after the destructive edit.
   applyFoldToAllLines("unfold");
-  saveFoldState(); // clears stored entry — nothing is folded after content removal
+  saveFoldState(); // clears foldedLines since nothing is folded now
 
   if (typeof updateNoteMetadata === "function") updateNoteMetadata();
   showNotification("Removed contents inside folds");
