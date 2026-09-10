@@ -26,12 +26,15 @@ function applyFoldToAllLines(action) {
   }
 }
 
-// ── Fold-state persistence ─────────────────────────────────────────────────────
+// ── Fold-state persistence ────────────────────────────────────────────────────
 
 /**
- * Serialize all currently-folded ranges for the active note and write them
- * to localStorage under the key  dexFolds_<noteId>.
- * Called after any fold / unfold operation so the stored state stays in sync.
+ * Serialize all currently-folded ranges for the active note into localStorage
+ * under the key  dexFolds_<noteId>.  Called after any fold/unfold action so
+ * the stored state always matches what is visible in the editor.
+ *
+ * Declared as a plain  var  (not export) so editor.js can also reach it via
+ * the global scope for the cm 'fold'/'unfold' gutter-click events.
  */
 function saveFoldState() {
   const cm = getCM();
@@ -52,27 +55,6 @@ function saveFoldState() {
   } else {
     localStorage.removeItem(key);
   }
-}
-
-/**
- * Re-apply any persisted fold ranges for the given note.
- * Must be called AFTER CodeMirror has finished loading the note's content
- * (i.e. after rebindUndoForNote / loadHistoryFor settle), hence the caller
- * in openNote() wraps this in a short setTimeout.
- * @param {string} noteId
- */
-export function restoreFoldState(noteId) {
-  const cm = getCM();
-  if (!cm || !noteId) return;
-
-  const key = 'dexFolds_' + noteId;
-  let folds;
-  try { folds = JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) { return; }
-  if (!Array.isArray(folds) || folds.length === 0) return;
-
-  folds.forEach(({ from }) => {
-    try { cm.foldCode(from, null, 'fold'); } catch (_) {}
-  });
 }
 
 // ── Public actions ────────────────────────────────────────────────────────────
@@ -177,7 +159,7 @@ export const removeContentInsideFolds = (...a) => preserveSelection(async () => 
 
   // Ensure nothing is left folded after the destructive edit.
   applyFoldToAllLines("unfold");
-  saveFoldState(); // clears stored folds since nothing is folded now
+  saveFoldState(); // clears stored entry since nothing is folded now
 
   if (typeof updateNoteMetadata === "function") updateNoteMetadata();
   showNotification("Removed contents inside folds");

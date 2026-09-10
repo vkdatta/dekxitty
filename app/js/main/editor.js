@@ -357,6 +357,21 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
+        // Restore fold state immediately after content + history are set.
+        // cm.setValue() wipes all TextMarkers so this must be the last step.
+        if (id) {
+          try {
+            const raw = localStorage.getItem('dexFolds_' + id);
+            if (raw) {
+              const folds = JSON.parse(raw);
+              if (Array.isArray(folds)) {
+                folds.forEach(({ from }) => {
+                  try { cm.foldCode(from, null, 'fold'); } catch (_) {}
+                });
+              }
+            }
+          } catch (_) {}
+        }
       },
       clearHistoryFor: (noteId) => {
         if (noteId != null) delete histories[String(noteId)];
@@ -364,6 +379,12 @@
 
       _internal: { suppressFlagSetter: (v) => { suppress = !!v; } }
     };
+
+    // Persist fold state whenever the user folds/unfolds via the gutter arrow
+    // or Ctrl-Q. saveFoldState() is defined in fold.js; guard with typeof so
+    // this is a no-op if fold.js hasn't loaded yet (shouldn't happen, but safe).
+    cm.on('fold',   () => { if (typeof saveFoldState === 'function') saveFoldState(); });
+    cm.on('unfold', () => { if (typeof saveFoldState === 'function') saveFoldState(); });
 
     try { window.dispatchEvent(new Event('dexEditorReady')); } catch (e) {}
   }
