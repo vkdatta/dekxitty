@@ -415,6 +415,10 @@
     //
     // Both are debounced so foldAll (which calls foldCode per line) collapses
     // into a single save call.
+    //
+    // NOTE: saveFoldState is looked up as a free identifier and therefore
+    // resolves against the global scope. fold.js declares it inside an ES
+    // module and explicitly assigns it to window so this reaches it.
 
     let _foldSaveTimer = null;
     const _debouncedSave = () => {

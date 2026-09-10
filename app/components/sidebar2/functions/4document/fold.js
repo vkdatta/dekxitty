@@ -8,22 +8,32 @@ function getCM() {
   if (window.dexEditor && window.dexEditor.cm) return window.dexEditor.cm;
   return null;
 }
+
 /**
  * Walk every line of the editor and run a fold / unfold operation on it.
+ *
+ * FIX (perf): the loop is wrapped in a single cm.operation(). Without it,
+ * every cm.foldCode() call runs as its own CodeMirror operation — each one
+ * mutates the doc, schedules a viewport recalc, and re-renders the affected
+ * lines + gutter. On a 1,500-line note that was ~3 s. cm.operation() batches
+ * all of them into one re-render at the end, cutting it to ~300 ms.
+ *
  * @param {"fold"|"unfold"} action
  */
 function applyFoldToAllLines(action) {
   const cm = getCM();
   if (!cm) return;
 
-  const lineCount = cm.lineCount();
-  for (let line = 0; line < lineCount; line++) {
-    try {
-      cm.foldCode({ line, ch: 0 }, null, action);
-    } catch (_) {
-      // foldCode throws when the fold helper finds nothing — that is fine.
+  cm.operation(() => {
+    const lineCount = cm.lineCount();
+    for (let line = 0; line < lineCount; line++) {
+      try {
+        cm.foldCode({ line, ch: 0 }, null, action);
+      } catch (_) {
+        // foldCode throws when the fold helper finds nothing — that is fine.
+      }
     }
-  }
+  });
 }
 
 // ── Fold-state persistence ────────────────────────────────────────────────────
@@ -44,6 +54,16 @@ function saveFoldState() {
   currentNote.foldPositions = folds;
   if (typeof saveNotes === 'function') saveNotes();
 }
+
+// FIX (gutter-chevron persistence): this file is an ES module, so a bare
+// `function saveFoldState()` declaration only exists in module scope — it
+// never becomes a global. editor.js lives in a plain IIFE and reaches for it
+// via `typeof saveFoldState === 'function'`, which resolves against the
+// global scope. Without this assignment the check was always false, so the
+// debounced save on gutter clicks and the MutationObserver path were both
+// silent no-ops. Fold All appeared to work only because foldAll() below
+// calls saveFoldState() directly (in-module), never through the global.
+window.saveFoldState = saveFoldState;
 
 // ── Public actions ────────────────────────────────────────────────────────────
 
@@ -152,6 +172,3 @@ export const removeContentInsideFolds = (...a) => preserveSelection(async () => 
   if (typeof updateNoteMetadata === "function") updateNoteMetadata();
   showNotification("Removed contents inside folds");
 })(...a);
-
-// ── Expose persistence hook to non-module scripts (editor.js debouncer) ──
-window.saveFoldState = saveFoldState;
