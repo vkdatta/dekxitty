@@ -357,12 +357,9 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
-        // Restore fold state by recreating marks directly with markText(),
-        // exactly the way foldcode.js does it internally. This avoids using
-        // foldCode() which scans forward from ch:0 and unpredictably picks
-        // the wrong range. We save the exact from+to positions so markText
-        // places the collapsed region in precisely the right spot.
-        // The widget gets a mousedown handler so clicking it still unfolds.
+        // Restore saved folds using markText() with exact from+to positions.
+        // We replicate foldcode.js internals: collapsed mark + foldmarker widget
+        // + mousedown handler so clicking the widget still unfolds correctly.
         try {
           const note = (typeof currentNote !== 'undefined') ? currentNote : null;
           const folds = note && Array.isArray(note.foldPositions) && note.foldPositions.length
@@ -405,23 +402,50 @@
       _internal: { suppressFlagSetter: (v) => { suppress = !!v; } }
     };
 
-    // MutationObserver on the scroller catches fold widget clicks, which do
-    // not fire gutterClick. Only acts when a .CodeMirror-foldmarker element
-    // is added or removed, so normal typing doesn't trigger saves.
-    const scrollEl = cm.getScrollerElement();
+    // ── Fold-state save hooks ──────────────────────────────────────────────────
+    // Two complementary hooks to catch every possible fold/unfold action:
+    //
+    // 1. Patch cm.foldCode — catches gutter arrow clicks, Ctrl-Q, and anything
+    //    else that goes through the official CM fold API.
+    //
+    // 2. MutationObserver on the scroller — catches clicks on the inline ▶
+    //    fold widget, which calls mark.clear() directly without going through
+    //    foldCode. We check added/removed nodes AND their children because CM
+    //    re-renders the entire <pre> line element (not just the span inside).
+    //
+    // Both are debounced so foldAll (which calls foldCode per line) collapses
+    // into a single save call.
+
+    let _foldSaveTimer = null;
+    const _debouncedSave = () => {
+      clearTimeout(_foldSaveTimer);
+      _foldSaveTimer = setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 150);
+    };
+
+    // Hook 1: patch cm.foldCode
+    const _origFoldCode = cm.foldCode.bind(cm);
+    cm.foldCode = function (...args) {
+      const result = _origFoldCode(...args);
+      _debouncedSave();
+      return result;
+    };
+
+    // Hook 2: MutationObserver for inline widget unfolds
+    const _hasFoldMarker = (node) => {
+      if (node.nodeType !== 1) return false;
+      if (node.classList.contains('CodeMirror-foldmarker')) return true;
+      // Check inside re-rendered line elements (CM replaces the whole <pre>)
+      if (node.classList.contains('CodeMirror-line') && node.querySelector('.CodeMirror-foldmarker')) return true;
+      return false;
+    };
     new MutationObserver(mutations => {
-      let changed = false;
       for (const mut of mutations) {
-        const nodes = [...mut.addedNodes, ...mut.removedNodes];
-        if (nodes.some(n => n.nodeType === 1 && n.classList && n.classList.contains('CodeMirror-foldmarker'))) {
-          changed = true; break;
+        if ([...mut.addedNodes, ...mut.removedNodes].some(_hasFoldMarker)) {
+          _debouncedSave();
+          break;
         }
       }
-      if (changed) {
-        clearTimeout(scrollEl._fst);
-        scrollEl._fst = setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 100);
-      }
-    }).observe(scrollEl, { childList: true, subtree: true });
+    }).observe(cm.getScrollerElement(), { childList: true, subtree: true });
 
     try { window.dispatchEvent(new Event('dexEditorReady')); } catch (e) {}
   }
