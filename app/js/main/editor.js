@@ -357,55 +357,26 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
-        // Restore fold state using exact saved ranges via markText().
-        // We do NOT use foldCode() here — foldCode scans from ch:0 and finds
-        // whatever foldable region it encounters first, which is unpredictable
-        // for XML/HTML tags that don't start at column 0. Instead we recreate
-        // the collapsed TextMarker directly with the exact from/to positions
-        // that were active when the user last saved.
-        // Sort ascending by from.line so outer folds wrap inner ones correctly
-        // (markText doesn't care about order, but it's cleaner).
+        // Restore fold state. Use the saved exact from positions (line+ch) so
+        // foldCode lands on the correct character and folds the right range.
+        // Retry until at least one fold sticks (mode may still be loading).
         try {
           const note = (typeof currentNote !== 'undefined') ? currentNote : null;
-          const ranges = (note && Array.isArray(note.foldedRanges) && note.foldedRanges.length > 0)
-            ? note.foldedRanges.slice()
-            : null;
-          if (ranges) {
-            const docLen = cm.lineCount();
-            // Create the fold widget (the ▶ placeholder shown in the gutter).
-            function makeFoldWidget() {
-              const span = document.createElement('span');
-              span.className = 'CodeMirror-foldmarker';
-              span.textContent = '↔';
-              return span;
-            }
-            const tryRestore = (attempts) => {
-              // Wait until CM has tokenised at least the last saved line.
-              const lastLine = Math.max(...ranges.map(r => r.from.line));
-              if (lastLine >= docLen) return; // doc shorter than saved — skip
+          const positions = note && Array.isArray(note.foldPositions) && note.foldPositions.length
+            ? note.foldPositions.slice() : null;
+          if (positions) {
+            // Inner folds first (descending line order) so outer folds don't
+            // swallow inner positions before they are applied.
+            positions.sort((a, b) => b.line - a.line || b.ch - a.ch);
+            const attempt = (tries) => {
               cm.getAllMarks().forEach(m => { if (m.collapsed) m.clear(); });
-              ranges.sort((a, b) => a.from.line - b.from.line);
-              ranges.forEach(({ from, to }) => {
-                try {
-                  cm.markText(from, to, {
-                    collapsed: true,
-                    replacedWith: makeFoldWidget(),
-                    clearOnEnter: false,
-                    inclusiveLeft:  false,
-                    inclusiveRight: false
-                  });
-                } catch (_) {}
+              positions.forEach(pos => {
+                try { cm.foldCode(CodeMirror.Pos(pos.line, pos.ch), null, 'fold'); } catch (_) {}
               });
-              // Verify marks stuck — if none did, mode may still be loading.
-              const markCount = cm.getAllMarks().filter(m => m.collapsed).length;
-              if (markCount === 0 && attempts < 50) {
-                setTimeout(() => tryRestore(attempts + 1), 40);
-              } else {
-                // Force gutter to repaint fold arrows.
-                try { cm.refresh(); } catch (_) {}
-              }
+              if (!cm.getAllMarks().some(m => m.collapsed) && tries < 50)
+                setTimeout(() => attempt(tries + 1), 40);
             };
-            tryRestore(0);
+            attempt(0);
           }
         } catch (_) {}
       },
@@ -416,8 +387,8 @@
       _internal: { suppressFlagSetter: (v) => { suppress = !!v; } }
     };
 
-    // Save fold state when user clicks a gutter fold arrow.
-    // Defer one tick so CM has finished updating TextMarkers first.
+    // Persist folds when the user clicks a gutter arrow (defer so CM has
+    // finished updating its marks before we read them).
     cm.on('gutterClick', () => {
       setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 0);
     });

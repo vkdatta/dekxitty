@@ -26,32 +26,22 @@ function applyFoldToAllLines(action) {
   }
 }
 
+
 // ── Fold-state persistence ────────────────────────────────────────────────────
 
-/**
- * Save the exact from/to ranges of every active fold onto currentNote.foldedRanges
- * and persist via saveNotes(). We save the full {line,ch} positions so we can
- * restore using markText() directly — bypassing foldCode() which scans from
- * ch:0 and unpredictably finds a different range than the one that was folded.
- */
 function saveFoldState() {
   const cm = getCM();
   if (!cm) return;
   if (typeof currentNote === 'undefined' || !currentNote) return;
-
-  const ranges = [];
+  const positions = [];
   cm.getAllMarks().forEach(mark => {
     if (!mark.collapsed) return;
     const range = mark.find();
-    if (range) ranges.push({
-      from: { line: range.from.line, ch: range.from.ch },
-      to:   { line: range.to.line,   ch: range.to.ch   }
-    });
+    // Save the exact from position (line + ch). foldCode called with this
+    // exact position re-folds the correct range without scanning from ch:0.
+    if (range) positions.push({ line: range.from.line, ch: range.from.ch });
   });
-
-  currentNote.foldedRanges = ranges;
-  // keep foldedLines in sync for any external code that reads it
-  currentNote.foldedLines = ranges.map(r => r.from.line);
+  currentNote.foldPositions = positions;
   if (typeof saveNotes === 'function') saveNotes();
 }
 
