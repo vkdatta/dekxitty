@@ -29,12 +29,9 @@ function applyFoldToAllLines(action) {
 // ── Fold-state persistence ────────────────────────────────────────────────────
 
 /**
- * Read all currently-folded line numbers from CM and write them onto
- * currentNote.foldedLines, then call saveNotes() so they survive a refresh.
- *
- * Called after foldAll / unfoldAll, and also wired to the CM 'gutterClick'
- * event (which IS fired by CodeMirror 5 when the user clicks a fold arrow)
- * via editor.js after the CM instance is ready.
+ * Read all currently-folded line numbers from CM, store them on
+ * currentNote.foldedLines, and call saveNotes() to persist across refreshes.
+ * Called after foldAll/unfoldAll and on gutterClick (via editor.js).
  */
 function saveFoldState() {
   const cm = getCM();
@@ -48,12 +45,11 @@ function saveFoldState() {
     if (range) lines.push(range.from.line);
   });
 
-  currentNote.foldedLines = lines.length > 0 ? lines : [];
+  currentNote.foldedLines = lines;
   if (typeof saveNotes === 'function') saveNotes();
 }
 
 // ── Public actions ────────────────────────────────────────────────────────────
-
 
 /**
  * Fold every foldable region in the editor.
@@ -155,7 +151,7 @@ export const removeContentInsideFolds = (...a) => preserveSelection(async () => 
 
   // Ensure nothing is left folded after the destructive edit.
   applyFoldToAllLines("unfold");
-  saveFoldState(); // clears foldedLines since nothing is folded now
+  saveFoldState();
 
   if (typeof updateNoteMetadata === "function") updateNoteMetadata();
   showNotification("Removed contents inside folds");

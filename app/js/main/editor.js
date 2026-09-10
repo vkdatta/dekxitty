@@ -357,17 +357,27 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
-        // Restore fold state. cm.setValue() clears all TextMarkers so this
-        // must run last. foldedLines is stored on the note object itself
-        // (persisted via saveNotes) so it survives a browser refresh.
-        // We use CodeMirror.Pos() — required by foldCode; a plain {line,ch}
-        // object is not equivalent and will silently fail.
+        // Restore fold state. Must run after cm.setValue() (done above) AND
+        // after the syntax mode finishes loading — autoLoadMode fetches mode JS
+        // asynchronously, and foldCode silently does nothing if the mode hasn't
+        // tokenised the document yet.
+        // We attempt the restore, check if any mark actually stuck, and retry
+        // every 40 ms until it works or we hit the 2 s cap (50 attempts).
         try {
           const note = (typeof currentNote !== 'undefined') ? currentNote : null;
-          const lines = (note && Array.isArray(note.foldedLines)) ? note.foldedLines : [];
-          lines.forEach(line => {
-            try { cm.foldCode(CodeMirror.Pos(line, 0), null, 'fold'); } catch (_) {}
-          });
+          const lines = (note && Array.isArray(note.foldedLines) && note.foldedLines.length > 0)
+            ? note.foldedLines.slice() : null;
+          if (lines) {
+            let attempts = 0;
+            const tryRestore = () => {
+              lines.forEach(line => {
+                try { cm.foldCode(CodeMirror.Pos(line, 0), null, 'fold'); } catch (_) {}
+              });
+              const worked = cm.getAllMarks().some(m => m.collapsed);
+              if (!worked && attempts++ < 50) setTimeout(tryRestore, 40);
+            };
+            tryRestore();
+          }
         } catch (_) {}
       },
       clearHistoryFor: (noteId) => {
@@ -377,10 +387,9 @@
       _internal: { suppressFlagSetter: (v) => { suppress = !!v; } }
     };
 
-    // Save fold state when the user clicks a gutter fold arrow.
-    // 'gutterClick' is the real CodeMirror 5 event; 'fold'/'unfold' do not
-    // exist in CM5 and silently do nothing. We defer by one tick so CM has
-    // finished updating the TextMarkers before we read them.
+    // Save fold state when user clicks a gutter fold arrow.
+    // 'gutterClick' is the real CM5 event for gutter interactions.
+    // Defer by one tick so CM has finished updating TextMarkers first.
     cm.on('gutterClick', () => {
       setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 0);
     });
