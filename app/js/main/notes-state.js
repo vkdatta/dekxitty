@@ -101,6 +101,15 @@ function openNote(n) {
   const t = document.querySelector(`.note-item[data-id="${e.id}"]`);
   t && t.classList.add("selected");
 
+  // Restore fold state for this note. The timeout ensures we run AFTER
+  // rebindUndoForNote / loadHistoryFor have called cm.setValue(), which
+  // clears all TextMarkers (including folds). 80 ms matches the debounce
+  // cadence used elsewhere in the editor pipeline.
+  const noteIdToRestore = e.id;
+  setTimeout(() => {
+    if (typeof restoreFoldState === "function") restoreFoldState(noteIdToRestore);
+  }, 80);
+
   try { window.dispatchEvent(new CustomEvent("dexNoteOpened", { detail: { note: e } })); } catch (err) {}
 }
 
