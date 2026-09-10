@@ -368,13 +368,25 @@
           const lines = (note && Array.isArray(note.foldedLines) && note.foldedLines.length > 0)
             ? note.foldedLines.slice() : null;
           if (lines) {
+            // Sort DESCENDING (innermost/deepest lines first) so that inner
+            // folds are applied before outer folds. If we fold an outer range
+            // first it collapses the inner lines, making them unreachable, and
+            // foldCode silently does nothing for those positions.
+            lines.sort((a, b) => b - a);
             let attempts = 0;
             const tryRestore = () => {
+              // Clear any partial folds from a previous attempt before retrying,
+              // so we never double-fold or leave a mix of old and new marks.
+              cm.getAllMarks().forEach(m => { if (m.collapsed) m.clear(); });
               lines.forEach(line => {
                 try { cm.foldCode(CodeMirror.Pos(line, 0), null, 'fold'); } catch (_) {}
               });
-              const worked = cm.getAllMarks().some(m => m.collapsed);
-              if (!worked && attempts++ < 50) setTimeout(tryRestore, 40);
+              // Check that every saved line produced a mark. If the count is
+              // less than expected the mode is still loading — retry.
+              const markCount = cm.getAllMarks().filter(m => m.collapsed).length;
+              if (markCount < lines.length && attempts++ < 50) {
+                setTimeout(tryRestore, 40);
+              }
             };
             tryRestore();
           }
