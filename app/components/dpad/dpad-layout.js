@@ -265,6 +265,17 @@ if (window.__dexToolbar2Loaded) {
   const CENTER_SHIFT = 62.5;
 
   function collapseDpad() {
+    // If selection mode was active, exit it cleanly.
+    // exitSelectionMode is assigned to ctx later in this same block, so we
+    // read it through ctx rather than a local closure reference.
+    if (ctx.selectionMode) {
+      ctx.selectionMode = false;
+      ctx._selAnchorPos = null;
+      cursorControls.classList.remove('dpad-sel-active');
+      cursorControls.style.width  = '';
+      cursorControls.style.height = '';
+      if (typeof window.dexHideSelectionHandles === 'function') window.dexHideSelectionHandles();
+    }
     if (ctx.dpadState === 'collapsed') return;
     ctx.dpadState = 'collapsed';
     const shifted = {
@@ -319,9 +330,54 @@ if (window.__dexToolbar2Loaded) {
   window.dexHideDpad = hideDpad;
   window.dexShowDpad = showDpad;
 
+  // ── Selection-mode state ─────────────────────────────────────────────────
+  // When the pill is double-tapped while collapsed, instead of expanding the
+  // full dpad (8 buttons + dragger) we enter a lightweight "selection mode".
+  // The pill turns transparent-green; the user taps once to set the anchor,
+  // taps again (anywhere) to set the head.  Subsequent taps update the head.
+  // A second double-tap while in selection mode exits and clears the selection.
+  ctx.selectionMode = false;
+
+  function enterSelectionMode() {
+    ctx.selectionMode = true;
+    ctx._selAnchorPos = null;   // CodeMirror {line,ch} for anchor
+    cursorControls.classList.add('dpad-sel-active');
+    if (navigator.vibrate) { try { navigator.vibrate([8, 40, 8]); } catch (_e) {} }
+  }
+
+  function exitSelectionMode() {
+    ctx.selectionMode = false;
+    ctx._selAnchorPos = null;
+    cursorControls.classList.remove('dpad-sel-active');
+    // Clear the CodeMirror selection and move cursor to head
+    const ed = window.dexEditor;
+    const cm = ed && ed.cm ? ed.cm : null;
+    if (cm && cm.somethingSelected()) {
+      const head = cm.getCursor('head');
+      cm.setCursor(head);
+    }
+    // Hide selection handles
+    if (typeof window.dexHideSelectionHandles === 'function') {
+      window.dexHideSelectionHandles();
+    }
+    // Reset pill back to normal collapsed size (in case CSS specificity
+    // left the 48px active size in place during a rapid transition)
+    cursorControls.style.width  = '';
+    cursorControls.style.height = '';
+    if (navigator.vibrate) { try { navigator.vibrate(6); } catch (_e) {} }
+  }
+
+  ctx.enterSelectionMode = enterSelectionMode;
+  ctx.exitSelectionMode  = exitSelectionMode;
+
   function handleCenterDoubleTap() {
     if (ctx.dpadState === 'collapsed') {
-      expandDpad();
+      // Toggle selection mode — no expansion of the dpad
+      if (ctx.selectionMode) {
+        exitSelectionMode();
+      } else {
+        enterSelectionMode();
+      }
     } else if (ctx.menuOpen && ctx.openMenu && ctx.closeMenu) {
       ctx.menuOpen() ? ctx.closeMenu() : ctx.openMenu();
     }

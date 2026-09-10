@@ -39,9 +39,17 @@
     el.style.setProperty('--dex-sel-stem-h', Math.max(4, coords.bottom - coords.top) + 'px');
     el.style.display = 'block';
   }
+  function isSelectionModeActive() {
+    var dpad = window.__dexDpad;
+    return !!(dpad && dpad.selectionMode);
+  }
   function positionHandles() {
     var cm = getCm();
-    if (!cm || !cm.somethingSelected()) { hideHandles(); return; }
+    if (!cm || !cm.somethingSelected()) {
+      // Keep handles if we only have an anchor set (no range yet in sel-mode)
+      hideHandles();
+      return;
+    }
     var findMenu = document.getElementById('find-replace-menu');
     if (findMenu && !findMenu.classList.contains('find-replace-hidden')) { hideHandles(); return; }
     ensureHandles();
@@ -65,7 +73,9 @@
     if (handleStart) handleStart.style.display = 'none';
     if (handleEnd) handleEnd.style.display = 'none';
   }
-  window.dexHideSelectionHandles = hideHandles;
+  window.dexHideSelectionHandles    = hideHandles;
+  window.dexScheduleSelectionHandles = scheduleHandles;
+  window.dexPositionSelectionHandles = positionHandles;
   window.addEventListener('popstate', hideHandles);
   var dragging = null, dragPointerId = null;
   var dragFixedPoint = null;

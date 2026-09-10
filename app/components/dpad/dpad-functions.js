@@ -410,4 +410,96 @@
   // drag invisible to all external guards — causing the native menu to appear
   // 1 second after a joystick selection began.
   ctx.isCenterDragging = function () { return centerDrag !== null; };
+
+  // ── Selection-mode touch/pointer handler ─────────────────────────────────
+  // When ctx.selectionMode is true the pill is in transparent-green active
+  // state.  Any tap on the document (outside the pill itself) either:
+  //   • sets the anchor (first tap), or
+  //   • updates the head — and swaps anchor↔head automatically when the new
+  //     head would be before the existing anchor.
+  // The selection handles (selection.js) fire via cursorActivity automatically.
+
+  function selModeCoordToPos(cm, clientX, clientY) {
+    // Offset slightly upward so the finger doesn't obscure the tap target
+    return cm.coordsChar({ left: clientX, top: clientY - 20 }, 'window');
+  }
+
+  function handleSelModeTap(clientX, clientY) {
+    if (!ctx.selectionMode) return;
+    const ed = window.dexEditor;
+    const cm = ed && ed.cm ? ed.cm : null;
+    if (!cm) return;
+
+    const tapped = selModeCoordToPos(cm, clientX, clientY);
+
+    if (!ctx._selAnchorPos) {
+      // First tap — set anchor, place cursor
+      ctx._selAnchorPos = tapped;
+      cm.setCursor(tapped);
+      cm.focus();
+      if (navigator.vibrate) { try { navigator.vibrate(6); } catch (_e) {} }
+      return;
+    }
+
+    // Subsequent taps — anchor is fixed, update head
+    let anchor = ctx._selAnchorPos;
+    let head   = tapped;
+
+    // Normalise so selection always goes from the earlier position to the later
+    // one, then decide which end stays fixed and which is "head" in CM terms
+    // (setSelection(anchor, head) → anchor is where the fixed end is).
+    const cmp = cm.indexFromPos(anchor) - cm.indexFromPos(head);
+    if (cmp > 0) {
+      // Tapped point is before anchor — swap so anchor becomes the later end
+      // and head (the draggable / moving end) is the earlier tap.
+      // CM's setSelection keeps the first arg as the anchor (fixed end).
+      cm.setSelection(anchor, head);   // anchor=later, head=earlier → reversed range
+    } else if (cmp < 0) {
+      cm.setSelection(anchor, head);
+    } else {
+      // Same position — treat as moving anchor to new spot
+      ctx._selAnchorPos = tapped;
+      cm.setCursor(tapped);
+      cm.focus();
+      return;
+    }
+
+    cm.focus();
+    if (navigator.vibrate) { try { navigator.vibrate(4); } catch (_e) {} }
+    // Handles are updated via cursorActivity → scheduleHandles in selection.js
+  }
+
+  // Touch path
+  document.addEventListener('touchend', function (e) {
+    if (!ctx.selectionMode) return;
+    // Ignore touches that originated on the pill itself
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const pill = ctx.cursorControls;
+    const pillRect = pill.getBoundingClientRect();
+    if (
+      t.clientX >= pillRect.left && t.clientX <= pillRect.right &&
+      t.clientY >= pillRect.top  && t.clientY <= pillRect.bottom
+    ) return;
+    // Ignore if a selection handle drag just finished
+    if (window.__dexSelHandleDragging) return;
+    e.preventDefault();
+    handleSelModeTap(t.clientX, t.clientY);
+  }, { passive: false, capture: true });
+
+  // Pointer path (mouse / stylus on desktop)
+  document.addEventListener('pointerup', function (e) {
+    if (!ctx.selectionMode) return;
+    if (e.pointerType === 'touch') return; // handled by touchend above
+    const pill = ctx.cursorControls;
+    const pillRect = pill.getBoundingClientRect();
+    if (
+      e.clientX >= pillRect.left && e.clientX <= pillRect.right &&
+      e.clientY >= pillRect.top  && e.clientY <= pillRect.bottom
+    ) return;
+    if (window.__dexSelHandleDragging) return;
+    handleSelModeTap(e.clientX, e.clientY);
+  }, { capture: true });
+
+  ctx.handleSelModeTap = handleSelModeTap;
 })();
