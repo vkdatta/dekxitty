@@ -40,7 +40,10 @@
   }
 
   window.rebindUndoForNote = function (noteId, content) {
-    whenReady(() => window.dexEditor.loadHistoryFor(noteId, content));
+    whenReady(() => {
+      window.dexEditor.loadHistoryFor(noteId, content);
+      if (typeof window.dexRestoreFolds === 'function') window.dexRestoreFolds(noteId);
+    });
   };
   window.clearUndoHistoryForNote = function (noteId) {
     whenReady(() => window.dexEditor.clearHistoryFor(noteId));
