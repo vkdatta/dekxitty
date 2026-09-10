@@ -357,16 +357,18 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
-        // Restore fold state immediately after content + history are set.
-        // cm.setValue() wipes all TextMarkers so this must be the last step.
+        // Restore persisted fold state. cm.setValue() above clears all
+        // TextMarkers, so this must run last. We saved line numbers and
+        // re-fold from {line, ch:0} — the same position the gutter arrow
+        // uses — so the fold helper can find the opening delimiter.
         if (id) {
           try {
             const raw = localStorage.getItem('dexFolds_' + id);
             if (raw) {
-              const folds = JSON.parse(raw);
-              if (Array.isArray(folds)) {
-                folds.forEach(({ from }) => {
-                  try { cm.foldCode(from, null, 'fold'); } catch (_) {}
+              const lines = JSON.parse(raw);
+              if (Array.isArray(lines)) {
+                lines.forEach(line => {
+                  try { cm.foldCode({ line, ch: 0 }, null, 'fold'); } catch (_) {}
                 });
               }
             }
@@ -380,9 +382,7 @@
       _internal: { suppressFlagSetter: (v) => { suppress = !!v; } }
     };
 
-    // Persist fold state whenever the user folds/unfolds via the gutter arrow
-    // or Ctrl-Q. saveFoldState() is defined in fold.js; guard with typeof so
-    // this is a no-op if fold.js hasn't loaded yet (shouldn't happen, but safe).
+    // Persist fold state when user clicks a gutter arrow or uses Ctrl-Q.
     cm.on('fold',   () => { if (typeof saveFoldState === 'function') saveFoldState(); });
     cm.on('unfold', () => { if (typeof saveFoldState === 'function') saveFoldState(); });
 
