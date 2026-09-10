@@ -357,26 +357,44 @@
         if (saved) { try { cm.setHistory(saved); } catch (e) { cm.clearHistory(); } }
         else       { cm.clearHistory(); }
         suppress = false;
-        // Restore fold state. Use the saved exact from positions (line+ch) so
-        // foldCode lands on the correct character and folds the right range.
-        // Retry until at least one fold sticks (mode may still be loading).
+        // Restore fold state by recreating marks directly with markText(),
+        // exactly the way foldcode.js does it internally. This avoids using
+        // foldCode() which scans forward from ch:0 and unpredictably picks
+        // the wrong range. We save the exact from+to positions so markText
+        // places the collapsed region in precisely the right spot.
+        // The widget gets a mousedown handler so clicking it still unfolds.
         try {
           const note = (typeof currentNote !== 'undefined') ? currentNote : null;
-          const positions = note && Array.isArray(note.foldPositions) && note.foldPositions.length
-            ? note.foldPositions.slice() : null;
-          if (positions) {
-            // Inner folds first (descending line order) so outer folds don't
-            // swallow inner positions before they are applied.
-            positions.sort((a, b) => b.line - a.line || b.ch - a.ch);
-            const attempt = (tries) => {
+          const folds = note && Array.isArray(note.foldPositions) && note.foldPositions.length
+            ? note.foldPositions : null;
+          if (folds) {
+            const doRestore = (attempts) => {
               cm.getAllMarks().forEach(m => { if (m.collapsed) m.clear(); });
-              positions.forEach(pos => {
-                try { cm.foldCode(CodeMirror.Pos(pos.line, pos.ch), null, 'fold'); } catch (_) {}
+              folds.forEach(({ from, to }) => {
+                try {
+                  const widget = document.createElement('span');
+                  widget.className = 'CodeMirror-foldmarker';
+                  widget.textContent = '\u2194';
+                  const mark = cm.markText(from, to, {
+                    replacedWith: widget,
+                    clearOnEnter: true,
+                    __isFold: true
+                  });
+                  widget.addEventListener('mousedown', e => {
+                    mark.clear();
+                    e.preventDefault();
+                    setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 0);
+                  });
+                } catch (_) {}
               });
-              if (!cm.getAllMarks().some(m => m.collapsed) && tries < 50)
-                setTimeout(() => attempt(tries + 1), 40);
+              const count = cm.getAllMarks().filter(m => m.collapsed).length;
+              if (count === 0 && attempts < 50) {
+                setTimeout(() => doRestore(attempts + 1), 40);
+              } else {
+                try { cm.refresh(); } catch (_) {}
+              }
             };
-            attempt(0);
+            doRestore(0);
           }
         } catch (_) {}
       },
@@ -387,11 +405,23 @@
       _internal: { suppressFlagSetter: (v) => { suppress = !!v; } }
     };
 
-    // Persist folds when the user clicks a gutter arrow (defer so CM has
-    // finished updating its marks before we read them).
-    cm.on('gutterClick', () => {
-      setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 0);
-    });
+    // MutationObserver on the scroller catches fold widget clicks, which do
+    // not fire gutterClick. Only acts when a .CodeMirror-foldmarker element
+    // is added or removed, so normal typing doesn't trigger saves.
+    const scrollEl = cm.getScrollerElement();
+    new MutationObserver(mutations => {
+      let changed = false;
+      for (const mut of mutations) {
+        const nodes = [...mut.addedNodes, ...mut.removedNodes];
+        if (nodes.some(n => n.nodeType === 1 && n.classList && n.classList.contains('CodeMirror-foldmarker'))) {
+          changed = true; break;
+        }
+      }
+      if (changed) {
+        clearTimeout(scrollEl._fst);
+        scrollEl._fst = setTimeout(() => { if (typeof saveFoldState === 'function') saveFoldState(); }, 100);
+      }
+    }).observe(scrollEl, { childList: true, subtree: true });
 
     try { window.dispatchEvent(new Event('dexEditorReady')); } catch (e) {}
   }

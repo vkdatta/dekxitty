@@ -26,22 +26,22 @@ function applyFoldToAllLines(action) {
   }
 }
 
-
 // ── Fold-state persistence ────────────────────────────────────────────────────
 
 function saveFoldState() {
   const cm = getCM();
   if (!cm) return;
   if (typeof currentNote === 'undefined' || !currentNote) return;
-  const positions = [];
+  const folds = [];
   cm.getAllMarks().forEach(mark => {
     if (!mark.collapsed) return;
     const range = mark.find();
-    // Save the exact from position (line + ch). foldCode called with this
-    // exact position re-folds the correct range without scanning from ch:0.
-    if (range) positions.push({ line: range.from.line, ch: range.from.ch });
+    if (range) folds.push({
+      from: { line: range.from.line, ch: range.from.ch },
+      to:   { line: range.to.line,   ch: range.to.ch   }
+    });
   });
-  currentNote.foldPositions = positions;
+  currentNote.foldPositions = folds;
   if (typeof saveNotes === 'function') saveNotes();
 }
 
