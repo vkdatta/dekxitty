@@ -1,16 +1,14 @@
 (function () {
-  const ctx = window.__dexDpad;
-  if (!ctx || !ctx.cursorControls) {
-    console.error('[menu-functions] dpad-layout.js must load first');
-    return;
-  }
-  if (ctx.__menuFunctionsLoaded) return;
-  ctx.__menuFunctionsLoaded = true;
-  const { menuOpen, closeMenu, updateCenterHandle, updateToolbarVisibility } = ctx;
+  if (window.__menuFunctionsLoaded) return;
+  window.__menuFunctionsLoaded = true;
+
+  // ── Cursor-activity hook ──────────────────────────────────────────────────
+  // Closes the native menu whenever the CodeMirror selection is cleared.
   function attachCursorActivity() {
     const ed = window.dexEditor;
     const cm = ed && ed.cm ? ed.cm : null;
     if (!cm) { setTimeout(attachCursorActivity, 300); return; }
+
     const prevCm = attachCursorActivity._boundCm;
     if (prevCm && prevCm !== cm && typeof prevCm.off === 'function'
         && prevCm.__dexMenuFnHandler) {
@@ -21,28 +19,20 @@
     attachCursorActivity._boundCm = cm;
     if (cm.__dexCursorActivityBound) return;
     cm.__dexCursorActivityBound = true;
+
     const menuFnHandler = () => {
-      const hasSel = cm.somethingSelected();
-      if (!hasSel) {
-        if (menuOpen()) closeMenu('codemirror');
-        ctx.setSelectionAnchor(cm.getCursor('head'));
-        return;
+      if (!cm.somethingSelected()) {
+        if (typeof window.dexCloseNativeMenu === 'function') {
+          window.dexCloseNativeMenu('codemirror');
+        }
       }
-      const findMenu = document.getElementById('find-replace-menu');
-      if (findMenu && !findMenu.classList.contains('find-replace-hidden')) return;
-      const dpad = window.__dexDpad;
-      if (dpad) {
-        const collapsedDragging = typeof dpad.getCollapsedCenterDrag === 'function'
-          && dpad.getCollapsedCenterDrag();
-        const normalDragging = typeof dpad.isCenterDragging === 'function'
-          && dpad.isCenterDragging();
-        if (collapsedDragging || normalDragging) return;
-      }
-      updateCenterHandle();
     };
     cm.on('cursorActivity', menuFnHandler);
     cm.__dexMenuFnHandler = menuFnHandler;
   }
+
+  // ── Suppress native browser selection UI inside CodeMirror ────────────────
+  // CodeMirror manages its own touch selection; let it win on mobile.
   function suppressNativeSelectionUI() {
     const attach = () => {
       const cmEl = document.querySelector('.CodeMirror');
@@ -57,8 +47,8 @@
     };
     attach();
   }
+
   function init() {
-    updateToolbarVisibility();
     attachCursorActivity();
     suppressNativeSelectionUI();
   }
@@ -67,9 +57,16 @@
   } else {
     init();
   }
-  window.addEventListener('popstate',   updateToolbarVisibility);
-  window.addEventListener('hashchange', updateToolbarVisibility);
+
+  // Close menu on page navigation
+  const closeMenu = () => {
+    if (typeof window.dexCloseNativeMenu === 'function') window.dexCloseNativeMenu();
+  };
+  window.addEventListener('popstate',   closeMenu);
+  window.addEventListener('hashchange', closeMenu);
   window.addEventListener('dexEditorReady', attachCursorActivity);
+
+  // Re-bind if the editor instance is replaced
   setInterval(() => {
     const ed = window.dexEditor;
     const cm = ed && ed.cm ? ed.cm : null;

@@ -1,3 +1,4 @@
+/* ── CodeMirror selection highlight ──────────────────────────────────────── */
 .CodeMirror-selected {
   background: #707070 !important;
   color: #fff !important;
@@ -31,4 +32,56 @@
 .CodeMirror .CodeMirror-selectedtext {
   background: #707070 !important;
   color: #fff !important;
+}
+
+/* ── Selection handles — extra large for easy touch grabbing ─────────────── */
+/* Layout: a fixed div whose pseudo-elements draw the visible stem + knob.
+   The div itself is the (large) touch target; the visuals sit centred inside.
+
+   Dimensions:
+     Container  — 72 px wide × 40 px tall, with 14 px invisible padding all
+                  around → effective touch area ≈ 100 × 68 px
+     Stem       — 4 px wide, centred at x=50 in the container
+     Knob       — 48 px diameter circle, centred at x=36 and sitting just
+                  below the stem bottom
+*/
+.dex-sel-handle {
+  position: fixed;
+  display: none;
+  width: 72px;
+  height: 40px;
+  margin-left: -36px;   /* keep stem centred on the character position */
+  z-index: 9990;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 14px;
+  box-sizing: content-box;
+}
+
+/* Stem */
+.dex-sel-handle::before {
+  content: '';
+  position: absolute;
+  left: 34px;           /* (72 / 2) - (4 / 2) = 34, centred in 72 px box */
+  top: 14px;            /* matches padding */
+  width: 4px;
+  height: var(--dex-sel-stem-h, 20px);
+  background: var(--c-accent);
+  border-radius: 2px;
+}
+
+/* Knob */
+.dex-sel-handle::after {
+  content: '';
+  position: absolute;
+  left: 12px;           /* (72 / 2) - (48 / 2) = 12, centred in 72 px box */
+  top: calc(var(--dex-sel-stem-h, 20px) + 14px); /* stem bottom + padding */
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  border: 3px solid var(--c-panel-2);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 0, 0, 0.15);
 }
