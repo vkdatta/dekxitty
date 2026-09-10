@@ -286,7 +286,6 @@ body:has(#sidebar1.open) #dexCursorControls {
 
 /* ── Selection-mode pill (transparent green active state) ────────────────── */
 #dexCursorControls.dpad-collapsed.dpad-sel-active {
-  /* Pill grows slightly to make the double-tap close target easier to hit */
   width: 48px;
   height: 48px;
   border-radius: 24px;
@@ -297,17 +296,11 @@ body:has(#sidebar1.open) #dexCursorControls {
     0 0 18px 4px rgba(0, 212, 170, 0.22);
   animation: dexSelPillPulse 1.8s ease-in-out infinite;
 }
+/* Hide the inner nub entirely — one ring only */
 #dexCursorControls.dpad-collapsed.dpad-sel-active .dex-center-drag {
-  /* Center nub becomes a translucent green dot */
-  left: 10px;
-  top: 10px;
-  background: radial-gradient(circle at 40% 35%,
-    rgba(0, 212, 170, 0.55) 0%,
-    rgba(0, 212, 170, 0.18) 60%,
-    transparent 100%);
-  border-color: rgba(0, 212, 170, 0.80);
-  box-shadow: 0 0 8px 2px rgba(0, 212, 170, 0.35);
-  animation: none;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  animation: none !important;
 }
 @keyframes dexSelPillPulse {
   0%, 100% { box-shadow: 0 0 0 4px rgba(0,212,170,0.18), 0 0 18px 4px rgba(0,212,170,0.22); }

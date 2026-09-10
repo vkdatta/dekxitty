@@ -426,6 +426,12 @@
 
   function handleSelModeTap(clientX, clientY) {
     if (!ctx.selectionMode) return;
+
+    // Cooldown: the double-tap that activated selection mode fires a touchend
+    // that would immediately register as the first anchor tap.  Ignore any tap
+    // within 350 ms of entering selection mode.
+    if (ctx._selModeEnteredAt && (Date.now() - ctx._selModeEnteredAt) < 350) return;
+
     const ed = window.dexEditor;
     const cm = ed && ed.cm ? ed.cm : null;
     if (!cm) return;
@@ -433,7 +439,7 @@
     const tapped = selModeCoordToPos(cm, clientX, clientY);
 
     if (!ctx._selAnchorPos) {
-      // First tap — set anchor, place cursor
+      // First tap — plant the anchor, move cursor there
       ctx._selAnchorPos = tapped;
       cm.setCursor(tapped);
       cm.focus();
@@ -441,32 +447,26 @@
       return;
     }
 
-    // Subsequent taps — anchor is fixed, update head
-    let anchor = ctx._selAnchorPos;
-    let head   = tapped;
+    // Subsequent taps — anchor stays fixed, head updates to tapped point.
+    // If tapped is before anchor, CM's setSelection handles the visual swap
+    // correctly; we just always pass (anchor, tapped).
+    const anchor = ctx._selAnchorPos;
+    const anchorIdx = cm.indexFromPos(anchor);
+    const tappedIdx = cm.indexFromPos(tapped);
 
-    // Normalise so selection always goes from the earlier position to the later
-    // one, then decide which end stays fixed and which is "head" in CM terms
-    // (setSelection(anchor, head) → anchor is where the fixed end is).
-    const cmp = cm.indexFromPos(anchor) - cm.indexFromPos(head);
-    if (cmp > 0) {
-      // Tapped point is before anchor — swap so anchor becomes the later end
-      // and head (the draggable / moving end) is the earlier tap.
-      // CM's setSelection keeps the first arg as the anchor (fixed end).
-      cm.setSelection(anchor, head);   // anchor=later, head=earlier → reversed range
-    } else if (cmp < 0) {
-      cm.setSelection(anchor, head);
-    } else {
-      // Same position — treat as moving anchor to new spot
+    if (anchorIdx === tappedIdx) {
+      // Same spot — move anchor to new location (reset)
       ctx._selAnchorPos = tapped;
       cm.setCursor(tapped);
       cm.focus();
       return;
     }
 
+    // setSelection(anchor, head) — CM renders from→to correctly regardless of order
+    cm.setSelection(anchor, tapped);
     cm.focus();
     if (navigator.vibrate) { try { navigator.vibrate(4); } catch (_e) {} }
-    // Handles are updated via cursorActivity → scheduleHandles in selection.js
+    // Handles update automatically via cursorActivity → scheduleHandles
   }
 
   // Touch path

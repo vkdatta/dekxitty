@@ -271,6 +271,7 @@ if (window.__dexToolbar2Loaded) {
     if (ctx.selectionMode) {
       ctx.selectionMode = false;
       ctx._selAnchorPos = null;
+      ctx._selModeEnteredAt = null;
       cursorControls.classList.remove('dpad-sel-active');
       cursorControls.style.width  = '';
       cursorControls.style.height = '';
@@ -340,7 +341,8 @@ if (window.__dexToolbar2Loaded) {
 
   function enterSelectionMode() {
     ctx.selectionMode = true;
-    ctx._selAnchorPos = null;   // CodeMirror {line,ch} for anchor
+    ctx._selAnchorPos = null;
+    ctx._selModeEnteredAt = Date.now(); // cooldown: ignore taps for 350ms after entry
     cursorControls.classList.add('dpad-sel-active');
     if (navigator.vibrate) { try { navigator.vibrate([8, 40, 8]); } catch (_e) {} }
   }
@@ -348,6 +350,7 @@ if (window.__dexToolbar2Loaded) {
   function exitSelectionMode() {
     ctx.selectionMode = false;
     ctx._selAnchorPos = null;
+    ctx._selModeEnteredAt = null;
     cursorControls.classList.remove('dpad-sel-active');
     // Clear the CodeMirror selection and move cursor to head
     const ed = window.dexEditor;
