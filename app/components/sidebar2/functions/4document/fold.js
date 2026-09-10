@@ -152,3 +152,6 @@ export const removeContentInsideFolds = (...a) => preserveSelection(async () => 
   if (typeof updateNoteMetadata === "function") updateNoteMetadata();
   showNotification("Removed contents inside folds");
 })(...a);
+
+// ── Expose persistence hook to non-module scripts (editor.js debouncer) ──
+window.saveFoldState = saveFoldState;
