@@ -59,9 +59,6 @@
   let menuEl = null;
   let activeActions = null;
   let activeMenuSource = null;
-  // FIX: snapshot of the selection the currently-open menu refers to.
-  // onCursorActivity compares against this to decide whether the menu is
-  // still relevant or a stale artefact that should be closed.
   let menuSelection = null;
   const surfaceTimers = Object.create(null);
 
@@ -81,6 +78,11 @@
     menuEl.id = 'dexNativeMenu';
     document.body.appendChild(menuEl);
     document.addEventListener('pointerdown', (e) => {
+      // *** THE FIX ***  When we open a menu synchronously from within a
+      // pointerdown handler (double-tap), the same event then bubbles up to
+      // document and this listener would immediately close it. The wrapper
+      // handler marks the event; we honour that mark here.
+      if (e && e.__dexJustOpenedMenu) return;
       if (menuEl.classList.contains('open') && !menuEl.contains(e.target)) closeMenu();
     });
     return menuEl;
@@ -113,9 +115,6 @@
       .replace(/>/g, '&gt;');
   }
 
-  // Snapshot the current CodeMirror selection so we can later tell whether a
-  // cursorActivity event is "the same selection, menu is still valid" or "the
-  // user really moved/replaced the selection, menu should update".
   function snapshotSelection() {
     const cm = getCm();
     if (!cm) return null;
@@ -136,7 +135,7 @@
     ensureMenu();
     activeActions = actions;
     activeMenuSource = source || null;
-    menuSelection = snapshotSelection();   // FIX
+    menuSelection = snapshotSelection();
 
     let html = '';
     actions.forEach((a, i) => {
@@ -178,10 +177,6 @@
     menuEl.style.visibility = '';
   }
 
-  // FIX: the "if (isMenuOpen()) closeMenu()" that used to live here was the
-  // killer — it nuked any menu opened synchronously just before a deferred
-  // cursorActivity arrived. The decision to replace an open menu now lives in
-  // onCursorActivity, which knows whether the selection actually changed.
   function scheduleMenu(surface, getActionsAndRect) {
     if (!(surface in surfaceTimers)) surfaceTimers[surface] = null;
     clearPendingFor(surface);
@@ -295,8 +290,6 @@
     const cm = getCm();
     if (!cm) { notify('Editor not ready'); return; }
 
-    // Cancel any in-flight scheduled menus so a stale timer can't later
-    // close/replace the menu we are opening right now.
     clearPendingFor('codemirror');
     clearPendingFor('generic');
 
@@ -503,6 +496,11 @@
       if (near && (now - lastTapTime) < DBL_TAP_MS) {
         lastTapTime = 0;
         cancelPress();
+        // *** THE FIX ***  Tag this very event so the document-level
+        // close-on-outside-tap listener (ensureMenu) skips it. Without this,
+        // the menu we open synchronously inside fireDblTap would be closed
+        // the instant this same pointerdown finishes bubbling to document.
+        e.__dexJustOpenedMenu = true;
         fireDblTap(e.clientX, e.clientY);
         return;
       }
@@ -537,8 +535,6 @@
       suppressNextPointerUp = false;
     }, { passive: true });
 
-    // Suppress the synthesized mousedown/click that would otherwise let CM
-    // reset the selection and fire cursorActivity right after we opened.
     wrapper.addEventListener('click', (e) => {
       if (Date.now() < suppressClickUntil) {
         e.preventDefault();
@@ -574,13 +570,9 @@
       if (window.__dexSelHandleDragging) return;
       if (findMenuOpen()) { closeMenu('codemirror'); return; }
 
-      // FIX: if a menu is open and the selection it refers to is unchanged,
-      // this cursorActivity is just the echo of the setSelection that opened
-      // it — leave the menu alone. Only if the user genuinely moved/replaced
-      // the selection do we close and reschedule.
       if (isMenuOpen()) {
         const cur = snapshotSelection();
-        if (sameSel(cur, menuSelection)) return;
+        if (sameSel(cur, menuSelection)) return;   // echo of our own setSelection
         closeMenu('codemirror');
       }
 
