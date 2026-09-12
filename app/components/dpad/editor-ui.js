@@ -5,10 +5,10 @@
   // ─── Constants ────────────────────────────────────────────────────────────
   const MENU_DELAY_MS    = 300;
   const LONG_PRESS_MS    = 450;
-  const DBL_TAP_MS       = 280;
+  const DBL_TAP_MS       = 350;   // FIX #5: was 280 — too tight on real hardware
   const MOVE_CANCEL_PX   = 10;
   const ATTACH_MAX_TRIES = 200;
-  const HANDLE_OFFSET    = 14;     // px above start-handle / below end-handle
+  const HANDLE_OFFSET    = 14;
   const FIND_MENU_ID     = 'find-replace-menu';
   const FIND_MENU_HIDDEN = 'find-replace-hidden';
 
@@ -59,7 +59,7 @@
   let menuEl = null;
   let activeActions = null;
   let activeMenuSource = null;
-  const surfaceTimers = Object.create(null);   // dynamic: 'codemirror', 'diff', 'generic', …
+  const surfaceTimers = Object.create(null);
 
   function clearPendingFor(surface) {
     if (surfaceTimers[surface]) {
@@ -99,10 +99,14 @@
   }
   window.dexCloseNativeMenu = () => closeMenu();
 
+  // FIX #10: escape single quote too, so attributes are future-proof.
   function escapeAttr(text) {
     return String(text)
-      .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   function renderMenu(actions, rect, source) {
@@ -132,7 +136,6 @@
       });
     });
 
-    // Measure while hidden, then position + reveal (avoids a flash at 0,0)
     menuEl.style.visibility = 'hidden';
     menuEl.classList.add('open');
     const mw = menuEl.offsetWidth;
@@ -142,7 +145,7 @@
 
     let left = rect ? rect.left - mw / 2 : (vw - mw) / 2;
     let top  = rect ? rect.top - mh - 10 : (vh - mh) / 2;
-    if (rect && top < 8) top = rect.bottom + 10;   // no room above → below
+    if (rect && top < 8) top = rect.bottom + 10;
     left = Math.max(8, Math.min(vw - mw - 8, left));
     top  = Math.max(8, Math.min(vh - mh - 8, top));
 
@@ -164,7 +167,6 @@
     }, MENU_DELAY_MS);
   }
 
-  // Public API used by diff-selection.js
   window.__dexMenuApi = {
     schedule: scheduleMenu,
     close: closeMenu,
@@ -266,30 +268,36 @@
     const cm = getCm();
     if (!cm) { notify('Editor not ready'); return; }
 
-    if (!cm.somethingSelected()) {
-      const pos = cm.getCursor();
-      const c   = cm.charCoords(pos, 'window');
-      renderMenu(cursorActions(cm), { left: c.right, top: c.top, bottom: c.bottom }, source);
-      return;
+    // FIX #2: cancel any in‑flight scheduled menus so they cannot later
+    // close/replace what we are about to open directly.
+    clearPendingFor('codemirror');
+    clearPendingFor('generic');
+
+    try {
+      if (!cm.somethingSelected()) {
+        const pos = cm.getCursor();
+        const c   = cm.charCoords(pos, 'window');
+        renderMenu(cursorActions(cm), { left: c.right, top: c.top, bottom: c.bottom }, source);
+        return;
+      }
+      const range = {
+        from: cm.getCursor('from'),
+        to:   cm.getCursor('to'),
+        text: cm.getSelection()
+      };
+      renderMenu(codeMirrorActions(cm, range), rectForRange(cm, range), source);
+    } catch (_e) {
+      // FIX #9: charCoords can throw if the editor viewport changed mid-call.
+      closeMenu();
     }
-    const range = {
-      from: cm.getCursor('from'),
-      to:   cm.getCursor('to'),
-      text: cm.getSelection()
-    };
-    renderMenu(codeMirrorActions(cm, range), rectForRange(cm, range), source);
   };
 
-  // Toolbar aliases (formerly menu-layout.js)
   window.dexMenuOpen      = isMenuOpen;
   window.dexOpenToolbar   = (s) => window.dexOpenMenuForSelection(s || 'toolbar');
   window.dexCloseToolbar  = () => closeMenu();
   window.dexToggleToolbar = () => isMenuOpen() ? closeMenu() : window.dexOpenMenuForSelection('toolbar');
 
   // ─── Selection handles ────────────────────────────────────────────────────
-  // Visual is a 22px knob inside a 44px touch target (CSS handles both).
-  // The handle is centered on the character corner via translate(-50%,-50%);
-  // start-handle is offset upward, end-handle downward.
   let handleStart = null;
   let handleEnd   = null;
   let _handleRafId = null;
@@ -372,8 +380,6 @@
     e.preventDefault();
     const cm = getCm();
     if (!cm) return;
-    // The finger sits on the knob; the knob is offset from the character.
-    // Compensate so the character under the finger tip is targeted.
     const delta = dragging === 'from' ? HANDLE_OFFSET : -HANDLE_OFFSET;
     const pos = cm.coordsChar({ left: e.clientX, top: e.clientY + delta }, 'window');
     cm.setSelection(dragFixedPoint, pos);
@@ -401,6 +407,8 @@
 
   const posEq = (a, b) => a.line === b.line && a.ch === b.ch;
 
+  // FIX #1: close BEFORE mutating the selection (otherwise cursorActivity
+  // schedules a menu that closeMenu() then wipes), and open directly.
   function firePress(clientX, clientY) {
     const cm = getCm();
     if (!cm) return;
@@ -409,8 +417,9 @@
     suppressNextPointerUp = true;
     if (navigator.vibrate) { try { navigator.vibrate(12); } catch (_e) {} }
 
+    if (typeof window.dexCloseNativeMenu === 'function') window.dexCloseNativeMenu();
+
     if (posEq(word.anchor, word.head)) {
-      // No word here (whitespace / empty area) → cursor menu (Paste / Select All)
       cm.setCursor(pos);
       cm.focus();
       if (typeof window.dexOpenMenuForSelection === 'function') {
@@ -418,18 +427,25 @@
       }
       return;
     }
-    // Word selected — show handles; menu will fire after handle release
+
     cm.setSelection(word.anchor, word.head);
     cm.focus();
     positionHandles();
-    if (typeof window.dexCloseNativeMenu === 'function') window.dexCloseNativeMenu();
+    if (typeof window.dexOpenMenuForSelection === 'function') {
+      window.dexOpenMenuForSelection('longpress');
+    }
   }
 
+  // FIX #3: reorder, suppress the trailing click, open directly.
   function fireDblTap(clientX, clientY) {
     const cm = getCm();
     if (!cm) return;
     const pos  = cm.coordsChar({ left: clientX, top: clientY }, 'window');
     const word = cm.findWordAt(pos);
+
+    suppressNextPointerUp = true;
+    if (typeof window.dexCloseNativeMenu === 'function') window.dexCloseNativeMenu();
+
     if (posEq(word.anchor, word.head)) {
       cm.setCursor(pos);
     } else {
@@ -438,7 +454,6 @@
     }
     cm.focus();
     if (navigator.vibrate) { try { navigator.vibrate(10); } catch (_e) {} }
-    if (typeof window.dexCloseNativeMenu === 'function') window.dexCloseNativeMenu();
     if (typeof window.dexOpenMenuForSelection === 'function') {
       window.dexOpenMenuForSelection('doubletap');
     }
@@ -493,20 +508,19 @@
       }
     }, { passive: false, capture: true });
 
+    // FIX #4: also reset the suppress flag on cancel, or the next tap is eaten.
     wrapper.addEventListener('pointercancel', (e) => {
       if (pressStart && e.pointerId === pressStart.id) cancelPress();
+      suppressNextPointerUp = false;
     }, { passive: true });
   }
 
   // ─── Unified CodeMirror hook ──────────────────────────────────────────────
-  // One cursorActivity handler does everything: handle repositioning, menu
-  // close on empty selection, menu schedule on selection.
   function attachToCm() {
     const cm = getCm();
     if (!cm) return false;
     if (attachToCm._cm === cm) return true;
 
-    // Unbind previous instance
     const prev = attachToCm._cm;
     if (prev && typeof prev.off === 'function') {
       if (prev.__dexCursorHandler) { try { prev.off('cursorActivity', prev.__dexCursorHandler); } catch (_e) {} }
@@ -516,7 +530,7 @@
 
     const onCursorActivity = () => {
       scheduleHandles();
-      if (window.__dexSelHandleDragging) return;   // don't touch menu while dragging handles
+      if (window.__dexSelHandleDragging) return;
       if (findMenuOpen()) { closeMenu('codemirror'); return; }
       if (!cm.somethingSelected()) { closeMenu('codemirror'); return; }
 
@@ -598,6 +612,7 @@
     });
   }
 
+  // FIX #3a: tell the browser not to hijack double-tap as a zoom gesture.
   function suppressNativeSelectionUI() {
     const attach = () => {
       const cmEl = document.querySelector('.CodeMirror');
@@ -605,8 +620,12 @@
       if (cmEl.__dexNoNativeUI) return;
       cmEl.__dexNoNativeUI = true;
       cmEl.style.webkitTouchCallout = 'none';
+      cmEl.style.touchAction = 'manipulation';
       const scroller = cmEl.querySelector('.CodeMirror-scroll');
-      if (scroller) scroller.style.webkitTouchCallout = 'none';
+      if (scroller) {
+        scroller.style.webkitTouchCallout = 'none';
+        scroller.style.touchAction = 'manipulation';
+      }
       cmEl.addEventListener('selectstart', (e) => e.preventDefault());
     };
     attach();
@@ -631,9 +650,29 @@
     init();
   }
 
-  // Rebind if the editor instance is swapped
-  setInterval(() => {
-    const cm = getCm();
-    if (cm && attachToCm._cm !== cm) attachToCm();
-  }, 1000);
+  // FIX #6: replace the forever-polling setInterval with a bounded initial
+  // retry plus a rAF-throttled MutationObserver for genuine editor swaps.
+  (function watchForEditor() {
+    let tries = 0;
+    (function retry() {
+      const cm = getCm();
+      if (cm) { attachToCm(); return; }
+      if (++tries < ATTACH_MAX_TRIES) setTimeout(retry, 300);
+    })();
+
+    let scheduled = false;
+    const check = () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        const cm = getCm();
+        if (cm && attachToCm._cm !== cm) attachToCm();
+      });
+    };
+    try {
+      const obs = new MutationObserver(check);
+      obs.observe(document.body, { childList: true, subtree: true });
+    } catch (_e) { /* MutationObserver unavailable — dexEditorReady still covers us */ }
+  })();
 })();
