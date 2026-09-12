@@ -5,10 +5,10 @@
   // ─── Constants ────────────────────────────────────────────────────────────
   const MENU_DELAY_MS    = 300;
   const LONG_PRESS_MS    = 450;
-  const DBL_TAP_MS       = 350;   // FIX: was 280 — too tight on real hardware
+  const DBL_TAP_MS       = 350;
   const MOVE_CANCEL_PX   = 10;
   const ATTACH_MAX_TRIES = 200;
-  const HANDLE_OFFSET    = 14;    // px above start-handle / below end-handle
+  const HANDLE_OFFSET    = 14;
   const FIND_MENU_ID     = 'find-replace-menu';
   const FIND_MENU_HIDDEN = 'find-replace-hidden';
 
@@ -59,7 +59,11 @@
   let menuEl = null;
   let activeActions = null;
   let activeMenuSource = null;
-  const surfaceTimers = Object.create(null);   // dynamic: 'codemirror', 'diff', 'generic', …
+  // FIX: snapshot of the selection the currently-open menu refers to.
+  // onCursorActivity compares against this to decide whether the menu is
+  // still relevant or a stale artefact that should be closed.
+  let menuSelection = null;
+  const surfaceTimers = Object.create(null);
 
   function clearPendingFor(surface) {
     if (surfaceTimers[surface]) {
@@ -96,10 +100,10 @@
     if (menuEl) menuEl.classList.remove('open');
     activeActions = null;
     activeMenuSource = null;
+    menuSelection = null;
   }
   window.dexCloseNativeMenu = () => closeMenu();
 
-  // FIX: escape single quote too, so attributes are future-proof.
   function escapeAttr(text) {
     return String(text)
       .replace(/&/g, '&amp;')
@@ -109,10 +113,30 @@
       .replace(/>/g, '&gt;');
   }
 
+  // Snapshot the current CodeMirror selection so we can later tell whether a
+  // cursorActivity event is "the same selection, menu is still valid" or "the
+  // user really moved/replaced the selection, menu should update".
+  function snapshotSelection() {
+    const cm = getCm();
+    if (!cm) return null;
+    if (cm.somethingSelected()) {
+      return { from: cm.getCursor('from'), to: cm.getCursor('to') };
+    }
+    const p = cm.getCursor();
+    return { from: p, to: p };
+  }
+
+  function sameSel(a, b) {
+    if (!a || !b) return false;
+    return a.from.line === b.from.line && a.from.ch === b.from.ch &&
+           a.to.line   === b.to.line   && a.to.ch   === b.to.ch;
+  }
+
   function renderMenu(actions, rect, source) {
     ensureMenu();
     activeActions = actions;
     activeMenuSource = source || null;
+    menuSelection = snapshotSelection();   // FIX
 
     let html = '';
     actions.forEach((a, i) => {
@@ -136,7 +160,6 @@
       });
     });
 
-    // Measure while hidden, then position + reveal (avoids a flash at 0,0)
     menuEl.style.visibility = 'hidden';
     menuEl.classList.add('open');
     const mw = menuEl.offsetWidth;
@@ -146,7 +169,7 @@
 
     let left = rect ? rect.left - mw / 2 : (vw - mw) / 2;
     let top  = rect ? rect.top - mh - 10 : (vh - mh) / 2;
-    if (rect && top < 8) top = rect.bottom + 10;   // no room above → below
+    if (rect && top < 8) top = rect.bottom + 10;
     left = Math.max(8, Math.min(vw - mw - 8, left));
     top  = Math.max(8, Math.min(vh - mh - 8, top));
 
@@ -155,10 +178,13 @@
     menuEl.style.visibility = '';
   }
 
+  // FIX: the "if (isMenuOpen()) closeMenu()" that used to live here was the
+  // killer — it nuked any menu opened synchronously just before a deferred
+  // cursorActivity arrived. The decision to replace an open menu now lives in
+  // onCursorActivity, which knows whether the selection actually changed.
   function scheduleMenu(surface, getActionsAndRect) {
     if (!(surface in surfaceTimers)) surfaceTimers[surface] = null;
     clearPendingFor(surface);
-    if (isMenuOpen()) closeMenu();
     surfaceTimers[surface] = setTimeout(() => {
       surfaceTimers[surface] = null;
       let result;
@@ -168,7 +194,6 @@
     }, MENU_DELAY_MS);
   }
 
-  // Public API used by diff-selection.js
   window.__dexMenuApi = {
     schedule: scheduleMenu,
     close: closeMenu,
@@ -270,8 +295,8 @@
     const cm = getCm();
     if (!cm) { notify('Editor not ready'); return; }
 
-    // FIX: cancel any in-flight scheduled menus so they cannot later
-    // close/replace what we are about to open directly.
+    // Cancel any in-flight scheduled menus so a stale timer can't later
+    // close/replace the menu we are opening right now.
     clearPendingFor('codemirror');
     clearPendingFor('generic');
 
@@ -289,21 +314,16 @@
       };
       renderMenu(codeMirrorActions(cm, range), rectForRange(cm, range), source);
     } catch (_e) {
-      // FIX: charCoords can throw if the editor viewport changed mid-call.
       closeMenu();
     }
   };
 
-  // Toolbar aliases (formerly menu-layout.js)
   window.dexMenuOpen      = isMenuOpen;
   window.dexOpenToolbar   = (s) => window.dexOpenMenuForSelection(s || 'toolbar');
   window.dexCloseToolbar  = () => closeMenu();
   window.dexToggleToolbar = () => isMenuOpen() ? closeMenu() : window.dexOpenMenuForSelection('toolbar');
 
   // ─── Selection handles ────────────────────────────────────────────────────
-  // Visual is a 22px knob inside a 44px touch target (CSS handles both).
-  // The handle is centered on the character corner via translate(-50%,-50%);
-  // start-handle is offset upward, end-handle downward.
   let handleStart = null;
   let handleEnd   = null;
   let _handleRafId = null;
@@ -386,8 +406,6 @@
     e.preventDefault();
     const cm = getCm();
     if (!cm) return;
-    // The finger sits on the knob; the knob is offset from the character.
-    // Compensate so the character under the finger tip is targeted.
     const delta = dragging === 'from' ? HANDLE_OFFSET : -HANDLE_OFFSET;
     const pos = cm.coordsChar({ left: e.clientX, top: e.clientY + delta }, 'window');
     cm.setSelection(dragFixedPoint, pos);
@@ -406,7 +424,6 @@
   // ─── Long-press / double-tap on CodeMirror wrapper ────────────────────────
   let pressTimer = null, pressStart = null, suppressNextPointerUp = false;
   let lastTapTime = 0, lastTapX = 0, lastTapY = 0;
-  // FIX: window during which synthesized clicks are swallowed after a fire*
   let suppressClickUntil = 0;
 
   function cancelPress() {
@@ -417,8 +434,6 @@
 
   const posEq = (a, b) => a.line === b.line && a.ch === b.ch;
 
-  // FIX: close BEFORE mutating the selection (otherwise cursorActivity
-  // schedules a menu that closeMenu() then wipes), and open directly.
   function firePress(clientX, clientY) {
     const cm = getCm();
     if (!cm) return;
@@ -431,7 +446,6 @@
     if (typeof window.dexCloseNativeMenu === 'function') window.dexCloseNativeMenu();
 
     if (posEq(word.anchor, word.head)) {
-      // No word here (whitespace / empty area) → cursor menu (Paste / Select All)
       cm.setCursor(pos);
       cm.focus();
       if (typeof window.dexOpenMenuForSelection === 'function') {
@@ -439,7 +453,6 @@
       }
       return;
     }
-    // Word selected — open the toolbar directly.
     cm.setSelection(word.anchor, word.head);
     cm.focus();
     positionHandles();
@@ -448,7 +461,6 @@
     }
   }
 
-  // FIX: reorder, suppress the trailing click, open directly.
   function fireDblTap(clientX, clientY) {
     const cm = getCm();
     if (!cm) return;
@@ -511,11 +523,6 @@
       }
     }, { passive: true });
 
-    // FIX: on the second tap's pointerup, pressStart is already null (cleared
-    // by the first pointerup). Previously this handler returned early and never
-    // called preventDefault(), letting CodeMirror's click handler reset the
-    // selection and close the just-opened menu. Now the two concerns are
-    // decoupled: cancelPress() is gated on pressStart, suppression is not.
     wrapper.addEventListener('pointerup', (e) => {
       if (pressStart && e.pointerId === pressStart.id) cancelPress();
       if (suppressNextPointerUp) {
@@ -525,15 +532,13 @@
       }
     }, { passive: false, capture: true });
 
-    // FIX: also reset the suppress flag on cancel, or the next tap is eaten.
     wrapper.addEventListener('pointercancel', (e) => {
       if (pressStart && e.pointerId === pressStart.id) cancelPress();
       suppressNextPointerUp = false;
     }, { passive: true });
 
-    // FIX: last-line-of-defence click swatter. Some browsers refuse to honor
-    // preventDefault() on pointerup for click suppression; CM's mousedown/click
-    // handlers will otherwise reset the selection and close the menu.
+    // Suppress the synthesized mousedown/click that would otherwise let CM
+    // reset the selection and fire cursorActivity right after we opened.
     wrapper.addEventListener('click', (e) => {
       if (Date.now() < suppressClickUntil) {
         e.preventDefault();
@@ -552,14 +557,11 @@
   }
 
   // ─── Unified CodeMirror hook ──────────────────────────────────────────────
-  // One cursorActivity handler does everything: handle repositioning, menu
-  // close on empty selection, menu schedule on selection.
   function attachToCm() {
     const cm = getCm();
     if (!cm) return false;
     if (attachToCm._cm === cm) return true;
 
-    // Unbind previous instance
     const prev = attachToCm._cm;
     if (prev && typeof prev.off === 'function') {
       if (prev.__dexCursorHandler) { try { prev.off('cursorActivity', prev.__dexCursorHandler); } catch (_e) {} }
@@ -569,9 +571,20 @@
 
     const onCursorActivity = () => {
       scheduleHandles();
-      if (window.__dexSelHandleDragging) return;   // don't touch menu while dragging handles
+      if (window.__dexSelHandleDragging) return;
       if (findMenuOpen()) { closeMenu('codemirror'); return; }
-      if (!cm.somethingSelected()) { closeMenu('codemirror'); return; }
+
+      // FIX: if a menu is open and the selection it refers to is unchanged,
+      // this cursorActivity is just the echo of the setSelection that opened
+      // it — leave the menu alone. Only if the user genuinely moved/replaced
+      // the selection do we close and reschedule.
+      if (isMenuOpen()) {
+        const cur = snapshotSelection();
+        if (sameSel(cur, menuSelection)) return;
+        closeMenu('codemirror');
+      }
+
+      if (!cm.somethingSelected()) return;
 
       scheduleMenu('codemirror', () => {
         if (!cm.somethingSelected()) return null;
@@ -651,7 +664,6 @@
     });
   }
 
-  // FIX: tell the browser not to hijack double-tap as a zoom gesture.
   function suppressNativeSelectionUI() {
     const attach = () => {
       const cmEl = document.querySelector('.CodeMirror');
@@ -689,8 +701,6 @@
     init();
   }
 
-  // FIX: replace the forever-polling setInterval with a bounded initial
-  // retry plus a rAF-throttled MutationObserver for genuine editor swaps.
   (function watchForEditor() {
     let tries = 0;
     (function retry() {
@@ -712,6 +722,6 @@
     try {
       const obs = new MutationObserver(check);
       obs.observe(document.body, { childList: true, subtree: true });
-    } catch (_e) { /* MutationObserver unavailable — dexEditorReady still covers us */ }
+    } catch (_e) {}
   })();
 })();
