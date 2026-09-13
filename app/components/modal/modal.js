@@ -1,4 +1,5 @@
 let activeDropdownClose = null;
+let modalBodyObserver = null; // NEW: Observer to watch for dynamically added elements
 
 function renderDropdownMenuPortal(trigger, options, callback) {
   options = Array.isArray(options) ? options : [];
@@ -143,6 +144,13 @@ function closeModal(result = null) {
     modalBackdrop.classList.remove("active");
     document.documentElement.style.overflow = "";
   }
+  
+  // NEW: Disconnect the observer to prevent memory leaks
+  if (modalBodyObserver) {
+    modalBodyObserver.disconnect();
+    modalBodyObserver = null;
+  }
+
   modalScope = {};
   if (modalResolver) {
     modalResolver(result);
@@ -267,6 +275,24 @@ window.showModal = function (options = {}) {
     applyModalStyles(bodyDiv);
     applyModalStyles(footerDiv);
     modalScope = createModalScope(bodyDiv);
+
+    // NEW: Set up MutationObserver to auto-scroll to bottom when new elements are added
+    if (modalBodyObserver) {
+      modalBodyObserver.disconnect();
+    }
+    modalBodyObserver = new MutationObserver((mutations) => {
+      const hasAddedNodes = mutations.some(m => m.addedNodes.length > 0);
+      if (hasAddedNodes) {
+        // Use setTimeout to allow the browser to calculate the new scrollHeight
+        setTimeout(() => {
+          bodyDiv.scrollTo({
+            top: bodyDiv.scrollHeight,
+            behavior: 'smooth'
+          });
+        }, 50);
+      }
+    });
+    modalBodyObserver.observe(bodyDiv, { childList: true });
 
     bodyDiv.querySelectorAll(".custom-dropdown-trigger").forEach((trigger) => {
       const opts = JSON.parse(trigger.dataset.options || "[]");
