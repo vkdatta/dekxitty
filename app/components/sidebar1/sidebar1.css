@@ -1,3 +1,6 @@
+/* ============================================================
+   SIDEBAR 1  (note-mode slide-in drawer)
+   ============================================================ */
 .sidebar-header {
   padding: 15px 20px;
   display: flex;
@@ -17,7 +20,7 @@
   background: var(--primary);
   height: auto;
   position: fixed;
-  top: calc(2vh + var(--topbar-height));
+  top: calc(10px + var(--topbar-height) + 10px); /* bar top + bar height + gap */
   bottom: 0;
   transform: none;
   max-height: none;
@@ -156,10 +159,6 @@
   color: var(--c-text-dim);
 }
 .dex-ic svg { width: 100%; height: 100%; }
-/* Folder icon was a hardcoded fill="#d4a84b" (9.5:1 on dark, 1.9:1 on
-   light — nearly invisible) regardless of theme. Now fill="currentColor"
-   in the SVG, themed here to a color computed for >=10:1 against the
-   sidebar's page background in both themes. */
 .dex-ic-folder { color: var(--c-folder-icon); }
 .dex-name {
   flex: 1; font-size: 13.5px;
@@ -300,53 +299,156 @@
   font-family: 'Source Code Pro', monospace;
 }
 
-/* ====== /filemanager screen (R2) ====== */
+/* ============================================================
+   FILEMANAGER ROUTE — merged left bar (R2)
+   Shape: RNW vertical bar — 64 px wide, full height inset by 10 px,
+   border-radius: 19 px.  Topbar is hidden; this bar is the sole
+   navigation surface for the filemanager route.
+   ============================================================ */
+
+/* ── Invisible left-edge hotspot: reopens the nav bar when closed ── */
+.fm-edge-hotspot {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 7px;
+  background: transparent;
+  border: 0;
+  border-radius: 0 999px 999px 0;
+  cursor: pointer;
+  z-index: 12;
+  pointer-events: none;
+  opacity: 0.38;
+  transition:
+    width  0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.22s ease,
+    opacity 0.18s ease;
+}
+/* Only active in filemanager mode when bar is closed */
+body.mode-filemanager.fm-nav-closed .fm-edge-hotspot {
+  pointer-events: auto;
+}
+.fm-edge-hotspot:hover,
+.fm-edge-hotspot:focus-visible {
+  width: 18px;
+  height: 58px;
+  background: color-mix(in srgb, var(--c-white) 08%, transparent);
+  opacity: 1;
+}
+/* Touch devices: larger persistent hit area */
+@media (hover: none), (pointer: coarse) {
+  .fm-edge-hotspot {
+    width: 34px;
+    height: 72px;
+    background: color-mix(in srgb, var(--c-white) 04%, transparent);
+    opacity: 0.72;
+  }
+}
+
+/* ── Merged FM nav bar ── */
 .filemanager-app-sidebar {
   display: none;
   position: fixed;
-  left: 0;
-  top: calc(2vh + var(--topbar-height));
-  bottom: 0;
-  width: 210px;
+  left: 10px;
+  top: 10px;
+  bottom: 10px;
+  width: 64px;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px 10px;
+  align-items: center;
+  gap: 0;
+  padding: 5px;
   background: var(--c-panel);
-  border-right: 1px solid var(--c-border);
+  border: 1px solid color-mix(in srgb, var(--c-white) 8%, transparent);
+  border-radius: 19px;
   z-index: 11;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  transition:
+    width  0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.filemanager-app-sidebar::-webkit-scrollbar { display: none; }
 body.mode-filemanager .filemanager-app-sidebar { display: flex; }
 
+/* Hidden when user closes the nav bar */
+body.mode-filemanager.fm-nav-closed .filemanager-app-sidebar { display: none; }
+
+/* ── FM nav items: icon-only, RNW icon-item shape ── */
 .fm-app-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: var(--btn-padding);
+  justify-content: center;
+  width: 52px;
+  height: 42px;
+  flex: 0 0 42px;
+  padding: 0;
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: var(--c-text-dim);
+  color: var(--c-text-faint);
   font-family: inherit;
-  font-size: 13.5px;
-  text-align: left;
   cursor: pointer;
+  transition: color 0.16s ease, transform 0.16s ease, background 0.16s ease;
 }
-.fm-app-item:hover { background: var(--c-panel-2); color: var(--c-white); }
+.fm-app-item:hover  { background: color-mix(in srgb, var(--c-white) 06%, transparent); color: var(--c-white); }
+.fm-app-item:active { transform: scale(0.88); }
+.fm-app-item:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+/* Labels hidden — icon-only bar */
+.fm-app-item span { display: none; }
 
-/* Dock #sidebar1 as the filemanager's main content instead of a slide-in drawer. */
+/* Close control sits at the bottom of the bar */
+.fm-app-item.fm-nav-close {
+  margin-top: auto;
+}
+
+/* Divider between utility items and controls */
+.fm-divider {
+  width: 26px;
+  height: 1px;
+  background: color-mix(in srgb, var(--c-white) 08%, transparent);
+  border-radius: 999px;
+  margin: 4px 0;
+  flex-shrink: 0;
+}
+
+/* ── Hide topbar entirely in filemanager mode ──
+   Home and sidebar1 toggle now live inside .filemanager-app-sidebar. */
+body.mode-filemanager .topbar { display: none !important; }
+
+/* ── Dock sidebar1 (file browser) to the right of the 64 px nav bar ──
+   left = 10 px (app pad) + 64 px (bar) + 10 px (gap) = 84 px
+   top = 0 (no topbar offset; topbar is hidden) */
 body.mode-filemanager #sidebar1 {
   position: fixed;
-  left: 210px;
+  left: 84px;
   right: 0;
-  top: calc(2vh + var(--topbar-height));
+  top: 0;
   bottom: 0;
   width: auto;
   transform: none;
   z-index: 10;
 }
 
+/* Remove note-editor padding in FM (topbar is hidden) */
+body.mode-filemanager .note-app-container { padding-top: 0; }
+
+/* Sidebar1 still collapses on demand (fm-sidebar-collapsed class) */
+body.mode-filemanager.fm-sidebar-collapsed #sidebar1 { display: none; }
+/* Nav bar stays at 64 px icon width when file browser is collapsed */
+
+/* FM nav bar closed + file browser collapsed: just the edge hotspot */
+body.mode-filemanager.fm-nav-closed #sidebar1 { left: 0; }
+
+/* Legacy per-button topbar hides (now redundant since the whole topbar
+   is hidden in FM, but kept for forward-compatibility) */
 body.mode-filemanager #topbar #undoBtn,
 body.mode-filemanager #topbar #redoBtn,
 body.mode-filemanager #topbar .topbar-button[onclick*="toggleFullscreen"],
@@ -355,12 +457,12 @@ body.mode-filemanager #topbar #secondary-sidebar-button {
   display: none;
 }
 
-body.mode-filemanager.fm-sidebar-collapsed #sidebar1 { display: none; }
-body.mode-filemanager.fm-sidebar-collapsed .filemanager-app-sidebar { width: 100%; }
-
+/* ── Responsive ── */
 @media (max-width: 640px) {
-  .filemanager-app-sidebar { width: 72px; }
-  .fm-app-item span { display: none; }
-  .fm-app-item { justify-content: center; padding: 12px 0; }
-  body.mode-filemanager #sidebar1 { left: 72px; }
+  .filemanager-app-sidebar {
+    left: 7px;
+    top: 7px;
+    bottom: 7px;
+  }
+  body.mode-filemanager #sidebar1 { left: 81px; }
 }

@@ -1,43 +1,56 @@
+/* ── TOPBAR ─────────────────────────────────────────────────────────
+   Shape: RNW top bar — full-width rounded rect, left: 10px / right: 10px,
+   border-radius: 19px, height: 64 px, 5 px inner padding.
+   Previously: centered floating pill (border-radius: 30px, fit-content width).
+   ────────────────────────────────────────────────────────────────── */
 .topbar {
   position: fixed;
-  top: 2vh;
-  left: 50%;
-  transform: translateX(-50%);
-  width: fit-content;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  width: auto;
   background: var(--c-panel);
   border: 1px solid color-mix(in srgb, var(--c-white) 8%, transparent);
-  padding: 10px 20px;
+  padding: 5px;
   display: flex;
   align-items: center;
-  border-radius: 30px;
+  border-radius: 19px;
   z-index: 100;
   height: var(--topbar-height);
+  transition:
+    width  0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Buttons cluster in the centre of the full-width bar */
 .topbar-section {
   display: flex;
   align-items: center;
   flex: 1;
   color: var(--color);
-  justify-content: space-between;
+  justify-content: center;
+  gap: 2px;
 }
+
 .topbar-button {
-  background: var(--matte);
+  background: transparent;
   border: none;
   color: var(--color);
   cursor: pointer;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   padding: var(--btn-padding);
   box-sizing: border-box;
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 4px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  margin: 0;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
-.topbar-button:hover { background: var(--c-panel-2); }
-.topbar-button:active { transform: scale(0.92); }
+.topbar-button:hover  { background: color-mix(in srgb, var(--c-white) 06%, transparent); color: var(--c-white); }
+.topbar-button:active { transform: scale(0.88); }
 .topbar-button:focus-visible {
   outline: 2px solid var(--c-accent);
   outline-offset: 2px;
@@ -45,16 +58,12 @@
 .topbar delluna-icon {
   color: var(--c-text-faint);
 }
-@media (max-width: 1200px) {
-  .topbar { width: fit-content; }
-}
+
+/* ── Responsive: bar stays full-width at all breakpoints ── */
 @media (max-width: 600px) {
   .topbar {
-    width: fit-content;
-    padding: 12px 24px;
-  }
-  .topbar-button {
-    width: 40px;
-    height: 40px;
+    top: 7px;
+    left: 7px;
+    right: 7px;
   }
 }

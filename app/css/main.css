@@ -43,7 +43,8 @@ button { font-family: classy; }
   transform: translateY(0);
   animation: fadeInUp 0.8s ease-out 0.2s forwards;
   background: 0;
-  padding-top: calc(var(--topbar-height) + 2vh);
+  /* topbar: top: 10px + height: 64px + 10px gap = 84px */
+  padding-top: calc(var(--topbar-height) + 20px);
   margin: 0;
 }
 

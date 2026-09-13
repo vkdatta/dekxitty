@@ -3,7 +3,7 @@
   --color: var(--c-white);
   --accent: var(--c-panel-2);
   --transition-speed: 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
-  --topbar-height: 60px;
+  --topbar-height: 64px;
   --selection-color: var(--c-border-soft);
   --gap: 12px;
   --matte: var(--c-panel);
