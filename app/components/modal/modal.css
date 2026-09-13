@@ -19,7 +19,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 4vh);
+  max-height: calc(100dvh - 4vh); /* CHANGED TO DVH */
   border: 1px solid color-mix(in srgb, var(--c-white) 8%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -27,7 +27,7 @@
   opacity: 0;
   transition: transform var(--transition-speed),
               opacity var(--transition-speed);
-  margin-top: 2vh;
+  margin-top: 2dvh; /* CHANGED TO DVH */
 }
 .modal-backdrop.active .modal-window {
   transform: translateY(0);
@@ -67,12 +67,16 @@
 }
 .modal-body {
   padding: 16px 18px;
-  overflow: auto;
+  overflow-y: auto; /* CHANGED to overflow-y */
   display: flex;
   flex-direction: column;
   gap: 12px;
   color: var(--c-white);
   font-size: 14px;
+  
+  /* SOLUTION 1 FIXES */
+  flex: 1 1 auto; 
+  min-height: 0; 
 }
 .modal-row {
   display: flex;
