@@ -77,7 +77,6 @@ if (window.Delluna) {
       apps:        { variant: 'circuit' },
       play_arrow:  { variant: 'plasma'  },
       star_border: { variant: 'orbit'   },
-      open_in_full:{ variant: 'hud'     },
       search_off:  { variant: 'hud'     },
       info:        { variant: 'orbit'   },
       route:       { variant: 'circuit' }
