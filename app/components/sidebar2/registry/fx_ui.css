@@ -515,3 +515,10 @@
   .gf-title { display: none; }
   .gf-db-btn span:not(.gf-db-count):not(delluna-icon) { display: none; }
 }
+
+/* pinned star — documented Delluna color form */
+delluna-icon.gf-pin-star svg,
+delluna-icon.gf-pin-star svg * {
+  fill: #f5c518;
+  stroke: #f5c518;
+}

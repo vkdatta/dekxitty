@@ -150,7 +150,19 @@ body.topbar-closed .note-app-container { padding-top: 10px; }
 .topbar-button:hover  { color: var(--c-white); background: color-mix(in srgb, var(--c-white) 06%, transparent); }
 .topbar-button:active { transform: scale(.88); }
 .topbar-button:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -6px; }
-.topbar delluna-icon  { color: inherit; }
+/* icon colors — documented Delluna form, mirrors .topbar-button color states */
+.topbar-button delluna-icon svg,
+.topbar-button delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
+.topbar-button:hover delluna-icon svg,
+.topbar-button:hover delluna-icon svg *,
+.topbar-button.active delluna-icon svg,
+.topbar-button.active delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 
 /* Active indicator — bottom dot, per template .bar-h .icon-item.active::after */
 .topbar-button.active { color: var(--c-white); }

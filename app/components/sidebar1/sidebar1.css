@@ -260,3 +260,54 @@ body.mode-filemanager #topbar #secondary-sidebar-button { display:none; }
 @media (prefers-reduced-motion:reduce) {
   .navigation-expanded,.expanded-drill-track,.expanded-builder,.expanded-picker { transition:none !important; }
 }
+
+/* Delluna icon colors — documented form only: `delluna-icon svg, delluna-icon svg * { fill; stroke }`.
+   Mirrors the color states of the parent controls above. */
+#sidebar1 .dex-tool delluna-icon svg,
+#sidebar1 .dex-tool delluna-icon svg * { fill:var(--c-text-dim); stroke:var(--c-text-dim); }
+#sidebar1 .dex-tool:hover delluna-icon svg,
+#sidebar1 .dex-tool:hover delluna-icon svg * { fill:var(--c-white); stroke:var(--c-white); }
+#sidebar1 .dex-tool.danger delluna-icon svg,
+#sidebar1 .dex-tool.danger delluna-icon svg * { fill:color-mix(in srgb,var(--c-danger) 28%,transparent); stroke:color-mix(in srgb,var(--c-danger) 28%,transparent); }
+#sidebar1 .dex-tool.accent delluna-icon svg,
+#sidebar1 .dex-tool.accent delluna-icon svg * { fill:color-mix(in srgb,var(--c-accent) 30%,transparent); stroke:color-mix(in srgb,var(--c-accent) 30%,transparent); }
+.dex-ic delluna-icon svg,
+.dex-ic delluna-icon svg *,
+.dex-add delluna-icon svg,
+.dex-add delluna-icon svg * { fill:var(--c-text-dim); stroke:var(--c-text-dim); }
+.dex-ic-folder delluna-icon svg,
+.dex-ic-folder delluna-icon svg * { fill:var(--c-folder-icon); stroke:var(--c-folder-icon); }
+.dex-row.dex-current .dex-ic delluna-icon svg,
+.dex-row.dex-current .dex-ic delluna-icon svg *,
+.dex-chev.onpath delluna-icon svg,
+.dex-chev.onpath delluna-icon svg * { fill:var(--c-blue); stroke:var(--c-blue); }
+.dex-row.dex-pick-active .dex-ic delluna-icon svg,
+.dex-row.dex-pick-active .dex-ic delluna-icon svg * { fill:var(--c-green); stroke:var(--c-green); }
+.dex-chev delluna-icon svg,
+.dex-chev delluna-icon svg * { fill:var(--c-text-faint); stroke:var(--c-text-faint); }
+.dex-chev.onpath delluna-icon svg,
+.dex-chev.onpath delluna-icon svg * { fill:var(--c-blue); stroke:var(--c-blue); }
+.navigation-expanded-close delluna-icon svg,
+.navigation-expanded-close delluna-icon svg * { fill:var(--c-text-dim); stroke:var(--c-text-dim); }
+.navigation-expanded-close:hover delluna-icon svg,
+.navigation-expanded-close:hover delluna-icon svg *,
+.expanded-drill-tool:hover delluna-icon svg,
+.expanded-drill-tool:hover delluna-icon svg *,
+.expanded-drill-move:hover delluna-icon svg,
+.expanded-drill-move:hover delluna-icon svg *,
+.expanded-builder-close:hover delluna-icon svg,
+.expanded-builder-close:hover delluna-icon svg *,
+.expanded-drill-visibility.is-on delluna-icon svg,
+.expanded-drill-visibility.is-on delluna-icon svg * { fill:var(--c-white); stroke:var(--c-white); }
+.expanded-drill-tool delluna-icon svg,
+.expanded-drill-tool delluna-icon svg *,
+.expanded-builder-close delluna-icon svg,
+.expanded-builder-close delluna-icon svg * { fill:color-mix(in srgb,var(--c-white) 55%,transparent); stroke:color-mix(in srgb,var(--c-white) 55%,transparent); }
+.expanded-drill-move delluna-icon svg,
+.expanded-drill-move delluna-icon svg * { fill:color-mix(in srgb,var(--c-white) 40%,transparent); stroke:color-mix(in srgb,var(--c-white) 40%,transparent); }
+.expanded-drill-delete delluna-icon svg,
+.expanded-drill-delete delluna-icon svg * { fill:color-mix(in srgb,var(--c-white) 28%,transparent); stroke:color-mix(in srgb,var(--c-white) 28%,transparent); }
+.expanded-drill-delete:hover delluna-icon svg,
+.expanded-drill-delete:hover delluna-icon svg * { fill:var(--c-danger); stroke:var(--c-danger); }
+.expanded-drill-visibility.is-off delluna-icon svg,
+.expanded-drill-visibility.is-off delluna-icon svg * { fill:color-mix(in srgb,var(--c-white) 25%,transparent); stroke:color-mix(in srgb,var(--c-white) 25%,transparent); }

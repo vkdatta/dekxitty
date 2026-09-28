@@ -74,11 +74,15 @@ body.mode-diffusion .diff-bottombar:not(.mermaid-bottombar) {
   background: var(--diff-accent);
   color: var(--c-white);
 }
-.diff-bottombar delluna-icon {
-  color: var(--c-text-faint);
+.diff-bottombar delluna-icon svg,
+.diff-bottombar delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
 }
-.diff-bottombar .diff-topbar-button.active delluna-icon {
-  color: var(--c-white);
+.diff-bottombar .diff-topbar-button.active delluna-icon svg,
+.diff-bottombar .diff-topbar-button.active delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
 }
 @media (max-width: 600px) {
  .diff-bottombar {
@@ -261,11 +265,15 @@ body.diff-fullscreen .diff-lines-container {
   background: var(--diff-accent);
   color: var(--c-white);
 }
-.diff-topbar delluna-icon {
-  color: var(--c-text-faint);
+.diff-topbar delluna-icon svg,
+.diff-topbar delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
 }
-.diff-topbar-button.active delluna-icon {
-  color: var(--c-white);
+.diff-topbar-button.active delluna-icon svg,
+.diff-topbar-button.active delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
 }
 .diff-viewport {
   height: 100dvh;

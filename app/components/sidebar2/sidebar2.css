@@ -171,8 +171,12 @@
   color: var(--c-text-dim);
 }
 .secondary-sidebar delluna-icon {
-  color: var(--c-text-dim);
   transition: transform var(--transition-speed);
+}
+.secondary-sidebar delluna-icon svg,
+.secondary-sidebar delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
 }
 @media (max-width: 520px) {
   :root { --category-box-width: 84vw; }
