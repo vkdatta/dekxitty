@@ -31,6 +31,11 @@
   transition: box-shadow var(--transition-speed),
     transform var(--transition-speed), background var(--transition-speed);
 }
+.find-replace-search-bar delluna-icon svg,
+.find-replace-search-bar delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .find-replace-search-bar:focus-within {
   box-shadow: 0 0 0 var(--focus-ring) color-mix(in srgb, var(--c-accent) 08%, transparent);
   border-color: color-mix(in srgb, var(--c-accent) 18%, transparent);
@@ -94,8 +99,18 @@
   transition: 0.15s;
   flex-shrink: 0;
 }
+.find-replace-icon-button delluna-icon svg,
+.find-replace-icon-button delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .find-replace-icon-button.active {
   color: var(--c-green);
+}
+.find-replace-icon-button.active delluna-icon svg,
+.find-replace-icon-button.active delluna-icon svg * {
+  fill: var(--c-green);
+  stroke: var(--c-green);
 }
 .find-replace-main-button {
   background: var(--c-panel-2);
@@ -110,8 +125,18 @@
   outline: none;
   border-radius: 8px;
 }
+.find-replace-main-button delluna-icon svg,
+.find-replace-main-button delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .find-replace-main-button.active {
   color: var(--c-black);
+}
+.find-replace-main-button.active delluna-icon svg,
+.find-replace-main-button.active delluna-icon svg * {
+  fill: var(--c-black);
+  stroke: var(--c-black);
 }
 .find-replace-controls-row {
   display: flex;
@@ -299,6 +324,11 @@
   font-size: 12px;
   margin-top: 2px;
 }
+.chain-pane-steps delluna-icon svg,
+.chain-pane-steps delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .chain-pane-edit {
   background: transparent;
   border: none;
@@ -310,7 +340,17 @@
   align-items: center;
   justify-content: center;
 }
+.chain-pane-edit delluna-icon svg,
+.chain-pane-edit delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .chain-pane-edit:hover { color: var(--c-accent); background: var(--c-border-soft); }
+.chain-pane-edit:hover delluna-icon svg,
+.chain-pane-edit:hover delluna-icon svg * {
+  fill: var(--c-accent);
+  stroke: var(--c-accent);
+}
 .chain-empty {
   color: var(--c-text-faint);
   font-size: 13.5px;
@@ -334,10 +374,24 @@
   color: var(--c-text-faint);
   flex-shrink: 0;
 }
+.chain-step-arrow delluna-icon svg,
+.chain-step-arrow delluna-icon svg *,
+delluna-icon.chain-step-arrow svg,
+delluna-icon.chain-step-arrow svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .chain-step-row-fn .custom-dropdown { flex: 1; min-width: 0; }
 .chain-step-kind-icon {
   color: var(--c-accent);
   flex-shrink: 0;
+}
+.chain-step-kind-icon delluna-icon svg,
+.chain-step-kind-icon delluna-icon svg *,
+delluna-icon.chain-step-kind-icon svg,
+delluna-icon.chain-step-kind-icon svg * {
+  fill: var(--c-accent);
+  stroke: var(--c-accent);
 }
 .chain-step-remove {
   background: transparent;
@@ -351,7 +405,17 @@
   justify-content: center;
   border-radius: 6px;
 }
+.chain-step-remove delluna-icon svg,
+.chain-step-remove delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .chain-step-remove:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+.chain-step-remove:hover delluna-icon svg,
+.chain-step-remove:hover delluna-icon svg * {
+  fill: var(--c-danger);
+  stroke: var(--c-danger);
+}
 
 .chain-add-row { display: flex; gap: 8px; margin-top: 6px; }
 .chain-add-btn {

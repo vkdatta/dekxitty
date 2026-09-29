@@ -80,15 +80,30 @@ body.mode-mermaid .diff-bottombar.mermaid-bottombar { display: flex; }
   white-space: nowrap;
   user-select: none;
 }
+#mermaidViewport .btn delluna-icon svg,
+#mermaidViewport .btn delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 #mermaidViewport .btn:hover {
   color: var(--c-white);
   background: var(--c-panel);
   transform: translateY(1px);
 }
+#mermaidViewport .btn:hover delluna-icon svg,
+#mermaidViewport .btn:hover delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 #mermaidViewport .btn.btn-accent {
   background: var(--c-accent);
   color: var(--c-black);
   font-weight: 600;
+}
+#mermaidViewport .btn.btn-accent delluna-icon svg,
+#mermaidViewport .btn.btn-accent delluna-icon svg * {
+  fill: var(--c-black);
+  stroke: var(--c-black);
 }
 #mermaidViewport .btn.btn-accent:hover { background: var(--c-accent); }
 #mermaidViewport .btn:disabled { opacity: 0.35; pointer-events: none; transform: none; }

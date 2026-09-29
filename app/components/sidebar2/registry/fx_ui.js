@@ -562,7 +562,7 @@
           <div class="gf-fn-actions">
             <button class="gf-pin-btn${pinned ? ' pinned' : ''}" data-fn-id="${fn.id}"
               title="${pinned ? 'Unpin from sidebar' : 'Pin to sidebar'}"
-            >${pinned ? `<delluna-icon name="star-fill" style="color:#f5c518"></delluna-icon>` : icIcon('star_border')}</button>
+            >${pinned ? `<delluna-icon name="star-fill" class="gf-pin-star"></delluna-icon>` : icIcon('star_border')}</button>
             ${!isUser
               ? `<button class="gf-add-btn${inUser ? ' added' : ''}" data-fn-id="${fn.id}"
                    title="${inUser ? 'In User DB' : 'Add to User DB'}"${inUser ? ' disabled' : ''}
@@ -602,7 +602,7 @@
         togglePin({ onclick: fn.onclick, icon: fn.icon, text: fn.name });
         const nowPinned = isPinned(fn.onclick);
         btn.classList.toggle('pinned', nowPinned);
-        btn.innerHTML = nowPinned ? `<delluna-icon name="star-fill" style="color:#f5c518"></delluna-icon>` : icIcon('star_border');
+        btn.innerHTML = nowPinned ? `<delluna-icon name="star-fill" class="gf-pin-star"></delluna-icon>` : icIcon('star_border');
         btn.title     = nowPinned ? 'Unpin from sidebar' : 'Pin to sidebar';
       });
     });

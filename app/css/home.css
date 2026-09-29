@@ -22,6 +22,15 @@
   font-family: 'classy', sans-serif;
   font-size: 1rem;
 }
+.homepage-button delluna-icon svg,
+.homepage-button delluna-icon svg *,
+.google-login-button delluna-icon svg,
+.google-login-button delluna-icon svg *,
+.google-logout-button delluna-icon svg,
+.google-logout-button delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .docs-overlay {
   display: none;
   position: fixed;
@@ -45,6 +54,11 @@
   font-weight: 600;
   color: var(--c-white);
 }
+.docs-card delluna-icon svg,
+.docs-card delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .docs-close {
   background: transparent;
   border: none;
@@ -54,7 +68,17 @@
   padding: 4px;
   border-radius: 8px;
 }
+.docs-close delluna-icon svg,
+.docs-close delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .docs-close:hover { color: var(--c-white); background: var(--c-panel-2); }
+.docs-close:hover delluna-icon svg,
+.docs-close:hover delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .docs-body {
   padding: 4px 24px 28px;
   color: var(--c-text-dim);
@@ -81,11 +105,21 @@ html[data-theme="light"] .homepage-button {
   color: var(--color);
   border: 1px solid var(--border);
 }
+html[data-theme="light"] .homepage-button delluna-icon svg,
+html[data-theme="light"] .homepage-button delluna-icon svg * {
+  fill: var(--color);
+  stroke: var(--color);
+}
 .google-login-button { border-radius: 500px; }
 .google-logout-button {
   color: var(--c-danger);
   border-radius: 500px;
   display: none;
+}
+.google-logout-button delluna-icon svg,
+.google-logout-button delluna-icon svg * {
+  fill: var(--c-danger);
+  stroke: var(--c-danger);
 }
 .google-login-button svg, .google-logout-button i {
   display: inline-flex;

@@ -12,6 +12,8 @@
   border-color: color-mix(in srgb, var(--c-white) 25%, transparent);
   color: var(--c-white);
 }
+.fp-toggle-btn.active delluna-icon svg,
+.fp-toggle-btn.active delluna-icon svg * { fill: var(--c-white); stroke: var(--c-white); }
 .fp-section { display: none; }
 .fp-section.active { display: block; }
 .fp-search-wrap { position: relative; margin-bottom: 10px; }

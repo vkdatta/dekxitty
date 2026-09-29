@@ -16,6 +16,11 @@
   color: var(--c-text-dim);
   font-size: 13px;
 }
+.asteroid-topbar delluna-icon svg,
+.asteroid-topbar delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .asteroid-close {
   background: transparent;
   border: none;
@@ -25,7 +30,17 @@
   padding: 4px;
   border-radius: 8px;
 }
+.asteroid-close delluna-icon svg,
+.asteroid-close delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .asteroid-close:hover { color: var(--c-white); background: var(--c-panel-2); }
+.asteroid-close:hover delluna-icon svg,
+.asteroid-close:hover delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 #asteroidCanvas { flex: 1; width: 100%; touch-action: none; }
 .asteroid-empty {
   position: absolute;

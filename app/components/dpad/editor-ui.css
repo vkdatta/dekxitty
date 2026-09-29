@@ -66,6 +66,11 @@
   -webkit-tap-highlight-color: transparent;
   transition: background 0.12s ease, color 0.12s ease, transform 0.10s ease;
 }
+.dex-nm-item delluna-icon svg,
+.dex-nm-item delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 
 .dex-nm-item delluna-icon {
   width: 20px;
@@ -80,6 +85,13 @@
   color: var(--c-blue);
   outline: none;
 }
+.dex-nm-item:hover delluna-icon svg,
+.dex-nm-item:hover delluna-icon svg *,
+.dex-nm-item:focus-visible delluna-icon svg,
+.dex-nm-item:focus-visible delluna-icon svg * {
+  fill: var(--c-blue);
+  stroke: var(--c-blue);
+}
 
 .dex-nm-item:focus-visible {
   background: color-mix(in srgb, var(--c-blue) 18%, transparent);
@@ -93,10 +105,22 @@
 .dex-nm-item.dex-nm-danger {
   color: var(--c-text-faint);
 }
+.dex-nm-item.dex-nm-danger delluna-icon svg,
+.dex-nm-item.dex-nm-danger delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .dex-nm-item.dex-nm-danger:hover,
 .dex-nm-item.dex-nm-danger:active {
   color: var(--c-danger);
   background: color-mix(in srgb, var(--c-danger) 10%, transparent);
+}
+.dex-nm-item.dex-nm-danger:hover delluna-icon svg,
+.dex-nm-item.dex-nm-danger:hover delluna-icon svg *,
+.dex-nm-item.dex-nm-danger:active delluna-icon svg,
+.dex-nm-item.dex-nm-danger:active delluna-icon svg * {
+  fill: var(--c-danger);
+  stroke: var(--c-danger);
 }
 
 .dex-nm-sep {

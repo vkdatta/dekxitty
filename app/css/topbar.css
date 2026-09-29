@@ -94,7 +94,17 @@ body.topbar-closed .note-app-container { padding-top: 10px; }
   order: 1;
   transition: background .16s ease, color .16s ease, transform .16s ease;
 }
+.topbar-expand delluna-icon svg,
+.topbar-expand delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .topbar-expand:hover  { background: color-mix(in srgb, var(--c-white) 06%, transparent); color: var(--c-white); }
+.topbar-expand:hover delluna-icon svg,
+.topbar-expand:hover delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .topbar-expand:active { transform: scale(0.9); }
 .topbar-expand:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -4px; }
 
@@ -125,7 +135,17 @@ body.topbar-closed .note-app-container { padding-top: 10px; }
   order: 3;
   transition: background .16s ease, color .16s ease, transform .16s ease;
 }
+.topbar-close delluna-icon svg,
+.topbar-close delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .topbar-close:hover  { background: color-mix(in srgb, var(--c-white) 06%, transparent); color: var(--c-white); }
+.topbar-close:hover delluna-icon svg,
+.topbar-close:hover delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .topbar-close:active { transform: scale(0.9); }
 .topbar-close:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -4px; }
 
@@ -147,13 +167,27 @@ body.topbar-closed .note-app-container { padding-top: 10px; }
   cursor: pointer;
   transition: color .16s ease, transform .16s ease, background .16s ease;
 }
+.topbar-button delluna-icon svg,
+.topbar-button delluna-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .topbar-button:hover  { color: var(--c-white); background: color-mix(in srgb, var(--c-white) 06%, transparent); }
+.topbar-button:hover delluna-icon svg,
+.topbar-button:hover delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .topbar-button:active { transform: scale(.88); }
 .topbar-button:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -6px; }
-.topbar delluna-icon  { color: inherit; }
 
 /* Active indicator — bottom dot, per template .bar-h .icon-item.active::after */
 .topbar-button.active { color: var(--c-white); }
+.topbar-button.active delluna-icon svg,
+.topbar-button.active delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .topbar-button.active::after {
   content: "";
   position: absolute;

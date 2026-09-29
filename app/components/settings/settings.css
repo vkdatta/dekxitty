@@ -53,6 +53,11 @@
   color: var(--c-white);
   border-bottom-color: var(--c-accent);
 }
+.settings-tab.active delluna-icon svg,
+.settings-tab.active delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .settings-tab-panel { display: none; }
 .settings-tab-panel.active { display: block; }
 
@@ -198,6 +203,11 @@
   color: var(--c-white);
   border-color: var(--c-accent);
   background: color-mix(in srgb, var(--c-accent) 10%, transparent);
+}
+.debugtab.active delluna-icon svg,
+.debugtab.active delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
 }
 #debugconsole, #debugnetwork {
   flex: 1; overflow: auto; padding: 10px;

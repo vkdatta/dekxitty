@@ -29,6 +29,11 @@
               opacity var(--transition-speed);
   margin-top: 2dvh;
 }
+.modal-window delluna-icon svg,
+.modal-window delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .modal-backdrop.active .modal-window {
   transform: translateY(0);
   opacity: 1;
@@ -57,9 +62,19 @@
   cursor: pointer;
   border-radius: 8px;
 }
+.modal-close delluna-icon svg,
+.modal-close delluna-icon svg * {
+  fill: var(--blueink);
+  stroke: var(--blueink);
+}
 .modal-close:hover {
   background: var(--c-panel-2);
   color: var(--c-white);
+}
+.modal-close:hover delluna-icon svg,
+.modal-close:hover delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
 }
 .modal-close:focus {
   outline: none;
@@ -80,6 +95,11 @@
   
   /* NEW: Smooth scrolling for JS scroll-to-bottom */
   scroll-behavior: smooth; 
+}
+.modal-body delluna-icon svg,
+.modal-body delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
 }
 .modal-row {
   display: flex;
@@ -124,6 +144,11 @@
               background var(--transition-speed);
   margin-top: 8px;
 }
+.custom-dropdown-trigger delluna-icon svg,
+.custom-dropdown-trigger delluna-icon svg * {
+  fill: var(--c-white);
+  stroke: var(--c-white);
+}
 .modal-input::placeholder,
 .modal-textarea::placeholder {
   color: var(--c-text-faint);
@@ -154,6 +179,11 @@
   background: var(--c-panel-3);
   color: var(--c-text-dim);
 }
+.modal-btn delluna-icon svg,
+.modal-btn delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .modal-btn:focus {
   outline: none;
   box-shadow: 0 0 0 var(--focus-ring) var(--c-text-faint);
@@ -177,6 +207,11 @@
   color: var(--c-text-dim);
   outline: none;
   box-shadow: 0 0 0 var(--focus-ring) var(--c-text-faint);
+}
+.modal-btn.active delluna-icon svg,
+.modal-btn.active delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
 }
 .modal-input[type="checkbox"],
 .modal-input[type="radio"] {
@@ -324,6 +359,13 @@ html[data-theme="light"] .modal-input[type="radio"]::before {
   left: 12px;
   color: var(--blueink);
   pointer-events: none;
+}
+.search-icon delluna-icon svg,
+.search-icon delluna-icon svg *,
+delluna-icon.search-icon svg,
+delluna-icon.search-icon svg * {
+  fill: var(--blueink);
+  stroke: var(--blueink);
 }
 .options-list {
   padding: 6px;

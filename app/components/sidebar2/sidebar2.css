@@ -90,6 +90,11 @@
   position: relative;
   z-index: 1;
 }
+.secondary-sidebar-category-header delluna-icon svg,
+.secondary-sidebar-category-header delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .secondary-sidebar-category-header .secondary-sidebar-left {
   display: flex;
   align-items: center;
@@ -166,13 +171,27 @@
   position: relative;
   z-index: 1;
 }
+.secondary-sidebar-sub-item delluna-icon svg,
+.secondary-sidebar-sub-item delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .secondary-sidebar-sub-item:hover {
   background: color-mix(in srgb, var(--c-black) 03%, transparent);
   color: var(--c-text-dim);
 }
+.secondary-sidebar-sub-item:hover delluna-icon svg,
+.secondary-sidebar-sub-item:hover delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
+}
 .secondary-sidebar delluna-icon {
-  color: var(--c-text-dim);
   transition: transform var(--transition-speed);
+}
+.secondary-sidebar delluna-icon svg,
+.secondary-sidebar delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
 }
 @media (max-width: 520px) {
   :root { --category-box-width: 84vw; }
@@ -318,13 +337,28 @@
 #secondary-sidebar-button.syncing i {
   color: var(--c-warn) !important;
 }
+#secondary-sidebar-button.syncing delluna-icon svg,
+#secondary-sidebar-button.syncing delluna-icon svg * {
+  fill: var(--c-warn) !important;
+  stroke: var(--c-warn) !important;
+}
 #secondary-sidebar-button.synced,
 #secondary-sidebar-button.synced i {
   color: var(--c-green) !important;
 }
+#secondary-sidebar-button.synced delluna-icon svg,
+#secondary-sidebar-button.synced delluna-icon svg * {
+  fill: var(--c-green) !important;
+  stroke: var(--c-green) !important;
+}
 #secondary-sidebar-button.error,
 #secondary-sidebar-button.error i {
   color: var(--c-danger) !important;
+}
+#secondary-sidebar-button.error delluna-icon svg,
+#secondary-sidebar-button.error delluna-icon svg * {
+  fill: var(--c-danger) !important;
+  stroke: var(--c-danger) !important;
 }
 
 .info {
@@ -343,6 +377,11 @@
   justify-content: center;
   margin-bottom: 8px;
   color: var(--c-text-dim);
+}
+.info-avatar delluna-icon svg,
+.info-avatar delluna-icon svg * {
+  fill: var(--c-text-dim);
+  stroke: var(--c-text-dim);
 }
 /* Matches the 23px signed-in profile photo (see drive-sync.js
    renderUserAvatar) so the placeholder doesn't jump size on sign-in. */

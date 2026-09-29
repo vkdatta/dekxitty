@@ -15,9 +15,13 @@
   );
 }
 #voldemortToggle.active i,
-#voldemortToggle.active span,
-#voldemortToggle.active delluna-icon {
+#voldemortToggle.active span {
   color: var(--c-black) !important;
+}
+#voldemortToggle.active delluna-icon svg,
+#voldemortToggle.active delluna-icon svg * {
+  fill: var(--c-black) !important;
+  stroke: var(--c-black) !important;
 }
 
 .ink-vanish {

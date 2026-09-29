@@ -126,7 +126,12 @@ html[data-cm-tone="light"] .CodeMirror-linenumber {
 .pane-empty-state.show { display: flex; }
 #textAreaWrapper.pane-empty .CodeMirror { visibility: hidden; }
 
-delluna-icon.pane-empty-icon { width: 42px; height: 42px; color: var(--c-text-faint); opacity: 0.6; }
+delluna-icon.pane-empty-icon { width: 42px; height: 42px; opacity: 0.6; }
+delluna-icon.pane-empty-icon svg,
+delluna-icon.pane-empty-icon svg * {
+  fill: var(--c-text-faint);
+  stroke: var(--c-text-faint);
+}
 .pane-empty-text { font-size: 14px; color: var(--c-text-faint); }
 
 /* FIX (empty gutter): when line numbers are disabled, setLineNumbers() sets

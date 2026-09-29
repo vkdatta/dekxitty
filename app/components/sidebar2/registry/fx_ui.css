@@ -26,6 +26,11 @@
   font-size: 13px;
   color: var(--c-text-dim, #cacaca);
 }
+.gf-overlay delluna-icon svg,
+.gf-overlay delluna-icon svg * {
+  fill: var(--c-text-dim, #cacaca);
+  stroke: var(--c-text-dim, #cacaca);
+}
 .gf-overlay.gf-open {
   visibility: visible;
   opacity: 1;
@@ -73,14 +78,29 @@
   cursor: pointer;
   transition: background 0.14s, color 0.14s, border-color 0.14s;
 }
+.gf-tab delluna-icon svg,
+.gf-tab delluna-icon svg * {
+  fill: var(--c-text-dim, #8b92a0);
+  stroke: var(--c-text-dim, #8b92a0);
+}
 .gf-tab:hover {
   background: var(--c-panel-2, #1f232b);
   color: var(--c-white, #fff);
+}
+.gf-tab:hover delluna-icon svg,
+.gf-tab:hover delluna-icon svg * {
+  fill: var(--c-white, #fff);
+  stroke: var(--c-white, #fff);
 }
 .gf-tab.active {
   background: var(--c-panel-2, #1f232b);
   border-color: color-mix(in srgb, var(--c-accent, #9aa8b7) 30%, transparent);
   color: var(--c-accent, #9aa8b7);
+}
+.gf-tab.active delluna-icon svg,
+.gf-tab.active delluna-icon svg * {
+  fill: var(--c-accent, #9aa8b7);
+  stroke: var(--c-accent, #9aa8b7);
 }
 .gf-header-right {
   display: flex;
@@ -106,9 +126,19 @@
   letter-spacing: 0.6px;
   transition: background 0.14s, color 0.14s;
 }
+.gf-db-btn delluna-icon svg,
+.gf-db-btn delluna-icon svg * {
+  fill: var(--c-text-dim, #8b92a0);
+  stroke: var(--c-text-dim, #8b92a0);
+}
 .gf-db-btn:hover {
   background: var(--c-panel-3, #262a33);
   color: var(--c-white, #fff);
+}
+.gf-db-btn:hover delluna-icon svg,
+.gf-db-btn:hover delluna-icon svg * {
+  fill: var(--c-white, #fff);
+  stroke: var(--c-white, #fff);
 }
 .gf-db-count {
   background: var(--c-panel-3, #262a33);
@@ -129,6 +159,11 @@
   color: var(--c-danger, #ff6b6b);
   cursor: pointer;
   transition: background 0.14s;
+}
+.gf-close-btn delluna-icon svg,
+.gf-close-btn delluna-icon svg * {
+  fill: var(--c-danger, #ff6b6b);
+  stroke: var(--c-danger, #ff6b6b);
 }
 .gf-close-btn:hover {
   background: color-mix(in srgb, var(--c-danger, #ff6b6b) 10%, transparent);
@@ -174,14 +209,29 @@
   transition: background 0.14s, color 0.14s, border-color 0.14s;
   flex-shrink: 0;
 }
+.gf-rail-btn delluna-icon svg,
+.gf-rail-btn delluna-icon svg * {
+  fill: var(--c-text-dim, #8b92a0);
+  stroke: var(--c-text-dim, #8b92a0);
+}
 .gf-rail-btn:hover {
   background: var(--c-panel-2, #1f232b);
   color: var(--c-white, #fff);
+}
+.gf-rail-btn:hover delluna-icon svg,
+.gf-rail-btn:hover delluna-icon svg * {
+  fill: var(--c-white, #fff);
+  stroke: var(--c-white, #fff);
 }
 .gf-rail-btn.active {
   background: color-mix(in srgb, var(--c-accent, #9aa8b7) 12%, transparent);
   border-color: color-mix(in srgb, var(--c-accent, #9aa8b7) 30%, transparent);
   color: var(--c-accent, #9aa8b7);
+}
+.gf-rail-btn.active delluna-icon svg,
+.gf-rail-btn.active delluna-icon svg * {
+  fill: var(--c-accent, #9aa8b7);
+  stroke: var(--c-accent, #9aa8b7);
 }
 
 /* ── MAIN PANEL ──────────────────────────────────────────────────────────── */
@@ -322,10 +372,20 @@
   /* ensure text doesn't wrap under the caret */
   line-height: 1.4;
 }
+.gf-dd-trigger.custom-dropdown-trigger delluna-icon svg,
+.gf-dd-trigger.custom-dropdown-trigger delluna-icon svg * {
+  fill: var(--c-text-dim, #8b92a0);
+  stroke: var(--c-text-dim, #8b92a0);
+}
 .gf-dd-trigger.custom-dropdown-trigger:hover {
   background: var(--c-panel-3, #262a33);
   border-color: color-mix(in srgb, var(--c-accent, #9aa8b7) 30%, transparent);
   color: var(--c-white, #fff);
+}
+.gf-dd-trigger.custom-dropdown-trigger:hover delluna-icon svg,
+.gf-dd-trigger.custom-dropdown-trigger:hover delluna-icon svg * {
+  fill: var(--c-white, #fff);
+  stroke: var(--c-white, #fff);
 }
 .gf-dd-trigger.custom-dropdown-trigger:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-accent, #9aa8b7) 18%, transparent);
@@ -352,6 +412,11 @@
   flex-shrink: 0;
 }
 .gf-search-icon { color: var(--c-text-faint, #606060); flex-shrink: 0; }
+.gf-search-icon delluna-icon svg,
+.gf-search-icon delluna-icon svg * {
+  fill: var(--c-text-faint, #606060);
+  stroke: var(--c-text-faint, #606060);
+}
 .gf-search-input {
   flex: 1;
   background: transparent;
@@ -371,7 +436,17 @@
   display: flex;
   align-items: center;
 }
+.gf-search-clear delluna-icon svg,
+.gf-search-clear delluna-icon svg * {
+  fill: var(--c-text-faint, #606060);
+  stroke: var(--c-text-faint, #606060);
+}
 .gf-search-clear:hover { color: var(--c-text-dim, #8b92a0); }
+.gf-search-clear:hover delluna-icon svg,
+.gf-search-clear:hover delluna-icon svg * {
+  fill: var(--c-text-dim, #8b92a0);
+  stroke: var(--c-text-dim, #8b92a0);
+}
 
 /* ── FUNCTION LIST ───────────────────────────────────────────────────────── */
 .gf-list {
@@ -395,6 +470,11 @@
 .gf-fn-icon {
   flex-shrink: 0;
   color: var(--c-text-dim, #8b92a0);
+}
+.gf-fn-icon delluna-icon svg,
+.gf-fn-icon delluna-icon svg * {
+  fill: var(--c-text-dim, #8b92a0);
+  stroke: var(--c-text-dim, #8b92a0);
 }
 .gf-fn-info {
   flex: 1;
@@ -443,13 +523,47 @@
   padding: 0;
   flex-shrink: 0;
 }
+.gf-pin-btn delluna-icon svg,
+.gf-pin-btn delluna-icon svg *,
+.gf-add-btn delluna-icon svg,
+.gf-add-btn delluna-icon svg *,
+.gf-remove-btn delluna-icon svg,
+.gf-remove-btn delluna-icon svg * {
+  fill: var(--c-text-faint, #606060);
+  stroke: var(--c-text-faint, #606060);
+}
 .gf-pin-btn:hover   { color: var(--c-warn, #ffc600); border-color: color-mix(in srgb, var(--c-warn, #ffc600) 30%, transparent); }
+.gf-pin-btn:hover delluna-icon svg,
+.gf-pin-btn:hover delluna-icon svg * {
+  fill: var(--c-warn, #ffc600);
+  stroke: var(--c-warn, #ffc600);
+}
 .gf-pin-btn.pinned  { color: var(--c-warn, #ffc600); border-color: color-mix(in srgb, var(--c-warn, #ffc600) 40%, transparent); }
+.gf-pin-btn.pinned delluna-icon svg,
+.gf-pin-btn.pinned delluna-icon svg * {
+  fill: var(--c-warn, #ffc600);
+  stroke: var(--c-warn, #ffc600);
+}
 
 .gf-add-btn:hover   { color: var(--c-green, #3ce0a0); border-color: color-mix(in srgb, var(--c-green, #3ce0a0) 30%, transparent); }
+.gf-add-btn:hover delluna-icon svg,
+.gf-add-btn:hover delluna-icon svg * {
+  fill: var(--c-green, #3ce0a0);
+  stroke: var(--c-green, #3ce0a0);
+}
 .gf-add-btn.added   { color: var(--c-green, #3ce0a0); opacity: 0.4; cursor: default; }
+.gf-add-btn.added delluna-icon svg,
+.gf-add-btn.added delluna-icon svg * {
+  fill: var(--c-green, #3ce0a0);
+  stroke: var(--c-green, #3ce0a0);
+}
 
 .gf-remove-btn:hover { color: var(--c-danger, #ff6b6b); border-color: color-mix(in srgb, var(--c-danger, #ff6b6b) 30%, transparent); }
+.gf-remove-btn:hover delluna-icon svg,
+.gf-remove-btn:hover delluna-icon svg * {
+  fill: var(--c-danger, #ff6b6b);
+  stroke: var(--c-danger, #ff6b6b);
+}
 
 .gf-run-btn:hover   { color: var(--c-accent, #9aa8b7); border-color: color-mix(in srgb, var(--c-accent, #9aa8b7) 30%, transparent); }
 
@@ -514,4 +628,12 @@
   .gf-header-tabs .gf-tab span:not(delluna-icon) { display: none; }
   .gf-title { display: none; }
   .gf-db-btn span:not(.gf-db-count):not(delluna-icon) { display: none; }
+}
+
+/* Pinned star keeps its own gold regardless of pin-button hover/pinned state.
+   Declared last with matching specificity so it wins ties. */
+.gf-pin-btn delluna-icon.gf-pin-star svg,
+.gf-pin-btn delluna-icon.gf-pin-star svg * {
+  fill: #f5c518;
+  stroke: #f5c518;
 }

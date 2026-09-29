@@ -23,3 +23,11 @@ delluna-icon svg {
   height: 100%;
   display: block;
 }
+
+/* Colors are driven only by `delluna-icon svg, delluna-icon svg * { fill; stroke }`
+   rules. Parent `color` transitions no longer reach the icon, so animate
+   fill/stroke directly to keep the same hover/active fades. */
+delluna-icon svg,
+delluna-icon svg * {
+  transition: fill .16s ease, stroke .16s ease;
+}
