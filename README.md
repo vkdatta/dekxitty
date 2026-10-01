@@ -243,3 +243,18 @@ Install via -
 ```html
 <script src="https://cdn.jsdelivr.net/gh/vkdatta/web@main/app/dexsins/dexsinsjs/preprocessor.js"></script>
 ```
+
+---
+
+### CSVExec (`.csvexec` files)
+
+Name or rename a note to end in `.csvexec` and the editor turns into a spreadsheet (max **1000 rows × 100 columns**, A1 – CV1000).
+
+- Paste straight from Excel / Google Sheets — rows and columns land as-is.
+- Any cell starting with `=` is a formula, e.g. `=MD5(A1)`, `=DECRYPT(A1,$E$1,$E$2)`, `=UPPER(TRIM(A1))`.
+- Fill like Excel: drag the small handle at the corner of the selection, or **double-click / double-tap it** to fill down as far as the neighbouring column has data. Relative references shift, `$A$1` stays.
+- `fx` button (or *Code › CSVExec Functions* in sidebar 2) lists every function by category; typing `=` + letters autocompletes.
+- The note is stored as plain CSV (formulas included), so download / sync / zip keep working. **Export** downloads the computed values.
+
+Categories: Hash & Crypto (MD5, SHA1/256/384/512, HMACSHA256, ENCRYPT, DECRYPT), Encoding, Text Case, Text Edit, Text Search & Extract, HTML & Regex, Logic, Math, Info.
+Code lives in `app/js/modes/csvexec/` (`engine.js` formulas, `functions.js` library, `grid.js` UI, `core.js` glue).
