@@ -5,6 +5,9 @@
  *          blue circle handles = resize the selection · small square = fill (formula drag)
  *          long-press a selection, or drag its border = move cells (cell drag)
  *          drag a header edge = resize that row / column · double-tap the edge (or header) = auto-fit
+ *          tap inside the selection = floating Cut/Copy/Paste/Clear bar (⋮ = full menu)
+ *          select a whole row / column = grip icon to resize it + circle handles to extend the selection
+ *          two-finger pinch = zoom the cells (toolbar stays put) · Enter keeps the keyboard open
  *  Mouse   drag = select · border = move (Ctrl = copy) · square = fill · right-click = menu
  *
  * Virtualised: only visible cells are in the DOM; rows/columns have individual sizes.
@@ -13,7 +16,9 @@ import { Sheet, ROWS, COLS, DEF_COLW, DEF_ROWH, keyOf, colName, colIndex, addr, 
 import { parseStored, serializeGrid, serialize, parseClipboard, toClipboardText } from "./csv.js";
 import { FUNCTION_LIST, CATEGORIES, importCache, exportCache, clearCache, onCacheChange } from "./functions.js";
 
-const HEADH = 28, RHW = 52, MINW = 24, MINH = 18, LH = 18, PADX = 8, MAXW = 800;
+const BASE_HEADH = 28, BASE_RHW = 52, MINW = 24, MINH = 18, LH = 18, PADX = 8, MAXW = 800;
+const ZMIN = 0.3, ZMAX = 4, ZPRESETS = [0.5, 0.75, 0.9, 1, 1.25, 1.5, 2, 3];
+const FX_PH = "Value or =formula";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const PALETTE = ["#ffffff", "#e0e0e0", "#9e9e9e", "#424242", "#000000", "#ef9a9a", "#f44336", "#b71c1c", "#ffcc80", "#ff9800", "#e65100", "#fff59d", "#ffeb3b", "#a5d6a7", "#4caf50", "#1b5e20", "#80deea", "#00bcd4", "#90caf9", "#2196f3", "#0d47a1", "#ce93d8", "#9c27b0", "#4a148c"];
 const isNumLike = (s) => s !== "" && isFinite(Number(s)) && /^\s*[-+]?(\d|\.\d)/.test(s);
@@ -36,9 +41,12 @@ export function createGrid(host, hooks) {
   let suggest = { items: [], idx: -1, prefix: "" };
   let finds = { q: "", list: [], i: -1 };
   let lastPtr = { x: 0, y: 0 };
+  let zoom = 1, HEADH = BASE_HEADH, RHW = BASE_RHW;          // zoom scales the cells + headers (never the toolbar)
+  let modalOpen = false, modalSeq = 0, pillOpen = false, pillDownOpen = false;
+  const pointers = new Map(); let pinch = null, zoomTipT = null;
 
-  const sizeC = (c) => (sheet.hidC.has(c) ? 0 : sheet.colW[c]);
-  const sizeR = (r) => (sheet.hidR.has(r) ? 0 : sheet.rowH[r]);
+  const sizeC = (c) => (sheet.hidC.has(c) ? 0 : sheet.colW[c] * zoom);
+  const sizeR = (r) => (sheet.hidR.has(r) ? 0 : sheet.rowH[r] * zoom);
   function rebuildCols() { colX[0] = 0; for (let c = 0; c < COLS; c++) colX[c + 1] = colX[c] + sizeC(c); }
   function rebuildRows() { rowY[0] = 0; for (let r = 0; r < ROWS; r++) rowY[r + 1] = rowY[r] + sizeR(r); }
   function rebuildGeom() { rebuildCols(); rebuildRows(); }
@@ -60,6 +68,7 @@ export function createGrid(host, hooks) {
         <button type="button" class="cx-btn" data-a="cut">Cut</button>
         <button type="button" class="cx-btn" data-a="copy">Copy</button>
         <button type="button" class="cx-btn" data-a="paste">Paste</button>
+        <button type="button" class="cx-btn" data-a="clear" title="Clear contents of the selection (Del)">Clear</button>
         <span class="cx-sep"></span>
         <button type="button" class="cx-btn cx-b" data-a="bold" title="Bold (Ctrl+B)">B</button>
         <button type="button" class="cx-btn cx-i" data-a="italic" title="Italic (Ctrl+I)">I</button>
@@ -72,6 +81,11 @@ export function createGrid(host, hooks) {
         <span class="cx-sep"></span>
         <button type="button" class="cx-btn" data-a="filldown" title="Fill down (Ctrl+D)">Fill ↓</button>
         <button type="button" class="cx-btn" data-a="find" title="Find & replace (Ctrl+F)">Find</button>
+        <span class="cx-sep"></span>
+        <button type="button" class="cx-btn" data-a="zout" title="Zoom out (Ctrl −)">−</button>
+        <button type="button" class="cx-btn cx-zlbl" data-a="zlbl" title="Zoom — tap to type a % or reset">100%</button>
+        <button type="button" class="cx-btn" data-a="zin" title="Zoom in (Ctrl +)">+</button>
+        <span class="cx-sep"></span>
         <button type="button" class="cx-btn" data-a="menu" title="More: insert, delete, sort, freeze…">More ⋯</button>
         <span class="cx-status"></span>
       </div>
@@ -97,17 +111,13 @@ export function createGrid(host, hooks) {
         <div class="cx-sh cx-sh1"></div><div class="cx-sh cx-sh2"></div>
         <textarea class="cx-editor" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
         <div class="cx-heads"></div>
+        <div class="cx-rg" title="Drag to resize"></div><div class="cx-hh cx-hh1"></div><div class="cx-hh cx-hh2"></div>
       </div>
     </div>
     <div class="cx-suggest"></div>
     <div class="cx-menu" aria-hidden="true"></div>
-    <div class="cx-dialog" aria-hidden="true"><div class="cx-dialog-card"><div class="cx-dialog-title"></div><input class="cx-dialog-input" type="number" inputmode="decimal"><div class="cx-dialog-btns"><button type="button" class="cx-btn cx-dialog-cancel">Cancel</button><button type="button" class="cx-btn on cx-dialog-ok">OK</button></div></div></div>
-    <div class="cx-picker" aria-hidden="true">
-      <div class="cx-picker-card">
-        <div class="cx-picker-head"><input class="cx-picker-search" placeholder="Search functions…" spellcheck="false" autocomplete="off"><button type="button" class="cx-btn cx-picker-close">Close</button></div>
-        <div class="cx-picker-list"></div>
-      </div>
-    </div>
+    <div class="cx-pill" role="toolbar" aria-label="Selection actions"></div>
+    <div class="cx-zoomtip"></div>
   </div>`;
   const $ = (s) => host.querySelector(s);
   const root = $(".cx-root"), scroller = $(".cx-scroller"), sizer = $(".cx-sizer"), stage = $(".cx-stage");
@@ -115,8 +125,9 @@ export function createGrid(host, hooks) {
   const elRef = $(".cx-refbox"), elFillPrev = $(".cx-fillprev"), elMovePrev = $(".cx-moveprev"), elHeads = $(".cx-heads");
   const elSH1 = $(".cx-sh1"), elSH2 = $(".cx-sh2");
   const editor = $(".cx-editor"), nameBox = $(".cx-name"), fxIn = $(".cx-fx"), statusEl = $(".cx-status");
-  const suggestEl = $(".cx-suggest"), picker = $(".cx-picker"), pickerList = $(".cx-picker-list"), pickerSearch = $(".cx-picker-search");
-  const menuEl = $(".cx-menu"), dialogEl = $(".cx-dialog"), findRow = $(".cx-find"), fq = $(".cx-fq"), fr = $(".cx-fr"), fcount = $(".cx-fcount");
+  const suggestEl = $(".cx-suggest");
+  const elRG = $(".cx-rg"), elHH1 = $(".cx-hh1"), elHH2 = $(".cx-hh2"), pillEl = $(".cx-pill"), zoomTip = $(".cx-zoomtip"), zlbl = $('[data-a="zlbl"]');
+  const menuEl = $(".cx-menu"), findRow = $(".cx-find"), fq = $(".cx-fq"), fr = $(".cx-fr"), fcount = $(".cx-fcount");
   const mctx = document.createElement("canvas").getContext("2d");
 
   /* ═════════════════════════════ geometry ═════════════════════════════ */
@@ -248,17 +259,18 @@ export function createGrid(host, hooks) {
     const sr = screenRect(s), single = s.r1 === s.r2 && s.c1 === s.c2;
     place(elSel, sr.x, sr.y, sr.w, sr.h); elSel.style.display = single ? "none" : "block";
     place(elActive, X(cur.c), Y(cur.r), sizeC(cur.c), sizeR(cur.r));
-    const showH = !ed && sr.w > 0;
+    const showH = !ed && sr.w > 0 && !(isWholeCols(s) || isWholeRows(s));
     elFH.style.display = showH ? "block" : "none";
     elFH.style.left = (sr.x + sr.w - 6) + "px"; elFH.style.top = (sr.y + sr.h - 6) + "px";
     const th = showH && touchUI;
     elSH1.style.display = elSH2.style.display = th ? "block" : "none";
     if (th) { elSH1.style.left = (sr.x - 24) + "px"; elSH1.style.top = (sr.y - 24) + "px"; elSH2.style.left = (sr.x + sr.w + 8) + "px"; elSH2.style.top = (sr.y + sr.h + 8) + "px"; }
+    renderHeaderHandles(s);
     showRect(elFillPrev, fillPrev); showRect(elRef, refRect); showRect(elMovePrev, movePrev);
     if (ed) {
       editor.style.display = "block";
       editor.style.left = X(ed.c) + "px"; editor.style.top = Y(ed.r) + "px";
-      editor.style.width = Math.max(sizeC(ed.c), 200) + "px";
+      editor.style.width = Math.max(sizeC(ed.c), 200 * zoom) + "px";
       sizeEditor();
     } else editor.style.display = "none";
     positionSuggest(); updateStatus();
@@ -268,7 +280,7 @@ export function createGrid(host, hooks) {
   function sizeEditor() {
     if (!ed) return;
     editor.style.height = "auto";
-    const need = Math.min(280, Math.max(sizeR(ed.r), editor.scrollHeight + 2));
+    const need = Math.min(Math.max(280 * zoom, sizeR(ed.r)), Math.max(sizeR(ed.r), editor.scrollHeight + 2));
     editor.style.height = need + "px";
   }
   function updateStatus() {
@@ -278,6 +290,7 @@ export function createGrid(host, hooks) {
     else { const q = rect(), n = (q.r2 - q.r1 + 1) * (q.c2 - q.c1 + 1); s = n > 1 && !isWholeCols(q) && !isWholeRows(q) ? `${q.r2 - q.r1 + 1}R × ${q.c2 - q.c1 + 1}C` : "1000 × 100 max"; }
     if (statusEl.textContent !== s) statusEl.textContent = s;
     statusEl.classList.toggle("cx-busy", sheet.running);
+    const zt = Math.round(zoom * 100) + "%"; if (zlbl.textContent !== zt) zlbl.textContent = zt;
     const fm = sheet.getFmt(cur.r, cur.c) || {};
     host.querySelectorAll('[data-a="bold"],[data-a="italic"],[data-a="wrap"],[data-a="al-l"],[data-a="al-c"],[data-a="al-r"]').forEach((b) => {
       const k = b.dataset.a; b.classList.toggle("on", k === "bold" ? !!fm.b : k === "italic" ? !!fm.i : k === "wrap" ? !!fm.wr : k === "al-l" ? fm.al === "l" : k === "al-c" ? fm.al === "c" : fm.al === "r");
@@ -288,7 +301,7 @@ export function createGrid(host, hooks) {
     nameBox.value = (s.r1 === s.r2 && s.c1 === s.c2) ? addr(cur.r, cur.c) : isWholeCols(s) ? (s.c1 === s.c2 ? colName(s.c1) : colName(s.c1) + ":" + colName(s.c2)) : isWholeRows(s) ? (s.r1 === s.r2 ? String(s.r1 + 1) : (s.r1 + 1) + ":" + (s.r2 + 1)) : addr(s.r1, s.c1) + ":" + addr(s.r2, s.c2);
     if (!ed) fxIn.value = sheet.get(cur.r, cur.c);
   }
-  function selChanged(scroll) { if (scroll !== false) ensureVisible(ext.r, ext.c); syncBar(); requestRender(); }
+  function selChanged(scroll) { closePill(); if (scroll !== false) ensureVisible(ext.r, ext.c); syncBar(); requestRender(); }
 
   /* ═════════════════════════════ persistence / recalc ═════════════════════════════ */
   let persistT = null, recalcT = null, metaT = null, metaDirty = false;
@@ -298,11 +311,12 @@ export function createGrid(host, hooks) {
     sheet.colW.forEach((v, i) => { if (v !== DEF_COLW) w[i] = v; });
     sheet.rowH.forEach((v, i) => { if (v !== DEF_ROWH) h[i] = v; });
     sheet.fmt.forEach((v, k) => { fmt[k] = v; });
-    return { w, h, hr: [...sheet.hidR], hc: [...sheet.hidC], fz: { ...sheet.freeze }, fmt, cache: exportCache() };
+    return { w, h, hr: [...sheet.hidR], hc: [...sheet.hidC], fz: { ...sheet.freeze }, fmt, z: Math.round(zoom * 1000) / 1000, cache: exportCache() };
   }
   function applyMeta(m) {
-    sheet.resetLayout();
+    sheet.resetLayout(); zoom = 1;
     if (m) {
+      if (typeof m.z === "number" && isFinite(m.z)) zoom = clamp(m.z, ZMIN, ZMAX);
       const ok = (v, d) => (typeof v === "number" && isFinite(v) && v >= 0 ? v : d);
       if (m.w) for (const k in m.w) { const i = +k; if (i >= 0 && i < COLS) sheet.colW[i] = Math.max(MINW, ok(m.w[k], DEF_COLW)); }
       if (m.h) for (const k in m.h) { const i = +k; if (i >= 0 && i < ROWS) sheet.rowH[i] = Math.max(MINH, ok(m.h[k], DEF_ROWH)); }
@@ -311,7 +325,7 @@ export function createGrid(host, hooks) {
       if (m.fz) sheet.freeze = { r: clamp(m.fz.r | 0, 0, 50), c: clamp(m.fz.c | 0, 0, 20) };
       if (m.fmt) for (const k in m.fmt) { const n = +k; if (n >= 0 && n < ROWS * COLS && m.fmt[k] && typeof m.fmt[k] === "object") sheet.fmt.set(n, m.fmt[k]); }
     }
-    rebuildGeom();
+    setZoomVars(); rebuildGeom();
   }
   function flush() {
     if (persistT) { clearTimeout(persistT); persistT = null; }
@@ -383,41 +397,56 @@ export function createGrid(host, hooks) {
   }
 
   /* ═════════════════════════════ editing ═════════════════════════════ */
+  const overlayOpen = () => pickerOpen || menuOpen || modalOpen;
   const focusedInput = () => (ed && ed.origin === "bar" ? fxIn : editor);
-  function startEdit(initial, mode, origin) {
+  function resetPlaceholders() { editor.placeholder = ""; fxIn.placeholder = FX_PH; }
+  /** "fresh" edit (used after Enter on a touch screen): empty box, old value shown faintly, typing replaces it, Enter with no typing keeps it */
+  function freshPlaceholder(origin, raw) { resetPlaceholders(); if (!raw) return; (origin === "bar" ? fxIn : editor).placeholder = raw.length > 200 ? raw.slice(0, 200) + "…" : raw; }
+  function startEdit(initial, mode, origin, fresh) {
     if (ed) return;
     if (sheet.hidR.has(cur.r) || sheet.hidC.has(cur.c)) return;
+    closePill();
     const raw = sheet.get(cur.r, cur.c);
-    ed = { r: cur.r, c: cur.c, mode: mode || "edit", origin: origin || "cell", ref: null, orig: raw };
-    const text = initial == null ? raw : initial;
-    editor.value = text; fxIn.value = text; editor.style.display = "block";
+    ed = { r: cur.r, c: cur.c, mode: mode || "edit", origin: origin || "cell", ref: null, orig: raw, fresh: !!fresh, touched: false };
+    const text = fresh ? "" : initial == null ? raw : initial;
+    if (fresh) freshPlaceholder(ed.origin, raw); else resetPlaceholders();
+    editor.value = text; fxIn.value = fresh && ed.origin !== "bar" ? raw : text; editor.style.display = "block";
     ensureVisible(cur.r, cur.c); requestRender();
     const inp = focusedInput(); inp.focus();
     try { inp.setSelectionRange(text.length, text.length); } catch (e) {}
     updateSuggest();
   }
-  function commitEdit(move) {
+  /** keepKb: after Enter/Tab on a touch screen, jump to the next cell AND stay in an edit box so the soft keyboard never closes */
+  function commitEdit(move, keepKb) {
     if (!ed) return;
-    const e = ed, v = e.origin === "bar" ? fxIn.value : editor.value;
-    ed = null; hideSuggest(); refRect = null; editor.style.display = "none";
+    const e = ed, typed = e.origin === "bar" ? fxIn.value : editor.value;
+    const v = e.fresh && !e.touched ? e.orig : typed;
+    const kb = !!(keepKb && move);
+    ed = null; hideSuggest(); refRect = null;
+    if (!kb) { editor.style.display = "none"; resetPlaceholders(); }
     cur = { r: e.r, c: e.c }; ext = { ...cur };
     setCells([{ r: e.r, c: e.c, v }]);
     if (move === "down") moveCur(1, 0, false); else if (move === "up") moveCur(-1, 0, false);
     else if (move === "right") moveCur(0, 1, false); else if (move === "left") moveCur(0, -1, false);
     syncBar(); selChanged();
+    if (kb) {
+      startEdit("", e.origin === "bar" ? "edit" : "enter", e.origin, true);
+      if (!ed) { editor.style.display = "none"; resetPlaceholders(); root.focus({ preventScroll: true }); }   // landed on a hidden row/column
+      return;
+    }
     if (move) root.focus({ preventScroll: true });
   }
-  function cancelEdit() { if (!ed) return; ed = null; hideSuggest(); refRect = null; editor.style.display = "none"; syncBar(); requestRender(); root.focus({ preventScroll: true }); }
+  function cancelEdit() { if (!ed) return; ed = null; hideSuggest(); refRect = null; editor.style.display = "none"; resetPlaceholders(); syncBar(); requestRender(); root.focus({ preventScroll: true }); }
   function onEditInput(src) {
     if (!ed) return;
     if (src === editor) fxIn.value = src.value; else editor.value = src.value;
-    ed.ref = null; sizeEditor(); updateSuggest();
+    ed.touched = true; ed.ref = null; sizeEditor(); updateSuggest();
   }
   editor.addEventListener("input", () => onEditInput(editor));
   fxIn.addEventListener("input", () => { if (!ed) startEditFromBar(); onEditInput(fxIn); });
   function startEditFromBar() {
     if (ed) return;
-    ed = { r: cur.r, c: cur.c, mode: "edit", origin: "bar", ref: null, orig: sheet.get(cur.r, cur.c) };
+    ed = { r: cur.r, c: cur.c, mode: "edit", origin: "bar", ref: null, orig: sheet.get(cur.r, cur.c), fresh: false, touched: false };
     editor.value = fxIn.value; editor.style.display = "block"; requestRender();
   }
   fxIn.addEventListener("focus", () => { if (!ed) startEditFromBar(); });
@@ -432,8 +461,8 @@ export function createGrid(host, hooks) {
       if (e.key === "Tab" || (e.key === "Enter" && suggest.idx >= 0)) { e.preventDefault(); acceptSuggest(suggest.idx >= 0 ? suggest.idx : 0); return; }
       if (e.key === "Escape") { e.preventDefault(); hideSuggest(); return; }
     }
-    if (e.key === "Enter") { e.preventDefault(); if (e.altKey) insertNewline(inp); else commitEdit(e.shiftKey ? "up" : "down"); }
-    else if (e.key === "Tab") { e.preventDefault(); commitEdit(e.shiftKey ? "left" : "right"); }
+    if (e.key === "Enter") { e.preventDefault(); if (e.altKey) insertNewline(inp); else commitEdit(e.shiftKey ? "up" : "down", touchUI); }
+    else if (e.key === "Tab") { e.preventDefault(); commitEdit(e.shiftKey ? "left" : "right", touchUI); }
     else if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
     else if (ed && ed.mode === "enter" && ed.origin === "cell" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && inp.value[0] !== "=" &&
              (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight")) {
@@ -444,7 +473,7 @@ export function createGrid(host, hooks) {
   fxIn.addEventListener("keydown", (e) => editKeydown(e, fxIn));
   function onBlur() {
     setTimeout(() => {
-      if (!ed || pickerOpen || menuOpen) return;
+      if (!ed || overlayOpen()) return;
       const a = document.activeElement;
       if (a === editor || a === fxIn || (a && suggestEl.contains(a))) return;
       commitEdit(null);
@@ -581,8 +610,8 @@ export function createGrid(host, hooks) {
     notify(truncated ? `Pasted — data beyond ${ROWS} rows × ${COLS} columns was dropped` : `Pasted ${h} × ${w}`);
     if (clip && clip.noShift && internal) clip = null;
   }
-  const inMyInput = (t) => t === editor || t === fxIn || t === nameBox || t === pickerSearch || t === fq || t === fr || t === $(".cx-dialog-input");
-  const mine = () => active && !pickerOpen && !menuOpen && (root.contains(document.activeElement) || document.activeElement === document.body);
+  const inMyInput = (t) => t === editor || t === fxIn || t === nameBox || t === fq || t === fr;
+  const mine = () => active && !overlayOpen() && (root.contains(document.activeElement) || document.activeElement === document.body);
   document.addEventListener("copy", (e) => { if (!mine() || inMyInput(e.target) || ed) return; e.clipboardData.setData("text/plain", doCopy(false)); e.preventDefault(); });
   document.addEventListener("cut", (e) => { if (!mine() || inMyInput(e.target) || ed) return; e.clipboardData.setData("text/plain", doCopy(true)); e.preventDefault(); });
   document.addEventListener("paste", (e) => { if (!mine() || inMyInput(e.target) || ed) return; e.preventDefault(); pasteText(e.clipboardData.getData("text/plain"), pasteMode); pasteMode = "all"; });
@@ -669,7 +698,7 @@ export function createGrid(host, hooks) {
     for (let c = 0; c < COLS; c++) {
       if (sheet.get(r, c) === "" || sizeC(c) <= 0) continue;
       const t = sheet.display(r, c); if (!t || t === "…") continue;
-      const fm = sheet.getFmt(r, c), avail = Math.max(20, sizeC(c) - 2 * PADX - 2), paras = t.split("\n");
+      const fm = sheet.getFmt(r, c), avail = Math.max(20, sheet.colW[c] - 2 * PADX - 2), paras = t.split("\n");
       const over = Math.max(...paras.map((p) => textW(p, fm))) > avail;
       if (!(fm && fm.wr) && !over && paras.length === 1) continue;
       if (!(fm && fm.wr)) sheet.fmt.set(keyOf(r, c), { ...(fm || {}), wr: 1 });
@@ -804,25 +833,91 @@ export function createGrid(host, hooks) {
   fq.addEventListener("keydown", findKeys); fr.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); replaceCurrent(); } else if (e.key === "Escape") closeFind(); });
 
   /* ═════════════════════════════ menus / palette / dialog ═════════════════════════════ */
-  function closeMenu() { if (!menuOpen) return; menuOpen = false; menuEl.classList.remove("open", "cx-sheet"); menuEl.setAttribute("aria-hidden", "true"); menuEl.innerHTML = ""; }
-  function placeMenu(x, y) {
+  /* All dialogs (menu, colours, number box, zoom, function picker) use the site's own top-aligned modal (window.showModal). */
+  const closeTop = () => { try { if (typeof window.closeModal === "function") window.closeModal(); } catch (e) {} };
+  function topModal(opts) {
+    if (typeof window.showModal !== "function") return Promise.resolve(null);
+    const my = ++modalSeq; modalOpen = true; closePill(); closeMenu();
+    return Promise.resolve(window.showModal(opts)).then((r) => {
+      if (my === modalSeq) { modalOpen = false; if (!pickerOpen && !ed) { try { root.focus({ preventScroll: true }); } catch (e) {} } }
+      return r;
+    });
+  }
+  const MODAL_CLOSE = '<button class="modal-btn">Close</button>';
+
+  /* right-click popover (desktop mouse only) */
+  function closeMenu() { if (!menuOpen) return; menuOpen = false; menuEl.classList.remove("open"); menuEl.setAttribute("aria-hidden", "true"); menuEl.innerHTML = ""; }
+  function placePopover(x, y) {
     const rb = root.getBoundingClientRect();
     menuEl.classList.add("open"); menuEl.setAttribute("aria-hidden", "false"); menuOpen = true;
-    if (rb.width < 640) { menuEl.classList.add("cx-sheet"); menuEl.style.left = menuEl.style.top = ""; return; }
-    menuEl.classList.remove("cx-sheet");
     const mw = menuEl.offsetWidth, mh = menuEl.offsetHeight;
-    menuEl.style.left = clamp(x - rb.left, 4, rb.width - mw - 4) + "px"; menuEl.style.top = clamp(y - rb.top, 4, rb.height - mh - 4) + "px";
+    menuEl.style.left = clamp(x - rb.left, 4, Math.max(4, rb.width - mw - 4)) + "px"; menuEl.style.top = clamp(y - rb.top, 4, Math.max(4, rb.height - mh - 4)) + "px";
   }
-  function openMenu(items, x, y) {
-    menuEl.innerHTML = items.map((it, i) => it.sep ? `<div class="cx-msep"></div>` : it.h ? `<div class="cx-mh">${esc(it.h)}</div>` : `<button type="button" class="cx-mi${it.danger ? " danger" : ""}" data-i="${i}"><span>${esc(it.l)}</span>${it.k ? `<em>${esc(it.k)}</em>` : ""}</button>`).join("");
-    menuEl._items = items; placeMenu(x, y);
+  const menuHtml = (items, tag) => items.map((it, i) => it.sep ? `<div class="cx-msep"></div>` : it.h ? `<div class="cx-mh">${esc(it.h)}</div>` : `<${tag} class="cx-mi${it.danger ? " danger" : ""}" data-i="${i}"${tag === "div" ? ' role="button" tabindex="0"' : ' type="button"'}><span>${esc(it.l)}</span>${it.k ? `<em>${esc(it.k)}</em>` : ""}</${tag}>`).join("");
+  function selTitle() {
+    const s = rect();
+    if (isWholeCols(s) && isWholeRows(s)) return "Whole sheet";
+    if (isWholeCols(s)) return s.c1 === s.c2 ? `Column ${colName(s.c1)}` : `Columns ${colName(s.c1)}–${colName(s.c2)}`;
+    if (isWholeRows(s)) return s.r1 === s.r2 ? `Row ${s.r1 + 1}` : `Rows ${s.r1 + 1}–${s.r2 + 1}`;
+    return s.r1 === s.r2 && s.c1 === s.c2 ? `Cell ${addr(s.r1, s.c1)}` : `${addr(s.r1, s.c1)}:${addr(s.r2, s.c2)}`;
+  }
+  function openMenu(items, x, y, popover) {
+    if (popover && !touchUI && root.getBoundingClientRect().width >= 640) {
+      menuEl.innerHTML = menuHtml(items, "button"); menuEl._items = items; placePopover(x, y); return;
+    }
+    const wrap = document.createElement("div"); wrap.className = "cx-mlist"; wrap.innerHTML = menuHtml(items, "div");
+    wrap.addEventListener("click", (e) => {
+      const b = e.target.closest(".cx-mi"); if (!b) return; const it = items[+b.dataset.i];
+      closeTop(); if (it && it.a) setTimeout(it.a, 0);
+    });
+    topModal({ title: selTitle(), body: wrap, footer: MODAL_CLOSE });
   }
   menuEl.addEventListener("click", (e) => { const b = e.target.closest(".cx-mi"); if (!b) return; const it = menuEl._items[+b.dataset.i]; closeMenu(); root.focus({ preventScroll: true }); if (it && it.a) setTimeout(it.a, 0); });
-  document.addEventListener("pointerdown", (e) => { if (menuOpen && !menuEl.contains(e.target)) closeMenu(); }, true);
+  document.addEventListener("pointerdown", (e) => {
+    pillDownOpen = pillOpen;
+    if (pillOpen && !pillEl.contains(e.target)) closePill();
+    if (menuOpen && !menuEl.contains(e.target)) closeMenu();
+  }, true);
+
+  /* floating action bar — appears when you tap inside the current selection (like Google Sheets) */
+  function pillItems() {
+    const s = rect(), wc = isWholeCols(s) && !isWholeRows(s), wr = isWholeRows(s) && !isWholeCols(s), A = [];
+    const add = (l, a, more) => A.push({ l, a, more });
+    add("Cut", () => copyToSystem(true)); add("Copy", () => copyToSystem(false)); add("Paste", () => pasteFromClipboard("all"));
+    if (wc) { add("Insert", () => insertColsAt(false)); add("Delete", deleteColsSel); add("Clear", () => clearSelection(true)); add("Hide", () => hideSel("c")); }
+    else if (wr) { add("Insert", () => insertRowsAt(false)); add("Delete", deleteRowsSel); add("Clear", () => clearSelection(true)); add("Hide", () => hideSel("r")); }
+    else { add("Fill down", fillDownSelection); add("Clear", () => clearSelection(true)); add("Select all", selectAll); }
+    add("⋮", () => { const b = pillEl.getBoundingClientRect(); openMenu(buildMenu(), b.left, b.bottom, false); }, true);
+    return A;
+  }
+  function showPill(x, y) {
+    if (ed) commitEdit(null);
+    const items = pillItems();
+    pillEl.innerHTML = items.map((it, i) => `<button type="button" class="cx-pb${it.more ? " cx-pm" : ""}" data-i="${i}" aria-label="${it.more ? "More actions" : esc(it.l)}">${esc(it.l)}</button>`).join("");
+    pillEl._items = items; pillEl.classList.add("open"); pillOpen = true;
+    const rb = root.getBoundingClientRect(), sb = scroller.getBoundingClientRect(), w = pillEl.offsetWidth, h = pillEl.offsetHeight;
+    const left = clamp(x - rb.left - w / 2, 4, Math.max(4, rb.width - w - 4));
+    let top = y - rb.top - h - 20;
+    if (top < sb.top - rb.top + 4) top = y - rb.top + 26;                       // no room above the finger → go below it
+    top = clamp(top, 4, Math.max(4, rb.height - h - 4));
+    pillEl.style.left = left + "px"; pillEl.style.top = top + "px"; pillEl.scrollLeft = 0;
+  }
+  function closePill() { if (!pillOpen) return; pillOpen = false; pillEl.classList.remove("open"); pillEl.innerHTML = ""; }
+  pillEl.addEventListener("pointerdown", (e) => e.preventDefault());
+  pillEl.addEventListener("click", (e) => {
+    const b = e.target.closest(".cx-pb"); if (!b) return; const it = pillEl._items[+b.dataset.i];
+    closePill(); root.focus({ preventScroll: true }); if (it && it.a) setTimeout(it.a, 0);
+  });
+  scroller.addEventListener("scroll", () => { if (pillOpen) closePill(); }, { passive: true });
+
   function openPalette(kind) {
-    menuEl.innerHTML = `<div class="cx-mh">${kind === "tc" ? "Text colour" : "Fill colour"}</div><div class="cx-pal">${PALETTE.map((c) => `<button type="button" class="cx-sw" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join("")}</div><button type="button" class="cx-mi" data-c="">None / default</button>`;
-    menuEl._items = null; placeMenu(lastPtr.x, lastPtr.y);
-    menuEl.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => { const c = b.dataset.c; closeMenu(); root.focus({ preventScroll: true }); formatSel((f) => { f[kind === "tc" ? "tc" : "bg"] = c; }); }));
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `<div class="cx-pal">${PALETTE.map((c) => `<div class="cx-sw" role="button" tabindex="0" data-c="${c}" style="background:${c}" aria-label="${c}"></div>`).join("")}</div><div class="cx-mi" role="button" tabindex="0" data-c=""><span>None / default</span></div>`;
+    wrap.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-c]"); if (!b) return; const c = b.dataset.c;
+      closeTop(); setTimeout(() => formatSel((f) => { f[kind === "tc" ? "tc" : "bg"] = c; }), 0);
+    });
+    topModal({ title: kind === "tc" ? "Text colour" : "Fill colour", body: wrap, footer: MODAL_CLOSE });
   }
   function buildMenu() {
     const s = rect(), wc = isWholeCols(s) && !isWholeRows(s), wr = isWholeRows(s) && !isWholeCols(s), nR = s.r2 - s.r1 + 1, nC = s.c2 - s.c1 + 1, A = [];
@@ -852,18 +947,39 @@ export function createGrid(host, hooks) {
     A.push({ sep: 1 });
     add("Find & replace", () => openFind(false), { k: "Ctrl+F" }); add("Insert function (fx)", () => openPicker()); add("Select all", selectAll, { k: "Ctrl+A" });
     add("Export values as CSV", exportValues); add("Recalculate all", () => { clearCache(); scheduleMeta(); sheet.recalc(); requestRender(); notify("Recalculating…"); });
+    A.push({ sep: 1 });
+    add("Zoom…", openZoomDialog, { k: Math.round(zoom * 100) + "%" }); add("Reset zoom (100%)", () => zoomTo(1), { k: "Ctrl+0" });
     return A;
   }
-  function showMenuAt(x, y) { if (ed) commitEdit(null); openMenu(buildMenu(), x, y); }
-  let dialogCb = null;
+  function showMenuAt(x, y, popover) { if (ed) commitEdit(null); openMenu(buildMenu(), x, y, popover); }
   function askNumber(title, val, cb) {
-    dialogCb = cb; dialogEl.querySelector(".cx-dialog-title").textContent = title; const inp = dialogEl.querySelector(".cx-dialog-input"); inp.value = Math.round(val);
-    dialogEl.classList.add("open"); setTimeout(() => { inp.focus(); inp.select(); }, 0);
+    topModal({
+      title, body: `<input id="cxNum" type="number" inputmode="decimal" value="${Math.round(val)}" autocomplete="off">`,
+      footer: '<button class="modal-btn">Cancel</button><button class="modal-btn active">OK</button>'
+    }).then((r) => { if (r && r.action === "OK") { const v = parseFloat(r.values.cxNum); if (isFinite(v)) cb(v); } });
+    focusModalInput("cxNum");
   }
-  function closeDialog(ok) { const v = parseFloat(dialogEl.querySelector(".cx-dialog-input").value); dialogEl.classList.remove("open"); const cb = dialogCb; dialogCb = null; root.focus({ preventScroll: true }); if (ok && cb) cb(v); }
-  dialogEl.querySelector(".cx-dialog-ok").addEventListener("click", () => closeDialog(true));
-  dialogEl.querySelector(".cx-dialog-cancel").addEventListener("click", () => closeDialog(false));
-  dialogEl.querySelector(".cx-dialog-input").addEventListener("keydown", (e) => { if (e.key === "Enter") closeDialog(true); else if (e.key === "Escape") closeDialog(false); });
+  function focusModalInput(id) {
+    setTimeout(() => {
+      const i = document.getElementById(id); if (!i) return; i.focus(); try { i.select(); } catch (e) {}
+      i.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const ok = document.querySelector(".modal-footer .modal-btn.active"); if (ok) ok.click(); } });
+    }, 90);
+  }
+  function openZoomDialog() {
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `<div class="cx-zpre">${ZPRESETS.map((z) => `<button type="button" data-z="${z}">${Math.round(z * 100)}%</button>`).join("")}</div>
+      <div class="cx-zrow"><input id="cxZoom" type="number" inputmode="numeric" min="${Math.round(ZMIN * 100)}" max="${Math.round(ZMAX * 100)}" value="${Math.round(zoom * 100)}" autocomplete="off"><span>%  (${Math.round(ZMIN * 100)}–${Math.round(ZMAX * 100)})</span></div>`;
+    wrap.querySelector(".cx-zpre").addEventListener("click", (e) => { const b = e.target.closest("[data-z]"); if (!b) return; closeTop(); zoomTo(parseFloat(b.dataset.z)); });
+    topModal({
+      title: "Zoom", body: wrap,
+      footer: `<button class="modal-btn" onclick="closeModal({action:'reset'})">Reset to 100%</button><button class="modal-btn">Cancel</button><button class="modal-btn active">Apply</button>`
+    }).then((r) => {
+      if (!r) return;
+      if (r.action === "reset") zoomTo(1);
+      else if (r.action === "Apply") { const v = parseFloat(r.values.cxZoom); if (isFinite(v) && v > 0) zoomTo(v / 100); }
+    });
+    focusModalInput("cxZoom");
+  }
   function exportValues() {
     const u = usedRange(); if (u.maxR < 0) { notify("Sheet is empty"); return; }
     const rows = []; for (let r = 0; r <= u.maxR; r++) { const row = []; for (let c = 0; c <= u.maxC; c++) row.push(sheet.valueText(r, c)); rows.push(row); }
@@ -873,27 +989,108 @@ export function createGrid(host, hooks) {
   }
 
   /* ═════════════════════════════ function picker ═════════════════════════════ */
-  function buildPicker(q) {
+  function buildPicker(list, q) {
     q = (q || "").trim().toLowerCase(); let html = "";
     for (const cat of CATEGORIES) {
       const items = FUNCTION_LIST.filter((f) => f.cat === cat && (!q || f.name.toLowerCase().includes(q) || f.desc.toLowerCase().includes(q) || cat.toLowerCase().includes(q)));
-      if (items.length) html += `<div class="cx-pcat">${esc(cat)}</div>` + items.map((f) => `<div class="cx-pfn" data-n="${f.name}"><b>${esc(f.sig)}</b><span>${esc(f.desc)}</span></div>`).join("");
+      if (items.length) html += `<div class="cx-pcat">${esc(cat)}</div>` + items.map((f) => `<div class="cx-pfn" role="button" tabindex="0" data-n="${f.name}"><b>${esc(f.sig)}</b><span>${esc(f.desc)}</span></div>`).join("");
     }
-    pickerList.innerHTML = html || `<div class="cx-pempty">No matching functions</div>`;
+    list.innerHTML = html || `<div class="cx-pempty">No matching functions</div>`;
   }
-  function openPicker() { pickerOpen = true; picker.classList.add("open"); picker.setAttribute("aria-hidden", "false"); pickerSearch.value = ""; buildPicker(""); setTimeout(() => pickerSearch.focus(), 0); }
-  function closePicker() { pickerOpen = false; picker.classList.remove("open"); picker.setAttribute("aria-hidden", "true"); if (ed) focusedInput().focus(); else root.focus({ preventScroll: true }); }
+  function openPicker() {
+    const wrap = document.createElement("div"); wrap.className = "cx-pk";
+    wrap.innerHTML = `<input class="cx-pk-search" placeholder="Search functions…" spellcheck="false" autocomplete="off" data-skip-validation><div class="cx-pk-list"></div>`;
+    const search = wrap.querySelector(".cx-pk-search"), list = wrap.querySelector(".cx-pk-list");
+    buildPicker(list, "");
+    search.addEventListener("input", () => buildPicker(list, search.value));
+    list.addEventListener("click", (e) => { const r = e.target.closest(".cx-pfn"); if (!r) return; const n = r.dataset.n; pickerOpen = false; closeTop(); insertFunction(n); });
+    pickerOpen = true;
+    topModal({ title: "Insert function", body: wrap, footer: MODAL_CLOSE }).then(() => { if (pickerOpen) closePicker(); });
+    setTimeout(() => search.focus(), 90);
+  }
+  function closePicker() { pickerOpen = false; if (ed) focusedInput().focus(); else root.focus({ preventScroll: true }); }
   function insertFunction(name) {
-    if (pickerOpen) { pickerOpen = false; picker.classList.remove("open"); picker.setAttribute("aria-hidden", "true"); }
+    pickerOpen = false;
     if (!ed) { startEdit("=" + name + "(", "edit"); return; }
     const inp = focusedInput(); let v = inp.value, pos = inp.selectionStart == null ? v.length : inp.selectionStart;
     if (v[0] !== "=") { v = "=" + v; pos++; }
     inp.value = v.slice(0, pos) + name + "(" + v.slice(pos); const np = pos + name.length + 1; inp.focus(); inp.setSelectionRange(np, np); onEditInput(inp);
   }
-  pickerSearch.addEventListener("input", () => buildPicker(pickerSearch.value));
-  pickerList.addEventListener("click", (e) => { const r = e.target.closest(".cx-pfn"); if (r) insertFunction(r.dataset.n); });
-  $(".cx-picker-close").addEventListener("click", closePicker);
-  picker.addEventListener("pointerdown", (e) => { if (e.target === picker) closePicker(); });
+
+  /* ═════════════════════════════ zoom (cells only — the toolbar never scales) ═════════════════════════════ */
+  function setZoomVars() {
+    HEADH = clamp(Math.round(BASE_HEADH * zoom), 18, 44); RHW = clamp(Math.round(BASE_RHW * zoom), 34, 76);
+    root.style.setProperty("--cx-z", String(zoom));
+  }
+  /** (fx,fy) = point of the grid (stage coordinates) that must stay under the finger / cursor. anchor = un-zoomed content point to keep there. */
+  function applyZoomAt(z, fx, fy, anchor) {
+    z = clamp(Math.round(z * 1000) / 1000, ZMIN, ZMAX);
+    if (z === zoom) return false;
+    const oz = zoom, oRHW = RHW, oHEAD = HEADH, sl = scroller.scrollLeft, st = scroller.scrollTop;
+    const px = anchor ? anchor.px : (fx - oRHW + sl) / oz, py = anchor ? anchor.py : (fy - oHEAD + st) / oz;
+    zoom = z; setZoomVars(); rebuildGeom(); updateSizes();
+    scroller.scrollLeft = Math.max(0, RHW + px * zoom - fx); scroller.scrollTop = Math.max(0, HEADH + py * zoom - fy);
+    closePill(); scheduleMeta(); showZoomTip(); requestRender();
+    return true;
+  }
+  function zoomTo(z, fx, fy) {
+    if (fx == null) { fx = RHW + (scroller.clientWidth - RHW) / 2; fy = HEADH + (scroller.clientHeight - HEADH) / 2; }
+    if (!applyZoomAt(z, fx, fy)) showZoomTip();
+  }
+  function stepZoom(dir) {
+    let n;
+    if (dir > 0) { n = ZPRESETS.find((p) => p > zoom + 0.001); if (n == null) n = ZMAX; }
+    else { n = ZPRESETS.slice().reverse().find((p) => p < zoom - 0.001); if (n == null) n = ZMIN; }
+    zoomTo(n);
+  }
+  function showZoomTip() {
+    zoomTip.textContent = Math.round(zoom * 100) + "%"; zoomTip.classList.add("show");
+    clearTimeout(zoomTipT); zoomTipT = setTimeout(() => zoomTip.classList.remove("show"), 900);
+  }
+  const pinchPts = () => { const v = [...pointers.values()]; return v.length >= 2 ? [v[0], v[1]] : null; };
+  function beginPinch() {
+    cancelDrag(); closePill();
+    const pts = pinchPts(); if (!pts) return;
+    const [a, b] = pts, bb = stage.getBoundingClientRect(), fx = (a.x + b.x) / 2 - bb.left, fy = (a.y + b.y) / 2 - bb.top;
+    pinch = { d0: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), z0: zoom, px: (fx - RHW + scroller.scrollLeft) / zoom, py: (fy - HEADH + scroller.scrollTop) / zoom };
+  }
+  function updatePinch() {
+    const pts = pinchPts(); if (!pts || !pinch) return;
+    const [a, b] = pts, bb = stage.getBoundingClientRect();
+    applyZoomAt(pinch.z0 * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d0, (a.x + b.x) / 2 - bb.left, (a.y + b.y) / 2 - bb.top, { px: pinch.px, py: pinch.py });
+  }
+  /** abandon whatever one-finger gesture was running (a second finger means "pinch") */
+  function cancelDrag() {
+    const d = drag; if (!d) return;
+    drag = null; endTick(); clearTimeout(d.lp);
+    try { stage.releasePointerCapture(d.id); } catch (x) {}
+    if (d.type === "resize" && d.moved) { sheet.restore(d.before); rebuildGeom(); updateSizes(); }
+    fillPrev = null; movePrev = null; requestRender();
+  }
+  scroller.addEventListener("wheel", (e) => {                                  // Ctrl/⌘ + wheel or trackpad pinch
+    if (!(e.ctrlKey || e.metaKey) || !active) return;
+    e.preventDefault(); const b = stage.getBoundingClientRect();
+    zoomTo(zoom * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), e.clientX - b.left, e.clientY - b.top);
+  }, { passive: false });
+
+  /* grip icon (resize) + circle handles (extend the selection) shown on a selected row / column */
+  function put(el, x, y, vis, disp) { if (!vis) { el.style.display = "none"; return; } el.style.display = disp || "block"; el.style.left = x + "px"; el.style.top = y + "px"; }
+  function renderHeaderHandles(s) {
+    const wc = isWholeCols(s) && !isWholeRows(s), wr = isWholeRows(s) && !isWholeCols(s);
+    if (!touchUI || ed || (!wc && !wr)) { elRG.style.display = elHH1.style.display = elHH2.style.display = "none"; return; }
+    const W = scroller.clientWidth, H = scroller.clientHeight;
+    if (wc) {
+      const xl = X(s.c1), xr = X(s.c2) + sizeC(s.c2), ym = HEADH + (H - HEADH) / 2;
+      elRG.classList.add("cx-rgc"); elRG.classList.remove("cx-rgr");
+      put(elRG, xr, HEADH / 2, xr >= RHW + 4 && xr <= W - 2, "flex");
+      put(elHH1, xl, ym, xl >= RHW && xl <= W - 2); put(elHH2, xr, ym, xr >= RHW && xr <= W - 2);
+    } else {
+      const yt = Y(s.r1), yb = Y(s.r2) + sizeR(s.r2), xm = RHW + (W - RHW) / 2;
+      elRG.classList.add("cx-rgr"); elRG.classList.remove("cx-rgc");
+      put(elRG, RHW / 2, yb, yb >= HEADH + 4 && yb <= H - 2, "flex");
+      put(elHH1, xm, yt, yt >= HEADH && yt <= H - 2); put(elHH2, xm, yb, yb >= HEADH && yb <= H - 2);
+    }
+  }
 
   /* ═════════════════════════════ pointer handling ═════════════════════════════ */
   let inertia = null, tickT = null, lastBorderTap = { t: 0, axis: "", i: -1 }, lastHandleTap = 0, hoverCursor = "";
@@ -916,7 +1113,7 @@ export function createGrid(host, hooks) {
   function dragUpdate(cx, cy) {
     const d = drag; if (!d) return;
     if (d.type === "resize") {
-      const nv = d.axis === "c" ? clamp(Math.round(d.orig + cx - d.start), MINW, MAXW) : clamp(Math.round(d.orig + cy - d.start), MINH, 546);
+      const nv = d.axis === "c" ? clamp(Math.round(d.orig + (cx - d.start) / zoom), MINW, MAXW) : clamp(Math.round(d.orig + (cy - d.start) / zoom), MINH, 546);
       for (const i of d.idxs) { if (d.axis === "c") sheet.colW[i] = nv; else sheet.rowH[i] = nv; }
       d.moved = true; rebuildGeom(); updateSizes(); requestRender(); return;
     }
@@ -947,11 +1144,11 @@ export function createGrid(host, hooks) {
       if (h.r >= s.r1 && h.r <= s.r2 && h.c >= s.c1 && h.c <= s.c2) {                      // long-press on the selection → pick it up and drag
         drag = { type: "move", id: d.id, src: s, grab: { r: h.r, c: h.c }, copy: false, dr: 0, dc: 0 }; tickT = setInterval(tick, 30); notify("Drag to move · release to drop"); return;
       }
-      cur = { r: h.r, c: h.c }; ext = { ...cur }; selChanged(false); showMenuAt(d.x, d.y);
+      cur = { r: h.r, c: h.c }; ext = { ...cur }; selChanged(false); showPill(d.x, d.y);
     } else if (h.zone === "colhead" || h.zone === "rowhead") {
       const s = rect(), isC = h.zone === "colhead", i = isC ? h.c : h.r;
       if (!(isC ? isWholeCols(s) && i >= s.c1 && i <= s.c2 : isWholeRows(s) && i >= s.r1 && i <= s.r2)) { if (isC) selectCols(i, i); else selectRows(i, i); }
-      showMenuAt(d.x, d.y);
+      showPill(d.x, d.y);
     }
   }
   function startMove(e, h, copy) { startDrag({ type: "move", src: rect(), grab: { r: h.r, c: h.c }, copy, dr: 0, dc: 0 }, e); }
@@ -969,13 +1166,29 @@ export function createGrid(host, hooks) {
     else if (h.zone === "colhead") { if (!(isWholeCols(s) && h.c >= s.c1 && h.c <= s.c2)) selectCols(h.c, h.c); }
     else if (h.zone === "rowhead") { if (!(isWholeRows(s) && h.r >= s.r1 && h.r <= s.r2)) selectRows(h.r, h.r); }
     else return;
-    showMenuAt(e.clientX, e.clientY);
+    showMenuAt(e.clientX, e.clientY, true);
   });
   stage.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     stopInertia(); const touch = e.pointerType !== "mouse"; setTouch(touch); lastPtr = { x: e.clientX, y: e.clientY };
+    if (touch) {                                                              // second finger down → pinch-zoom
+      if (e.isPrimary) pointers.clear();
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2) { e.preventDefault(); capture(e); beginPinch(); return; }
+      if (pointers.size > 2 || pinch) return;
+    }
     closeMenu();
     const t = e.target;
+    if (t.closest && t.closest(".cx-rg")) {                                    // grip on a selected row / column → resize it (and every other selected one)
+      e.preventDefault(); const s = rect();
+      startResize(e, isWholeCols(s) && !isWholeRows(s) ? { zone: "colhead", edge: s.c2 } : { zone: "rowhead", edge: s.r2 }); return;
+    }
+    if (t.closest && t.closest(".cx-hh")) {                                    // circle on a selected row / column → extend the selection
+      e.preventDefault(); const s = rect(), first = !!t.closest(".cx-hh1");
+      if (isWholeCols(s) && !isWholeRows(s)) { if (first) { cur = { r: 0, c: s.c2 }; ext = { r: ROWS - 1, c: s.c1 }; } else { cur = { r: 0, c: s.c1 }; ext = { r: ROWS - 1, c: s.c2 }; } startDrag({ type: "colsel" }, e); }
+      else { if (first) { cur = { r: s.r2, c: 0 }; ext = { r: s.r1, c: COLS - 1 }; } else { cur = { r: s.r1, c: 0 }; ext = { r: s.r2, c: COLS - 1 }; } startDrag({ type: "rowsel" }, e); }
+      return;
+    }
     if (t.closest && t.closest(".cx-fh")) {
       e.preventDefault(); const now = Date.now();
       if (now - lastHandleTap < 400) { lastHandleTap = 0; autoFillDown(); return; }
@@ -1023,7 +1236,7 @@ export function createGrid(host, hooks) {
     }
   });
   function hover(e) {
-    if (e.target.closest && (e.target.closest(".cx-fh") || e.target.closest(".cx-sh"))) return;
+    if (e.target.closest && (e.target.closest(".cx-fh") || e.target.closest(".cx-sh") || e.target.closest(".cx-rg") || e.target.closest(".cx-hh"))) return;
     const h = hit(e.clientX, e.clientY); let c = "";
     if (h.zone === "colhead" && h.edge >= 0) c = "col-resize"; else if (h.zone === "rowhead" && h.edge >= 0) c = "row-resize";
     else if (h.zone === "cell" && onSelBorder(h.x, h.y, 4)) c = "move"; else if (h.zone === "colhead" || h.zone === "rowhead") c = "pointer";
@@ -1031,6 +1244,8 @@ export function createGrid(host, hooks) {
   }
   stage.addEventListener("pointermove", (e) => {
     lastPtr = { x: e.clientX, y: e.clientY };
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch) { if (pointers.size >= 2) updatePinch(); return; }
     if (!drag) { if (e.pointerType === "mouse") hover(e); return; }
     if (e.pointerId !== drag.id) return;
     const d = drag;
@@ -1068,17 +1283,17 @@ export function createGrid(host, hooks) {
     root.focus({ preventScroll: true });
     if (h.zone === "corner") { selectAll(); return; }
     if (h.zone === "cell") {
-      const s = rect(), isSingleSel = s.r1 === s.r2 && s.c1 === s.c2 && cur.r === h.r && cur.c === h.c;
+      const s = rect(), inSel = h.r >= s.r1 && h.r <= s.r2 && h.c >= s.c1 && h.c <= s.c2;   // tap anywhere INSIDE the selection → action bar
       const dbl = lastTap.z === "cell" && lastTap.r === h.r && lastTap.c === h.c && now - lastTap.t < 400;
       if (dbl) { cur = { r: h.r, c: h.c }; ext = { ...cur }; lastTap = { t: 0, r: -1, c: -1, z: "" }; selChanged(false); startEdit(null, "edit"); return; }
-      if (isSingleSel) { lastTap = { t: now, r: h.r, c: h.c, z: "cell" }; showMenuAt(d.x, d.y); return; }
+      if (inSel) { lastTap = { t: now, r: h.r, c: h.c, z: "cell" }; if (pillDownOpen) { pillDownOpen = false; return; } showPill(d.x, d.y); return; }
       cur = { r: h.r, c: h.c }; ext = { ...cur }; lastTap = { t: now, r: h.r, c: h.c, z: "cell" }; selChanged(false); return;
     }
     const isC = h.zone === "colhead", i = isC ? h.c : h.r, s = rect(), key = (isC ? "c" : "r") + i;
     const selNow = isC ? isWholeCols(s) && i >= s.c1 && i <= s.c2 : isWholeRows(s) && i >= s.r1 && i <= s.r2;
     if (lastTap.z === key && now - lastTap.t < 400) { lastTap = { t: 0, r: -1, c: -1, z: "" }; autofit(isC ? "c" : "r", fitTargets(isC ? "c" : "r", i)); return; }
     lastTap = { t: now, r: -1, c: -1, z: key };
-    if (selNow) { showMenuAt(d.x, d.y); return; }
+    if (selNow) { if (pillDownOpen) { pillDownOpen = false; return; } showPill(d.x, d.y); return; }
     if (isC) selectCols(i, i); else selectRows(i, i);
   }
   function endPointer(e, cancelled) {
@@ -1096,15 +1311,22 @@ export function createGrid(host, hooks) {
       default: requestRender();
     }
   }
-  stage.addEventListener("pointerup", (e) => endPointer(e, false));
-  stage.addEventListener("pointercancel", (e) => endPointer(e, true));
+  function dropPointer(e) { pointers.delete(e.pointerId); if (pinch && pointers.size < 2) { pinch = null; scheduleMeta(); } }
+  stage.addEventListener("pointerup", (e) => { dropPointer(e); endPointer(e, false); });
+  stage.addEventListener("pointercancel", (e) => { dropPointer(e); endPointer(e, true); });
   scroller.addEventListener("scroll", requestRender, { passive: true });
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => { updateSizes(); requestRender(); }).observe(scroller);
   window.addEventListener("resize", () => { if (active) { updateSizes(); requestRender(); } });
 
   /* ═════════════════════════════ keyboard ═════════════════════════════ */
   root.addEventListener("keydown", (e) => {
-    if (ed || inMyInput(e.target) || pickerOpen) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {                               // Ctrl +  /  Ctrl −  /  Ctrl 0  → grid zoom (not page zoom)
+      if (e.key === "+" || e.key === "=") { e.preventDefault(); stepZoom(1); return; }
+      if (e.key === "-" || e.key === "_") { e.preventDefault(); stepZoom(-1); return; }
+      if (e.key === "0") { e.preventDefault(); zoomTo(1); return; }
+    }
+    if (ed || inMyInput(e.target) || overlayOpen()) return;
+    closePill();
     if (menuOpen && e.key === "Escape") { closeMenu(); return; }
     const k = e.key, mod = e.ctrlKey || e.metaKey;
     if (mod && !e.altKey) {
@@ -1133,14 +1355,14 @@ export function createGrid(host, hooks) {
       case "ArrowDown": e.preventDefault(); moveCur(1, 0, e.shiftKey); return;
       case "ArrowLeft": e.preventDefault(); moveCur(0, -1, e.shiftKey); return;
       case "ArrowRight": e.preventDefault(); moveCur(0, 1, e.shiftKey); return;
-      case "PageDown": e.preventDefault(); moveCur(Math.max(1, Math.floor(scroller.clientHeight / DEF_ROWH) - 2), 0, e.shiftKey); return;
-      case "PageUp": e.preventDefault(); moveCur(-Math.max(1, Math.floor(scroller.clientHeight / DEF_ROWH) - 2), 0, e.shiftKey); return;
+      case "PageDown": e.preventDefault(); moveCur(Math.max(1, Math.floor(scroller.clientHeight / (DEF_ROWH * zoom)) - 2), 0, e.shiftKey); return;
+      case "PageUp": e.preventDefault(); moveCur(-Math.max(1, Math.floor(scroller.clientHeight / (DEF_ROWH * zoom)) - 2), 0, e.shiftKey); return;
       case "Home": e.preventDefault(); cur = { r: cur.r, c: 0 }; ext = { ...cur }; selChanged(); return;
       case "End": e.preventDefault(); { const u = usedRange(); cur = { r: cur.r, c: Math.max(0, u.maxC) }; ext = { ...cur }; selChanged(); } return;
       case "Enter": e.preventDefault(); moveCur(e.shiftKey ? -1 : 1, 0, false); return;
       case "Tab": e.preventDefault(); moveCur(0, e.shiftKey ? -1 : 1, false); return;
       case "F2": e.preventDefault(); startEdit(null, "edit"); return;
-      case "ContextMenu": e.preventDefault(); { const q = screenRect(rect()), b = stage.getBoundingClientRect(); showMenuAt(b.left + q.x + 20, b.top + q.y + q.h); } return;
+      case "ContextMenu": e.preventDefault(); { const q = screenRect(rect()), b = stage.getBoundingClientRect(); showMenuAt(b.left + q.x + 20, b.top + q.y + q.h, true); } return;
       case "Delete": case "Backspace": e.preventDefault(); clearSelection(true); return;
       case "Escape": clip = null; closeMenu(); return;
     }
@@ -1172,7 +1394,9 @@ export function createGrid(host, hooks) {
       case "al-l": setAlign("l"); break; case "al-c": setAlign("c"); break; case "al-r": setAlign("r"); break;
       case "tc": case "bg": openPalette(a); break;
       case "filldown": fillDownSelection(); break; case "find": openFind(false); break;
-      case "menu": showMenuAt(br.right - 240, br.bottom + 4); break;
+      case "clear": clearSelection(true); break;
+      case "zin": stepZoom(1); break; case "zout": stepZoom(-1); break; case "zlbl": openZoomDialog(); break;
+      case "menu": showMenuAt(br.right - 240, br.bottom + 4, false); break;
     }
   });
   host.querySelectorAll(".cx-row-actions .cx-btn").forEach((b) => b.addEventListener("pointerdown", (e) => e.preventDefault()));
@@ -1184,13 +1408,14 @@ export function createGrid(host, hooks) {
     clearTimeout(persistT); persistT = null;
     sheet.gen++; sheet.load(parseStored(text)); applyMeta(meta); importCache(meta && meta.cache);
     cur = { r: 0, c: 0 }; ext = { r: 0, c: 0 };
-    undoStack = []; redoStack = []; ed = null; clip = null; refRect = null; fillPrev = null; movePrev = null; drag = null; hideSuggest(); closeMenu();
+    undoStack = []; redoStack = []; ed = null; clip = null; refRect = null; fillPrev = null; movePrev = null; drag = null; hideSuggest(); closeMenu(); closePill();
+    pointers.clear(); pinch = null; resetPlaceholders();
     editor.style.display = "none"; scroller.scrollLeft = 0; scroller.scrollTop = 0;
     updateSizes(); syncBar(); requestRender();
     sheet.recalc().then(requestRender);
   }
   function show() { active = true; host.style.display = ""; updateSizes(); syncBar(); requestRender(); setTimeout(() => { try { root.focus({ preventScroll: true }); } catch (e) {} }, 0); }
-  function hide() { if (ed) commitEdit(null); closeMenu(); active = false; }
+  function hide() { if (ed) commitEdit(null); closeMenu(); closePill(); active = false; }
 
-  return { load, show, hide, flush, undo, redo, getCsv: () => serializeGrid(sheet.raw), isActive: () => active, openPicker, insertFunction, refresh: () => { updateSizes(); requestRender(); }, sheet };
+  return { load, show, hide, flush, undo, redo, getCsv: () => serializeGrid(sheet.raw), isActive: () => active, openPicker, insertFunction, refresh: () => { updateSizes(); requestRender(); }, getZoom: () => zoom, setZoom: (z) => zoomTo(z), sheet };
 }
