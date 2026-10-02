@@ -260,6 +260,7 @@ FunctionRegistry.registerMany([
   { function: 'optimisejs',            icon: 'javascript',            name: 'Optimise JS',           under: ['code'], batch: 'file', onclick: 'optimisejs()' },
   { function: 'minifyjs',              icon: 'javascript',            name: 'Minify JS',             under: ['code'], batch: 'file', onclick: 'minifyjs()' },
   { function: 'handleLatex',           icon: 'data_object',           name: 'Handle Latex',          under: ['code'], batch: 'file', onclick: 'handleLatex()' },
+  { function: 'openCsvexecFunctions',  icon: 'table',                 name: 'CSVExec Functions',     under: ['code'], batch: 'exclude', onclick: 'openCsvexecFunctions()' },
 
   // ── Document ─────────────────────────────────────────────────────────────
   { function: 'openFetchModal',        icon: 'data_object',           name: 'Fetch URL',             under: ['document'], batch: 'exclude', onclick: 'openFetchModal()' },

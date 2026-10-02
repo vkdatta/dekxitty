@@ -1,6 +1,4 @@
-export const optimisecss = (...a) => preserveSelection(async () => {
-  if (!currentNote || !noteTextarea) return;
-
+export function optimiseCssText(input) {
   function extractStyleBlocks(text) {
     if (!text) return "";
     const styleRE = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
@@ -341,6 +339,22 @@ export const optimisecss = (...a) => preserveSelection(async () => {
     return out;
   }
 
+  input = extractStyleBlocks(input || "");
+  const parser = new Parser(input);
+  const ast = parser.parseBlock();
+  const optimizedAst = optimizeNodes(ast);
+  let finalCss = serialize(optimizedAst);
+  return finalCss.replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}
+
+export function minifyCssText(input) {
+  let t = input || "";
+  try { t = optimiseCssText(t); } catch (e) {}
+  return t.replace(/\r\n|\r|\n/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export const optimisecss = (...a) => preserveSelection(async () => {
+  if (!currentNote || !noteTextarea) return;
   try {
     if (!noteTextarea) {
       const msg = "No textarea found to optimize.";
@@ -348,14 +362,7 @@ export const optimisecss = (...a) => preserveSelection(async () => {
       else console.warn(msg);
       return;
     }
-    let input = noteTextarea.value || "";
-    input = extractStyleBlocks(input);
-    const parser = new Parser(input);
-    const ast = parser.parseBlock();
-    const optimizedAst = optimizeNodes(ast);
-    let finalCss = serialize(optimizedAst);
-    finalCss = finalCss.replace(/\n{3,}/g, "\n\n").trim() + "\n";
-    noteTextarea.value = finalCss;
+    noteTextarea.value = optimiseCssText(noteTextarea.value || "");
     if (typeof updateNoteMetadata === "function") {
       try {
         updateNoteMetadata();

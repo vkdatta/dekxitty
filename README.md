@@ -243,3 +243,19 @@ Install via -
 ```html
 <script src="https://cdn.jsdelivr.net/gh/vkdatta/web@main/app/dexsins/dexsinsjs/preprocessor.js"></script>
 ```
+
+---
+
+### CSVExec (`.csvexec` files)
+
+Name or rename a note to end in `.csvexec` and the editor becomes a spreadsheet (max **1000 rows × 100 columns**, A1 – CV1000). Stored as plain CSV (formulas included); layout, formats and the ENCRYPT/DECRYPT cache are kept on the note.
+
+**Formulas** – any cell starting with `=`: `=MD5(A1)`, `=DECRYPT(A1,$E$1,$E$2)`, `=UPPER(TRIM(A1))`. `fx` lists all ~100 functions by category; typing `=` + letters autocompletes. Every text tool in sidebar 2 has a formula twin (UPPER, LOWER, PROPER/CAPITALIZEWORDS, SENTENCE, REVERSE, REVERSEWORDS, INDENT, OUTDENT, BULLETLIST, NUMBEREDLIST, LINK, IMAGE, CLEANUP, ADDTEXT, PATTERNREPLACE, FINDREPLACE, OPTIMISECSS/JS, MINIFYCSS/JS, REMOVEHTML, ESCAPEHTML, MD5, SHA256, ENCRYPT, DECRYPT) and is parity-tested against the sidebar code.
+
+**Touch** – tap select · double-tap edit · drag scrolls (momentum) · blue circles resize the selection · small square = fill (formula drag, double-tap = fill down) · long-press a selection or drag its border = move cells (cell drag) · drag a header edge = resize that row/column · double-tap a header or its edge = auto-fit · tap a selected cell/header = action sheet.
+**Mouse** – drag selects · border drag moves (Ctrl = copy) · square fills · right-click menu · Ctrl+B/I/F/H/D/R, Ctrl+Shift+V (paste values), Alt+Enter (new line in cell).
+
+**Rows / columns** – individual sizes, auto-fit, insert, delete (formulas rewrite, `#REF!` where needed), hide/unhide, freeze panes, sort A→Z / Z→A, select row/column/all.
+**Cells** – bold, italic, wrap, alignment, text/fill colour, clear contents/formats, paste values only, find & replace (also inside formulas).
+
+Code: `app/js/modes/csvexec/` (`engine.js` formulas + structure, `functions.js` library, `grid.js` UI, `core.js` glue).
