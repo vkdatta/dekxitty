@@ -46,6 +46,14 @@ bookmarkable:</p>
     the same way. Only one exclusive mode can be active per note at a time.</li>
 </ul>
 
+<h2>Raw &amp; exec views</h2>
+<p>Every <code>.csv</code> and <code>.md</code> file in the sidebar has a small <strong>raw | exec</strong>
+switch just left of its edit button. <strong>Raw</strong> is the normal text editor. <strong>Exec</strong>
+runs the file: a <code>.csv</code> opens as a spreadsheet where cells starting with <code>=</code> are
+formulas, and a <code>.md</code> opens as a rendered document with tables, task lists you can tick,
+and <code>mermaid</code> code fences drawn as diagrams. Each file remembers its own choice, the file
+itself is never altered by switching, and the exclusive modes below take over the editor while they&rsquo;re on.</p>
+
 <h2>Selecting and editing text</h2>
 <p>Long-press to select a word on any text surface &mdash; the base editor, a diff view, or the
 Mermaid code pane. Pause for a moment after selecting and a small menu appears near your selection

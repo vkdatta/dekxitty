@@ -1,16 +1,19 @@
 /**
  * csvexec — glue between the grid and the rest of the app.
  *
- *  • A note whose extension is "csvexec" is shown in the spreadsheet grid instead of
- *    the CodeMirror editor. Every other extension is untouched.
+ *  • A `.csv` note whose view mode is "exec" (chosen per file with the raw / exec
+ *    toggle in sidebar 1 — see js/modes/viewmode/viewmode.js) is shown in the
+ *    spreadsheet grid instead of the CodeMirror editor. "raw" csv notes and every
+ *    other extension are untouched.
  *  • The note's `content` stays a plain CSV string (formulas are cells starting with "="),
  *    so download / sync / zip-export / other sidebar tools keep working on it.
  *  • Column widths and the ENCRYPT/DECRYPT result cache are kept on `note.csvexec`.
  */
 import { createGrid } from "./grid.js";
 
-const EXT = "csvexec";
-const isCsvexec = (n) => !!n && String(n.extension || "").toLowerCase() === EXT;
+// A note gets the grid when it is a .csv in exec view — and only while Diffusion /
+// Mermaid are off, because those modes need the plain text editor for their panes.
+const wantsGrid = (n) => !!n && !!window.dexView && window.dexView.isExec(n, "csv") && !window.dexView.exclusiveActive();
 
 function boot() {
   const wrapper = document.getElementById("textAreaWrapper");
@@ -61,13 +64,14 @@ function boot() {
   /** Make the UI match whichever note is current. Cheap enough to call often. */
   function sync() {
     const note = (typeof currentNote !== "undefined" && currentNote) || null;
-    const want = isCsvexec(note) ? note : null;
+    const want = wantsGrid(note) ? note : null;
     if (want === activeNote) return;
     if (activeNote) { grid.hide(); grid.flush(); }   // commit any open cell edit and write it to the OLD note first
     if (!want) deactivate(); else activate(want);
   }
 
   window.addEventListener("dexNoteOpened", sync);
+  window.addEventListener("dexViewModeChanged", sync);   // raw ⇄ exec toggled in the sidebar
   setInterval(sync, 400);                    // covers delete / folder changes / rename paths that fire no event
 
   // text changed from outside the grid (e.g. a sidebar tool edited the hidden editor)
@@ -89,7 +93,7 @@ function boot() {
 
   // lets the Functions list (sidebar 2) open the formula picker
   window.openCsvexecFunctions = function () {
-    if (!grid.isActive()) { if (typeof showNotification === "function") showNotification("Open a .csvexec file to use formulas"); return; }
+    if (!grid.isActive()) { if (typeof showNotification === "function") showNotification("Switch this .csv file to exec to use formulas"); return; }
     if (typeof window.closeSidebar === "function") { try { window.closeSidebar(); } catch (e) {} }
     grid.openPicker();
   };

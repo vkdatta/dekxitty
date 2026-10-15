@@ -50,20 +50,49 @@ export function createSettingsManager() {
   // preference is indistinguishable from "never set" and would snap back to
   // ON on the next page load.
   function lsSet(k, v) { lsWrite(k, v ? '1' : '0'); }
-  // Canonical "/note/<id>/<mode>" parser lives in dpad/dpad-layout.js
-  // (window.dexParseNoteRoute) — dpad loads before settings, so it's always
-  // available here. This is the single source of truth for both the note id
-  // and the currently-active exclusive mode; no separate regex is kept.
-  function currentNoteRoute() {
-    return typeof window.dexParseNoteRoute === 'function' ? window.dexParseNoteRoute(location.pathname) : null;
+  // FIX (exclusive modes never opened): this used to delegate to
+  // window.dexParseNoteRoute, documented as living in dpad/dpad-layout.js. That
+  // file no longer exists, so the function was undefined, the route was always
+  // null, and every toggle bailed out with "Open a note first" even with a note
+  // open. The parser is now defined here (and published on window for anyone
+  // else who wants it) so settings no longer depends on another component.
+  //
+  // Matches "/note/<id>" and "/note/<id>/<mode>" — the same shape that
+  // handlePopState() in index.html understands.
+  function parseNoteRoute(pathname) {
+    const m = String(pathname || '').match(/^\/note\/([^/]+)(?:\/([a-zA-Z0-9_-]+))?\/?$/);
+    if (!m) return null;
+    let id = m[1];
+    try { id = decodeURIComponent(id); } catch (e) {}
+    return { id, mode: m[2] || 'base' };
   }
+  if (typeof window.dexParseNoteRoute !== 'function') window.dexParseNoteRoute = parseNoteRoute;
+
+  function currentNoteRoute() { return parseNoteRoute(location.pathname); }
+
+  // The note the user is looking at. The URL is the primary source, but the app
+  // can be showing a note without a /note/<id> URL (e.g. opened from the
+  // sidebar before pushState settles, or a host that rewrites paths), so fall
+  // back to the live `currentNote` binding instead of refusing to work.
   function currentNoteIdFromUrl() {
     const route = currentNoteRoute();
-    return route ? route.id : null;
+    if (route && route.id) return route.id;
+    try {
+      if (typeof currentNote !== 'undefined' && currentNote && currentNote.id != null) return String(currentNote.id);
+    } catch (e) {}
+    return null;
   }
   function currentModeFromUrl() {
     const route = currentNoteRoute();
     return route ? route.mode : null;
+  }
+  // Truth about which exclusive mode is live comes from the modes themselves;
+  // the URL / localStorage are only fallbacks for before the modes finish loading.
+  function exclusiveModeActive(which) {
+    if (which === 'diffusion' && window.dexMode) return !!window.dexMode.enabled;
+    if (which === 'mermaid' && window.dexMermaidMode) return !!window.dexMermaidMode.enabled;
+    const urlMode = currentModeFromUrl();
+    return urlMode ? (urlMode === which) : lsBool(which === 'diffusion' ? LS.DIFFUSION : LS.MERMAID);
   }
 
   function fire(name, detail) {
@@ -318,11 +347,9 @@ export function createSettingsManager() {
       } else if (key === 'PRISM') {
         on = lsBool(LS.PRISM, true); // FIX (defaults): absent key → default ON
       } else if (key === 'DIFFUSION') {
-        const urlMode = currentModeFromUrl();
-        on = urlMode ? (urlMode === 'diffusion') : lsBool(LS.DIFFUSION);
+        on = exclusiveModeActive('diffusion');
       } else if (key === 'MERMAID') {
-        const urlMode = currentModeFromUrl();
-        on = urlMode ? (urlMode === 'mermaid') : lsBool(LS.MERMAID);
+        on = exclusiveModeActive('mermaid');
       } else {
         on = lsBool(LS[key]);
       }
@@ -431,8 +458,7 @@ export function createSettingsManager() {
         return;
       }
       const wantMode = key === 'DIFFUSION' ? 'diffusion' : 'mermaid';
-      const urlMode = currentModeFromUrl();
-      const active = urlMode ? (urlMode === wantMode) : (key === 'DIFFUSION' ? lsBool(LS.DIFFUSION) : lsBool(LS.MERMAID));
+      const active = exclusiveModeActive(wantMode);
       const targetMode = active ? 'base' : wantMode;
       window.showNoteApp(nid, targetMode);
       paint();

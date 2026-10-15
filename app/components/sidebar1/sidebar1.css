@@ -59,6 +59,12 @@ body.topbar-closed .sidebar { top:10px; }
 .dex-name { flex:1; font-size:13.5px; color:var(--c-text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dex-name.folder { color:var(--c-white); font-weight:500; }
 .dex-badge { font-size:10.5px; color:var(--c-text-faint); margin-left:6px; white-space:nowrap; }
+/* raw | exec — two-pane segmented toggle, sits just left of the edit button */
+.dex-view { display:flex; flex-shrink:0; border:1px solid var(--c-border); border-radius:7px; overflow:hidden; }
+.dex-view-opt { height:22px; line-height:22px; padding:0 8px; font-size:11px; letter-spacing:.02em; color:var(--c-text-dim); opacity:.7; }
+.dex-view-opt + .dex-view-opt { border-left:1px solid var(--c-border); }
+.dex-view-opt:hover { background:color-mix(in srgb,var(--c-white) 07%,transparent); opacity:1; }
+.dex-view-opt.on, .dex-view-opt.on:hover { background:var(--c-accent); color:var(--c-black); opacity:1; font-weight:600; }
 .dex-add { width:24px; height:24px; display:flex; align-items:center; justify-content:center; color:var(--c-text-dim); border-radius:6px; flex-shrink:0; }
 .dex-add delluna-icon svg,
 .dex-add delluna-icon svg * { fill:var(--c-text-dim); stroke:var(--c-text-dim); }

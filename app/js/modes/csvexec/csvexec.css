@@ -1,6 +1,6 @@
-/* csvexec — spreadsheet mode for .csvexec notes */
+/* csvexec — spreadsheet mode for .csv notes in exec view */
 
-/* swap the CodeMirror editor for the grid while a .csvexec note is open */
+/* swap the CodeMirror editor for the grid while a .csv note is in exec view */
 #csvexecPane { display: none; position: absolute; inset: 0; z-index: 3; background: var(--primary); }
 body.csvexec-active #csvexecPane { display: block; }
 body.csvexec-active .text-area-wrapper > .CodeMirror,

@@ -1,6 +1,6 @@
 /**
  * csvexec — CSV / TSV helpers (pure, no DOM).
- * Storage format of a .csvexec note is plain RFC-4180 CSV where a cell that
+ * Storage format of a .csv note is plain RFC-4180 CSV where a cell that
  * starts with "=" is a formula. Clipboard format (Excel / Sheets) is TSV.
  */
 

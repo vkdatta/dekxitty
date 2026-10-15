@@ -201,11 +201,23 @@ function renderFileRow(n) {
   html += '<div class="dex-name">' + escapeHtml(n.title || ("note " + n.id)) + "</div>";
   html += '<div class="dex-badge">' + (n.content || "").length + "c \u00b7 ." + (n.extension || "txt") + "</div>";
   if (!selectMode) {
+    // raw / exec — per-file view choice, only for file types that have an exec
+    // view (.csv → spreadsheet, .md → rendered). Hidden while a Diffusion/Mermaid
+    // "pick a note" prompt is up, since that tap must only pick the note.
+    if (window.dexView && window.dexView.supports(n) && !window.__dexNotePick) {
+      const v = window.dexView.get(n);
+      html += '<div class="dex-view" role="group" aria-label="View mode">' +
+        '<span class="dex-view-opt' + (v === "raw" ? " on" : "") + '" data-view="raw" title="Raw text">raw</span>' +
+        '<span class="dex-view-opt' + (v === "exec" ? " on" : "") + '" data-view="exec" title="' + (window.dexView.kind(n) === "csv" ? "Spreadsheet with formulas" : "Rendered markdown") + '">exec</span>' +
+        "</div>";
+    }
     html += '<div class="dex-add" data-rename="1" title="Rename">' + dellunaIcon("edit") + "</div>";
     html += '<div class="dex-add" data-dl="1" title="Download">' + dellunaIcon("download") + "</div>";
   }
   row.innerHTML = html;
   row.onclick = (e) => {
+    const viewEl = e.target.closest("[data-view]");
+    if (viewEl) { sidebarSetView(n, viewEl.getAttribute("data-view")); return; }
     if (e.target.closest("[data-rename]")) { sidebarRename("file", n.id); return; }
     if (e.target.closest("[data-dl]")) { downloadFile(n); return; }
     if (selectMode) { toggleSel("n:" + n.id); return; }
@@ -224,6 +236,20 @@ function renderFileRow(n) {
   item.appendChild(row);
   return item;
 }
+
+// Flip one file between raw and exec from its sidebar row.
+function sidebarSetView(n, mode) {
+  if (!window.dexView || !window.dexView.set(n, mode)) return;
+  const isCurrent = currentNote && String(currentNote.id) === String(n.id);
+  const inFileManager = document.body.classList.contains("mode-filemanager");
+  // Not the open note → open it so the choice is visible straight away. Also open
+  // it when Diffusion/Mermaid is on: those own the editor surface, and opening a
+  // note via showNoteApp() is what leaves them (exec stands down while they run).
+  if (!isCurrent || window.dexView.exclusiveActive()) { showNoteApp(n.id); return; }
+  renderSidebar();
+  if (!inFileManager) closeSidebar();
+}
+window.sidebarSetView = sidebarSetView;
 
 function renderFolderNode(f) {
   const item = document.createElement("div");
@@ -822,3 +848,5 @@ window.sidebarCancelClipboard = sidebarCancelClipboard;
 window.sidebarDeleteSelected = sidebarDeleteSelected;
 
 window.__dexSidebarReady = true;
+// keep the raw / exec toggles in step if a file's view mode is changed from anywhere else
+window.addEventListener("dexViewModeChanged", () => { try { renderSidebar(); } catch (e) {} });
