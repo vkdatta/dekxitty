@@ -14,9 +14,16 @@
  *    keep working; the preview re-renders whenever the text changes underneath.
  *  • Output is always sanitised (DOMPurify) — a note can contain arbitrary HTML.
  *
+ *  • READ / DESIGN (bottom bar, viewmode/execbar.js): Read is the default and shows the
+ *    document as above. Design turns it into a block editor (design.js) — tap a block to edit
+ *    it, tables open as a cell grid, and every Sidebar 2 function keeps working on the selection.
+ *
  * Mirrors csvexec/core.js: one pane inside #textAreaWrapper, shown by a body
  * class that also hides the editor.
  */
+import { createDesigner } from "./design.js";
+import { findTaskLines, setTaskChecked, slugify } from "./blocks.js";
+export { findTaskLines, setTaskChecked, slugify };
 
 // Per-diagram theme via an init directive (works on every mermaid 10.x/11.x; frontmatter config only exists on newer 10.x).
 const THEME_DIRECTIVE = () =>
@@ -24,35 +31,6 @@ const THEME_DIRECTIVE = () =>
 
 // Diffusion / Mermaid need the plain editor for their panes, so exec stands down while they run.
 const wantsPreview = (n) => !!n && !!window.dexView && window.dexView.isExec(n, "md") && !window.dexView.exclusiveActive();
-
-/* ───────── pure helpers (no DOM) ───────── */
-
-/** Line indexes of every "- [ ]" / "1. [x]" task marker that is NOT inside a fenced code block. */
-export function findTaskLines(src) {
-  const lines = String(src).split(/\r?\n/);
-  const out = [];
-  let fence = null;
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
-    const f = l.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (fence) {
-      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && /^ {0,3}(`{3,}|~{3,})\s*$/.test(l)) fence = null;
-      continue;
-    }
-    if (f) { fence = f[1]; continue; }
-    if (/^(?:\s*>)*\s*(?:[-*+]|\d{1,9}[.)])\s+\[[ xX]\](?:\s|$)/.test(l)) out.push(i);
-  }
-  return out;
-}
-
-/** Flip the checkbox on one line; returns the new line text. */
-export function setTaskChecked(line, checked) {
-  return line.replace(/^((?:\s*>)*\s*(?:[-*+]|\d{1,9}[.)])\s+)\[[ xX]\]/, (_, pre) => pre + "[" + (checked ? "x" : " ") + "]");
-}
-
-export function slugify(text) {
-  return String(text).trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s+/g, "-");
-}
 
 /* ───────── boot ───────── */
 
@@ -63,10 +41,11 @@ function boot() {
 
   const pane = document.createElement("div");
   pane.id = "mdexecPane";
-  pane.innerHTML = '<div class="mdx-scroll"><article class="mdx-body"></article></div>';
+  pane.innerHTML = '<div class="mdx-toolbar cx-toolbar" style="display:none"></div><div class="mdx-scroll"><article class="mdx-body"></article></div>';
   wrapper.appendChild(pane);
   const scroller = pane.querySelector(".mdx-scroll");
   const body = pane.querySelector(".mdx-body");
+  const toolbar = pane.querySelector(".mdx-toolbar");
 
   let activeNote = null;   // note the preview is bound to
   let selfWrite = false;   // true while WE edit the hidden editor (ticking a checkbox)
@@ -146,8 +125,11 @@ function boot() {
     if (typeof populateNoteList === "function") populateNoteList();
   }
 
-  async function drawMermaid(gen) {
-    const blocks = [...body.querySelectorAll("pre > code.language-mermaid")];
+  const mmCache = new Map();   // theme + source → sanitised svg (design mode re-renders blocks often)
+  const theme = () => (document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark");
+
+  async function drawMermaid(root, stale) {
+    const blocks = [...root.querySelectorAll("pre > code.language-mermaid")];
     for (const code of blocks) {
       const pre = code.parentElement;
       const text = code.textContent || "";
@@ -161,6 +143,8 @@ function boot() {
         const p = document.createElement("pre"); p.textContent = text;
         holder.append(m, p);
       };
+      const key = theme() + "\u0000" + text;
+      if (mmCache.has(key)) { holder.innerHTML = mmCache.get(key); continue; }
       if (!window.mermaid || typeof window.mermaid.render !== "function") { fail("Mermaid library not loaded"); continue; }
       const id = "mdxm" + (++mmCounter);
       try {
@@ -168,23 +152,36 @@ function boot() {
         // Mermaid Flow mode owns (and tunes with the user's colours).
         const input = /^\s*(---|%%\{)/.test(text) ? text : THEME_DIRECTIVE() + text;
         const { svg } = await window.mermaid.render(id, input);
-        if (gen !== renderGen) return;
+        if (stale()) return;
         // Mermaid Flow runs mermaid with securityLevel "loose" globally, so don't trust the SVG blindly.
-        holder.innerHTML = getPurify().sanitize(svg, {
+        const clean = getPurify().sanitize(svg, {
           USE_PROFILES: { svg: true, svgFilters: true, html: true },
           ADD_TAGS: ["foreignObject"], HTML_INTEGRATION_POINTS: { foreignobject: true }
         });
+        holder.innerHTML = clean;
+        if (mmCache.size > 60) mmCache.delete(mmCache.keys().next().value);
+        mmCache.set(key, clean);
       } catch (e) {
         const leaked = document.getElementById("d" + id); if (leaked) leaked.remove();
         const leaked2 = document.getElementById(id); if (leaked2) leaked2.remove();
-        if (gen !== renderGen) return;
+        if (stale()) return;
         fail("Mermaid error: " + String((e && e.message) || e).split("\n")[0]);
       }
     }
   }
 
+  /** Render Markdown into any element (used per block by Design mode). */
+  function renderInto(el, src, gen, stale) {
+    if (!libsReady()) { el.innerHTML = '<p class="mdx-note">Loading renderer…</p>'; setTimeout(() => { if (!stale || !stale()) renderInto(el, src, gen, stale); }, 150); return; }
+    try { el.innerHTML = toHtml(src); } catch (e) { el.textContent = "Could not render this block: " + ((e && e.message) || e); return; }
+    drawMermaid(el, stale || (() => false));
+  }
+
+  const designing = () => !!activeNote && !!window.dexView && window.dexView.editing(activeNote);
+
   function render(force) {
     if (!activeNote) return;
+    if (designing()) { if (force) designer.renderAll(); return; }
     const src = source();
     if (!force && src === lastSrc) return;
     if (!libsReady()) {
@@ -205,7 +202,7 @@ function boot() {
     addHeadingIds();
     wireCheckboxes(src);
     scroller.scrollTop = top;
-    drawMermaid(gen).then(() => { if (gen === renderGen) scroller.scrollTop = top; });
+    drawMermaid(body, () => gen !== renderGen).then(() => { if (gen === renderGen) scroller.scrollTop = top; });
   }
 
   function scheduleRender() { clearTimeout(timer); timer = setTimeout(() => render(false), 120); }
@@ -220,6 +217,40 @@ function boot() {
     if (t) t.scrollIntoView({ block: "start", behavior: "smooth" });
   });
 
+  /* ----- Design mode ----- */
+
+  const designer = createDesigner({
+    pane, toolbar, scroller, body,
+    get cm() { return window.dexEditor.cm; },
+    getSource: source,
+    renderInto,
+    notify,
+    selfWrite: (fn) => { const prev = selfWrite; selfWrite = true; try { fn(); } finally { selfWrite = prev; } },
+    afterEdit: () => {
+      const note = activeNote; if (!note) return;
+      const v = source();
+      lastSrc = v;
+      if (note.content !== v) { note.content = v; note.lastEdited = new Date().toISOString(); note._dirty = true; }
+      if (typeof saveNotes === "function") saveNotes();
+      if (typeof updateDocumentInfo === "function") updateDocumentInfo();
+      if (typeof populateNoteList === "function") populateNoteList();
+    }
+  });
+
+  /** Make the pane match Read / Design for the current note. */
+  function applyMode() {
+    if (!activeNote) { designer.exit(); return; }
+    if (designing()) {
+      renderGen++;                      // cancel any Read render still in flight
+      designer.enter();
+    } else {
+      const was = designer.isOn();
+      designer.exit();
+      if (was) { lastSrc = null; render(true); }
+    }
+    pane.classList.toggle("mdx-read", !designing());
+  }
+
   /* ----- activation, same shape as csvexec ----- */
 
   function activate(note) {
@@ -227,9 +258,10 @@ function boot() {
     lastSrc = null;
     document.body.classList.add("mdexec-active");
     scroller.scrollTop = 0;
-    render(true);
+    if (designing()) applyMode(); else { pane.classList.add("mdx-read"); render(true); }
   }
   function deactivate() {
+    designer.exit();
     activeNote = null;
     lastSrc = null;
     renderGen++;
@@ -247,16 +279,25 @@ function boot() {
 
   window.addEventListener("dexNoteOpened", sync);
   window.addEventListener("dexViewModeChanged", sync);
-  window.addEventListener("dexSettingsChanged", () => { if (activeNote) render(true); });   // theme flip → redraw diagrams
+  window.addEventListener("dexEditModeChanged", () => { if (activeNote) { applyMode(); } });
+  window.addEventListener("dexSettingsChanged", () => { if (activeNote) { mmCache.clear(); render(true); } });   // theme flip → redraw diagrams
   setInterval(sync, 400);   // delete / rename / exclusive-mode changes fire no event
 
   // text changed from outside the preview (undo, a sidebar function, another tool)
   window.dexEditor.on("change", () => {
     if (selfWrite || !activeNote || activeNote !== currentNote) return;
+    if (designing()) { designer.onExternalChange(); return; }
     scheduleRender();
   });
 
-  window.dexMdexec = { render: () => render(true), isActive: () => !!activeNote };
+  window.dexMdexec = { render: () => render(true), isActive: () => !!activeNote, isDesigning: designing, design: designer };
+
+  // Sidebar 2 › Markdown: the block tools only act while a .md file is in Design
+  window.dexMdRun = function (name) {
+    if (!activeNote) { notify("Open a .md file in exec view to use the Markdown block tools"); return; }
+    if (!designing()) { notify("Switch to Design (bottom bar) to use block tools"); return; }
+    designer.run(name);
+  };
   sync();
 }
 boot();

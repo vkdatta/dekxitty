@@ -204,6 +204,8 @@ FunctionRegistry.registerLevel1({ id: 'formatting',  name: 'Formatting',  icon: 
 FunctionRegistry.registerLevel1({ id: 'operations',  name: 'Operations',  icon: 'discover_tune'     });
 FunctionRegistry.registerLevel1({ id: 'code',        name: 'Code',        icon: 'code'              });
 FunctionRegistry.registerLevel1({ id: 'document',    name: 'Document',    icon: 'description'       });
+// Markdown block tools — act on the open block while a .md file is in exec › Design (see mdexec/design.js)
+FunctionRegistry.registerLevel1({ id: 'markdown',    name: 'Markdown',    icon: 'title'             });
 
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -270,5 +272,36 @@ FunctionRegistry.registerMany([
 { function: 'foldAll',                   icon: 'unfold_less',   name: 'Fold All',                    under: ['document'], onclick: 'foldAll()' },
 { function: 'unfoldAll',                 icon: 'unfold_more',   name: 'Unfold All',                  under: ['document'], onclick: 'unfoldAll()' },
 { function: 'removeContentInsideFolds',  icon: 'compress',      name: 'Remove Folded Contents',      under: ['document'], onclick: 'removeContentInsideFolds()' },
-    
+
+  // ── Markdown (Design mode) ────────────────────────────────────────────────
+  // Block type
+  { function: 'mdParagraph', icon: 'text_fields',            name: 'Paragraph',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('p')" },
+  { function: 'mdH1',        icon: 'title',                  name: 'Heading 1',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h1')" },
+  { function: 'mdH2',        icon: 'title',                  name: 'Heading 2',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h2')" },
+  { function: 'mdH3',        icon: 'title',                  name: 'Heading 3',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h3')" },
+  { function: 'mdBullets',   icon: 'format_list_bulleted',   name: 'Bullet List',        under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('ul')" },
+  { function: 'mdNumbers',   icon: 'format_list_numbered',   name: 'Numbered List',      under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('ol')" },
+  { function: 'mdTasks',     icon: 'format_list_bulleted',   name: 'Task List',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('task')" },
+  { function: 'mdQuote',     icon: 'format_indent_increase', name: 'Quote',              under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('quote')" },
+  { function: 'mdCode',      icon: 'code',                   name: 'Code Block',         under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('code')" },
+  { function: 'mdMermaid',   icon: 'hub',                    name: 'Mermaid Diagram',    under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('mermaid')" },
+  // Inline
+  { function: 'mdBold',      icon: 'format_bold',            name: 'Bold (toggle)',      under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('bold')" },
+  { function: 'mdItalic',    icon: 'format_italic',          name: 'Italic (toggle)',    under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('italic')" },
+  { function: 'mdStrike',    icon: 'format_underlined',      name: 'Strikethrough',      under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('strike')" },
+  { function: 'mdInlineCode',icon: 'code',                   name: 'Inline Code',        under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('icode')" },
+  { function: 'mdLink',      icon: 'link',                   name: 'Link…',              under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('link')" },
+  { function: 'mdImage',     icon: 'image',                  name: 'Image…',             under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('image')" },
+  // Insert
+  { function: 'mdTable',     icon: 'table',                  name: 'Insert Table…',      under: ['markdown', 'Insert'],     batch: 'exclude', onclick: "dexMdRun('table')" },
+  { function: 'mdDivider',   icon: 'ttt_separator',          name: 'Insert Divider',     under: ['markdown', 'Insert'],     batch: 'exclude', onclick: "dexMdRun('hr')" },
+  // Arrange
+  { function: 'mdUp',        icon: 'keyboard_double_arrow_up',   name: 'Move Block Up',   under: ['markdown', 'Arrange'],   batch: 'exclude', onclick: "dexMdRun('up')" },
+  { function: 'mdDown',      icon: 'keyboard_double_arrow_down', name: 'Move Block Down', under: ['markdown', 'Arrange'],   batch: 'exclude', onclick: "dexMdRun('down')" },
+  { function: 'mdDup',       icon: 'copy',                   name: 'Duplicate Block',    under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('dup')" },
+  { function: 'mdDel',       icon: 'delete',                 name: 'Delete Block',       under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('del')" },
+  { function: 'mdSelBlock',  icon: 'selectAll',              name: 'Select Block',       under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('selblock')" },
+  { function: 'mdIndent',    icon: 'format_indent_increase', name: 'Indent List Item',   under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('indent')" },
+  { function: 'mdOutdent',   icon: 'format_indent_decrease', name: 'Outdent List Item',  under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('outdent')" },
+
 ]);

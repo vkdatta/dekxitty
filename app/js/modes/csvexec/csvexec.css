@@ -190,3 +190,18 @@ body.csvexec-active .text-area-wrapper > .note-textarea { visibility: hidden; po
 .cx-zrow { display: flex; align-items: center; gap: 10px; }
 .cx-zrow input { margin-top: 0 !important; max-width: 140px; }
 .cx-zrow span { font-size: 13px; opacity: .65; }
+
+/* Read mode (bottom bar → Read): nothing can be changed, so the editing controls disappear */
+.cx-readonly .cx-fh,
+.cx-readonly .cx-fxbtn,
+.cx-readonly [data-a="undo"], .cx-readonly [data-a="redo"],
+.cx-readonly [data-a="cut"], .cx-readonly [data-a="paste"], .cx-readonly [data-a="clear"],
+.cx-readonly [data-a="bold"], .cx-readonly [data-a="italic"], .cx-readonly [data-a="wrap"],
+.cx-readonly [data-a="al-l"], .cx-readonly [data-a="al-c"], .cx-readonly [data-a="al-r"],
+.cx-readonly [data-a="tc"], .cx-readonly [data-a="bg"], .cx-readonly [data-a="filldown"],
+.cx-readonly .cx-rg, .cx-readonly .cx-hh { display: none !important; }
+.cx-readonly .cx-fx { cursor: default; opacity: .85; }
+.cx-readonly .cx-row-actions .cx-sep:nth-of-type(1), .cx-readonly .cx-row-actions .cx-sep:nth-of-type(3) { display: none; }
+
+/* leave room for the Read / Design bar floating at the bottom */
+body.execbar-on #csvexecPane { bottom: calc(var(--diff-topbar-height, 70px) + var(--diff-topbar-gap, 2vh) + 10px); }

@@ -43,6 +43,8 @@ export function createGrid(host, hooks) {
   let lastPtr = { x: 0, y: 0 };
   let zoom = 1, HEADH = BASE_HEADH, RHW = BASE_RHW;          // zoom scales the cells + headers (never the toolbar)
   let modalOpen = false, modalSeq = 0, pillOpen = false, pillDownOpen = false;
+  let readOnly = false, roNoteT = 0;                       // Read / Design bottom bar: read = nothing can be changed
+  function roBlocked() { if (!readOnly) return false; const t = Date.now(); if (t - roNoteT > 2500) { roNoteT = t; notify("Read mode — switch to Design to edit"); } return true; }
   const pointers = new Map(); let pinch = null, zoomTipT = null;
 
   const sizeC = (c) => (sheet.hidC.has(c) ? 0 : sheet.colW[c] * zoom);
@@ -345,6 +347,7 @@ export function createGrid(host, hooks) {
   const cleanFmt = (f) => { for (const k of Object.keys(f)) if (!f[k]) delete f[k]; return Object.keys(f).length ? f : null; };
   /** cells: [{r,c,v}]  fmts: [{r,c,f}] (f = style object or null) — one undo step */
   function setCells(cells, fmts) {
+    if (roBlocked()) return 0;
     const ch = [], fch = [];
     for (const it of cells || []) {
       if (it.r < 0 || it.r >= ROWS || it.c < 0 || it.c >= COLS) continue;
@@ -365,6 +368,7 @@ export function createGrid(host, hooks) {
   function pushUndo(e) { undoStack.push(e); redoStack = []; if (undoStack.length > 200) undoStack.shift(); let n = 0; for (let i = undoStack.length - 1; i >= 0; i--) if (undoStack[i].t === "s" && ++n > 20) undoStack[i] = { t: "d", ch: [], fch: [], cur, ext }; }
   /** structural / layout change: snapshot before & after */
   function structural(fn, layoutOnly) {
+    if (roBlocked()) return false;
     if (ed) commitEdit(null);
     if (sheet.running || recalcPending) { notify("Wait for the calculation to finish"); return false; }
     const before = sheet.snapshot();
@@ -384,12 +388,14 @@ export function createGrid(host, hooks) {
     }
   }
   function undo() {
+    if (roBlocked()) return;
     if (ed) cancelEdit();
     const e = undoStack.pop(); if (!e) { notify("Nothing to undo"); return; }
     applyEntry(e, -1); redoStack.push(e); cur = { ...e.cur }; ext = { ...e.ext };
     sheet.values.clear(); changed(true); selChanged();
   }
   function redo() {
+    if (roBlocked()) return;
     if (ed) cancelEdit();
     const e = redoStack.pop(); if (!e) { notify("Nothing to redo"); return; }
     applyEntry(e, 1); undoStack.push(e);
@@ -404,6 +410,7 @@ export function createGrid(host, hooks) {
   function freshPlaceholder(origin, raw) { resetPlaceholders(); if (!raw) return; (origin === "bar" ? fxIn : editor).placeholder = raw.length > 200 ? raw.slice(0, 200) + "…" : raw; }
   function startEdit(initial, mode, origin, fresh) {
     if (ed) return;
+    if (roBlocked()) { if (origin === "bar") { try { fxIn.blur(); } catch (e) {} } return; }
     if (sheet.hidR.has(cur.r) || sheet.hidC.has(cur.c)) return;
     closePill();
     const raw = sheet.get(cur.r, cur.c);
@@ -883,6 +890,7 @@ export function createGrid(host, hooks) {
   function pillItems() {
     const s = rect(), wc = isWholeCols(s) && !isWholeRows(s), wr = isWholeRows(s) && !isWholeCols(s), A = [];
     const add = (l, a, more) => A.push({ l, a, more });
+    if (readOnly) { add("Copy", () => copyToSystem(false)); add("Select all", selectAll); add("⋮", () => { const b = pillEl.getBoundingClientRect(); openMenu(buildMenu(), b.left, b.bottom, false); }, true); return A; }
     add("Cut", () => copyToSystem(true)); add("Copy", () => copyToSystem(false)); add("Paste", () => pasteFromClipboard("all"));
     if (wc) { add("Insert", () => insertColsAt(false)); add("Delete", deleteColsSel); add("Clear", () => clearSelection(true)); add("Hide", () => hideSel("c")); }
     else if (wr) { add("Insert", () => insertRowsAt(false)); add("Delete", deleteRowsSel); add("Clear", () => clearSelection(true)); add("Hide", () => hideSel("r")); }
@@ -922,6 +930,12 @@ export function createGrid(host, hooks) {
   function buildMenu() {
     const s = rect(), wc = isWholeCols(s) && !isWholeRows(s), wr = isWholeRows(s) && !isWholeCols(s), nR = s.r2 - s.r1 + 1, nC = s.c2 - s.c1 + 1, A = [];
     const add = (l, a, extra) => A.push(Object.assign({ l, a }, extra || {}));
+    if (readOnly) {
+      add("Copy", () => copyToSystem(false), { k: "Ctrl+C" }); add("Select all", selectAll, { k: "Ctrl+A" });
+      A.push({ sep: 1 }); add("Find", () => openFind(false), { k: "Ctrl+F" }); add("Export values as CSV", exportValues);
+      A.push({ sep: 1 }); add("Zoom…", openZoomDialog, { k: Math.round(zoom * 100) + "%" }); add("Reset zoom (100%)", () => zoomTo(1), { k: "Ctrl+0" });
+      return A;
+    }
     add("Cut", () => copyToSystem(true), { k: "Ctrl+X" }); add("Copy", () => copyToSystem(false), { k: "Ctrl+C" });
     add("Paste", () => pasteFromClipboard("all"), { k: "Ctrl+V" }); add("Paste values only", () => pasteFromClipboard("values"), { k: "Ctrl+Shift+V" });
     A.push({ sep: 1 });
@@ -1098,7 +1112,7 @@ export function createGrid(host, hooks) {
   function setTouch(t) { if (touchUI !== t) { touchUI = t; root.classList.toggle("cx-touch", t); requestRender(); } }
   function stopInertia() { if (inertia) { cancelAnimationFrame(inertia); inertia = null; } }
   function capture(e) { try { stage.setPointerCapture(e.pointerId); } catch (x) {} }
-  function startDrag(d, e) { drag = d; d.id = e.pointerId; capture(e); if (AUTO.has(d.type)) { clearInterval(tickT); tickT = setInterval(tick, 30); } }
+  function startDrag(d, e) { if (readOnly && (d.type === "fill" || d.type === "move" || d.type === "resize")) { roBlocked(); return; } drag = d; d.id = e.pointerId; capture(e); if (AUTO.has(d.type)) { clearInterval(tickT); tickT = setInterval(tick, 30); } }
   function endTick() { clearInterval(tickT); tickT = null; }
   function autoScrollStep() {
     const b = stage.getBoundingClientRect(), m = 36; let dx = 0, dy = 0;
@@ -1417,5 +1431,15 @@ export function createGrid(host, hooks) {
   function show() { active = true; host.style.display = ""; updateSizes(); syncBar(); requestRender(); setTimeout(() => { try { root.focus({ preventScroll: true }); } catch (e) {} }, 0); }
   function hide() { if (ed) commitEdit(null); closeMenu(); closePill(); active = false; }
 
-  return { load, show, hide, flush, undo, redo, getCsv: () => serializeGrid(sheet.raw), isActive: () => active, openPicker, insertFunction, refresh: () => { updateSizes(); requestRender(); }, getZoom: () => zoom, setZoom: (z) => zoomTo(z), sheet };
+  function setReadOnly(on) {
+    on = !!on; if (on === readOnly) { root.classList.toggle("cx-readonly", readOnly); return; }
+    if (on && ed) commitEdit(null);
+    readOnly = on; root.classList.toggle("cx-readonly", on);
+    fxIn.readOnly = on; fxIn.placeholder = on ? "" : FX_PH;
+    closePill(); closeMenu(); hideSuggest();
+    if (on) { const b = host.querySelector(".cx-find"); if (b) { host.querySelectorAll('.cx-find [data-f="rep"], .cx-find [data-f="all"], .cx-find .cx-fr').forEach((el) => { el.style.display = "none"; }); } }
+    else host.querySelectorAll('.cx-find [data-f="rep"], .cx-find [data-f="all"], .cx-find .cx-fr').forEach((el) => { el.style.display = ""; });
+    syncBar(); requestRender();
+  }
+  return { setReadOnly, isReadOnly: () => readOnly, load, show, hide, flush, undo, redo, getCsv: () => serializeGrid(sheet.raw), isActive: () => active, openPicker, insertFunction, refresh: () => { updateSizes(); requestRender(); }, getZoom: () => zoom, setZoom: (z) => zoomTo(z), sheet };
 }

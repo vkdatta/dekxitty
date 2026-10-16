@@ -8,6 +8,9 @@
  *  • The note's `content` stays a plain CSV string (formulas are cells starting with "="),
  *    so download / sync / zip-export / other sidebar tools keep working on it.
  *  • Column widths and the ENCRYPT/DECRYPT result cache are kept on `note.csvexec`.
+ *  • READ / DESIGN (bottom bar, viewmode/execbar.js): Read is the default and the grid is view-only
+ *    (browse, zoom, find, copy). Design unlocks everything — cell edits, formulas, formatting,
+ *    insert / delete / sort / fill.
  */
 import { createGrid } from "./grid.js";
 
@@ -50,9 +53,12 @@ function boot() {
     }
   });
 
+  const designing = (n) => !!n && !!window.dexView && window.dexView.editing(n);
+
   function activate(note) {
     activeNote = note;
     document.body.classList.add("csvexec-active");
+    grid.setReadOnly(!designing(note));
     grid.load(note.content || "", note.csvexec || null);
     grid.show();
   }
@@ -72,6 +78,7 @@ function boot() {
 
   window.addEventListener("dexNoteOpened", sync);
   window.addEventListener("dexViewModeChanged", sync);   // raw ⇄ exec toggled in the sidebar
+  window.addEventListener("dexEditModeChanged", () => { if (activeNote) grid.setReadOnly(!designing(activeNote)); });   // bottom bar: Read ⇄ Design
   setInterval(sync, 400);                    // covers delete / folder changes / rename paths that fire no event
 
   // text changed from outside the grid (e.g. a sidebar tool edited the hidden editor)

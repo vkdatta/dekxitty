@@ -20,6 +20,11 @@
  *   window.dexView.isExec(note, k)   → boolean (optionally only for kind k)
  *   window.dexView.set(note, mode)   → persists + fires "dexViewModeChanged"
  *   window.dexView.exclusiveActive() → true while Diffusion / Mermaid owns the editor
+ *
+ * Within exec there is a second, session-only switch — the bottom bar's Read / Design:
+ *   window.dexView.editing(note)     → true when the note is in exec AND set to Design
+ *   window.dexView.setEditing(note, bool) → fires "dexEditModeChanged"
+ * Read is the default every time (it is not persisted), so a file never opens editable by accident.
  */
 (function () {
   if (window.dexView) return;
@@ -66,5 +71,21 @@
     return true;
   }
 
-  window.dexView = { kind, supports, get, isExec, set, exclusiveActive };
+  const designIds = new Set();
+  const editing = (note) => !!note && isExec(note) && designIds.has(String(note.id));
+  function setEditing(note, on) {
+    if (!note || !isExec(note)) return false;
+    const id = String(note.id), was = designIds.has(id);
+    if (!!on === was) return true;
+    if (on) designIds.add(id); else designIds.delete(id);
+    try { window.dispatchEvent(new CustomEvent("dexEditModeChanged", { detail: { note, editing: !!on, kind: kind(note) } })); } catch (e) {}
+    return true;
+  }
+  // leaving exec (back to raw) forgets Design, so coming back always starts in Read
+  window.addEventListener("dexViewModeChanged", (e) => {
+    const n = e.detail && e.detail.note;
+    if (n && e.detail.mode !== "exec") designIds.delete(String(n.id));
+  });
+
+  window.dexView = { kind, supports, get, isExec, set, exclusiveActive, editing, setEditing };
 })();

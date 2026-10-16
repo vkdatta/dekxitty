@@ -1,0 +1,5 @@
+/* Read / Design bottom bar for .csv and .md notes in exec view.
+   Reuses the diffusion / mermaid bottom-bar look (.diff-bottombar); only visibility is decided here. */
+body.execbar-on .diff-bottombar.exec-bottombar { display: flex; }
+body.execbar-on.execbar-typing .diff-bottombar.exec-bottombar { display: none; }   /* soft keyboard up → get out of the way */
+.diff-bottombar.exec-bottombar .diff-topbar-button { min-width: 84px; }
