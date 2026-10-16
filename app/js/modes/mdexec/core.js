@@ -15,8 +15,9 @@
  *  • Output is always sanitised (DOMPurify) — a note can contain arbitrary HTML.
  *
  *  • READ / DESIGN (bottom bar, viewmode/execbar.js): Read is the default and shows the
- *    document as above. Design turns it into a block editor (design.js) — tap a block to edit
- *    it, tables open as a cell grid, and every Sidebar 2 function keeps working on the selection.
+ *    document as above. Design turns it into a visual, Google-Docs-style editor (design.js +
+ *    wysiwyg.js) — tap a block and type straight into it, tables open as a cell grid, and every
+ *    Sidebar 2 function keeps working on the selection.
  *
  * Mirrors csvexec/core.js: one pane inside #textAreaWrapper, shown by a body
  * class that also hides the editor.
@@ -30,6 +31,7 @@ const THEME_DIRECTIVE = () =>
   `%%{init: {"theme": "${document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark"}"}}%%\n`;
 
 // Diffusion / Mermaid need the plain editor for their panes, so exec stands down while they run.
+const esc = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const wantsPreview = (n) => !!n && !!window.dexView && window.dexView.isExec(n, "md") && !window.dexView.exclusiveActive();
 
 /* ───────── boot ───────── */
@@ -224,6 +226,10 @@ function boot() {
     get cm() { return window.dexEditor.cm; },
     getSource: source,
     renderInto,
+    ready: libsReady,
+    toHtml,
+    sanitize: (h) => getPurify().sanitize(h, { USE_PROFILES: { html: true } }),
+    inlineHtml: (md) => { try { return libsReady() ? getPurify().sanitize(window.marked.parseInline(String(md), { gfm: true, async: false }), { USE_PROFILES: { html: true } }) : esc(md); } catch (e) { return esc(md); } },
     notify,
     selfWrite: (fn) => { const prev = selfWrite; selfWrite = true; try { fn(); } finally { selfWrite = prev; } },
     afterEdit: () => {

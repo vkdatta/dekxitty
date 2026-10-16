@@ -105,7 +105,8 @@ body.mdexec-active .text-area-wrapper > .note-textarea { visibility: hidden; poi
 .mdb-grid thead th { background: var(--c-panel); }
 .mdb-grid tr:nth-child(even) td { background: transparent; }
 .mdb-grid .mdb-rn { width: 30px; min-width: 30px; text-align: center; font-size: 11px; opacity: .6; background: var(--c-panel); padding: 0 4px; user-select: none; -webkit-user-select: none; }
-.mdb-cell { display: block; width: 100%; min-width: 96px; box-sizing: border-box; height: 36px; padding: 0 10px; border: 0; outline: none; background: transparent; color: var(--color); font: inherit; font-size: 13.5px; }
+.mdb-cell { display: block; width: 100%; min-width: 96px; box-sizing: border-box; min-height: 36px; padding: 8px 10px; border: 0; outline: none; background: transparent; color: var(--color); font: inherit; font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere; cursor: text; user-select: text; -webkit-user-select: text; }
+.mdb-cell a { pointer-events: none; }
 .mdb-head { font-weight: 700; }
 .mdb-grid td.sel, .mdb-grid th.sel { outline: 2px solid var(--c-accent); outline-offset: -2px; background: color-mix(in srgb, var(--c-accent) 12%, transparent); }
 .mdb-grid .colsel { background: color-mix(in srgb, var(--c-accent) 6%, transparent); }
@@ -130,3 +131,16 @@ body.mdexec-active .text-area-wrapper > .note-textarea { visibility: hidden; poi
 .mdx-fxrow:active { background: var(--c-panel-3); }
 .mdx-fxrow small { opacity: .5; font-size: 11px; white-space: nowrap; }
 .mdx-fx-none { padding: 30px; text-align: center; opacity: .5; }
+
+/* visual editing: the open block is the same HTML Read mode shows, made editable */
+.mdx-body .mdb-rich { margin: 0; outline: none; cursor: text; min-height: 1.65em; caret-color: var(--c-accent); user-select: text; -webkit-user-select: text; -webkit-tap-highlight-color: transparent; }
+.mdb-rich[data-empty]::before { content: "Type something…"; opacity: .38; pointer-events: none; position: absolute; }
+.mdb-rich a { cursor: text; }
+.mdb-rich .dex-check-wrap, .mdb-rich input[type="checkbox"] { user-select: none; -webkit-user-select: none; }
+.mdb-rich li:has(> .dex-check-wrap), .mdb-rich li:has(> input[type="checkbox"]) { list-style: none; margin-left: -1.4em; }
+.mdb-hr { padding: 8px 0; outline: none; border-radius: 6px; }
+.mdb-hr:focus { background: color-mix(in srgb, var(--c-accent) 10%, transparent); }
+.mdb-hr hr { margin: 0; }
+.mdb-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 6px; padding: 7px 10px; font-size: 12px; border-radius: 8px; background: var(--c-panel); border: 1px solid var(--c-border); }
+.mdb-note span { flex: 1 1 180px; opacity: .8; }
+.mdb-note button { height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-panel-2); color: var(--color); font: inherit; font-size: 12px; cursor: pointer; }
