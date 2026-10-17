@@ -123,7 +123,6 @@
   font-size: 12px;
   color: var(--c-accent);
   white-space: nowrap; margin-left: 16px;
-  font-family: 'Source Code Pro', monospace;
 }
 .settings-row-chevron {
   color: var(--c-text-faint);
@@ -142,7 +141,7 @@
   color: var(--color);
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-family: 'Source Code Pro', monospace; font-size: 13px;
+  font-size: 13px;
   cursor: pointer; margin-bottom: 6px;
 }
 .theme-pick:hover { background: var(--matte); }
@@ -164,7 +163,6 @@
   color: var(--c-white);
   z-index: 99999;
   display: flex; flex-direction: column;
-  font-family: source code pro;
   -webkit-font-smoothing: antialiased;
   box-sizing: border-box;
 }

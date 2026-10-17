@@ -60,6 +60,8 @@
   --diff-topbar-gap: 2vh;
   --diff-topbar-total: calc(var(--diff-topbar-height) + var(--diff-topbar-gap) + 16px);
   --icon-size: 18px;
+  --font-ui: classy, sans-serif;
+  --font-edit: "Source Code Pro", monospace;
   --btn-padding: 8px 10px;
   color: var(--color);
 }

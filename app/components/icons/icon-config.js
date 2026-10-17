@@ -2,8 +2,7 @@
 // 'plasma' (the plurality of your earlier per-icon picks in the old
 // myvariation1.js bake); the icons below are the ones that picked something
 // else, so they're the only entries that need listing. Everything not named
-// here (x, copy, download, bolt, home_app_logo, fullscreen, view_object_track,
-// view_cozy, bolt, ... 35 icons total) inherits 'plasma' from the default.
+// here (copy, download, bolt, ... ) inherits 'plasma' from the default.
 if (window.Delluna) {
   window.Delluna.configure({
     variant: 'plasma',
@@ -24,7 +23,17 @@ if (window.Delluna) {
       edit: { variant: 'circuit' },
       undo: { variant: 'orbit' },
       redo: { variant: 'orbit' },
-      import_contacts: { variant: 'circuit' },
+
+      // topbar icons — every one except undo/redo uses 'og'. Icon variants are
+      // keyed by name, so this applies site-wide (file manager bar, expanded
+      // navigation, sidebars ...), not just inside #topbar.
+      x:                 { variant: 'og' },  // topbar close
+      home_app_logo:     { variant: 'og' },
+      fullscreen:        { variant: 'og' },
+      import_contacts:   { variant: 'og' },  // Tom Riddle / voldemort toggle
+      view_object_track: { variant: 'og' },  // sidebar 1
+      view_cozy:         { variant: 'og' },  // sidebar 2
+      open_in_full:      { variant: 'og' },  // expanded navigation
       tune: { variant: 'og' },
       bug_report: { variant: 'hud' },
       logout: { variant: 'orbit' },

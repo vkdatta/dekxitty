@@ -9,7 +9,7 @@ body.csvexec-active .text-area-wrapper > .note-textarea { visibility: hidden; po
 .cx-root {
   position: absolute; inset: 0; display: flex; flex-direction: column; outline: none;
   background: var(--primary); color: var(--color);
-  font-family: "Source Code Pro", monospace; font-size: 13px;
+  font-size: 13px;
   -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
   --cx-z: 1;                                   /* grid zoom — set from JS; only cells + headers use it, the toolbar never does */
 }

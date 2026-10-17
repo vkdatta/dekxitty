@@ -1,0 +1,41 @@
+/* ──────────────────────────────────────────────────────────────────────
+   Typography rule — one sentence:
+     editable text  → Source Code Pro   (var(--font-edit))
+     everything else → classy           (var(--font-ui))
+
+   Tokens live in root.css. Component stylesheets should NOT set a font
+   family themselves; only the exceptions below do.
+
+   Deliberate exceptions (non-editable, but must stay monospace):
+     • <code>, <pre>, <kbd>, <samp>  — code is code.
+     • #findBackdrop / .find-backdrop — paints behind the textarea and has to
+       match its glyph metrics exactly.
+     • .diff-lines / .diff-gutter-cell / .diff-content-cell — diff views mirror
+       the Raw / Morph editors line-for-line (predictive sync-scroll).
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Non-editable surfaces and controls. Form controls don't inherit the
+   page font by default, so they're named explicitly. */
+html, body,
+button, select, option, optgroup, summary, label,
+input[type="checkbox"], input[type="radio"], input[type="range"],
+input[type="color"], input[type="file"], input[type="button"],
+input[type="submit"], input[type="reset"] {
+  font-family: var(--font-ui);
+}
+
+/* Editable surfaces: text-like inputs, textareas, contenteditable, CodeMirror. */
+input:not([type]),
+input[type="text"], input[type="search"], input[type="number"],
+input[type="email"], input[type="url"], input[type="password"],
+input[type="tel"], input[type="date"], input[type="time"],
+textarea,
+[contenteditable]:not([contenteditable="false"]),
+.CodeMirror, .CodeMirror pre, .CodeMirror textarea {
+  font-family: var(--font-edit);
+}
+
+/* Code-ish content that must stay monospace. */
+code, pre, kbd, samp {
+  font-family: var(--font-edit);
+}

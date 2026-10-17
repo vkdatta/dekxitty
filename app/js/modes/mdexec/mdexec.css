@@ -11,7 +11,7 @@ body.mdexec-active .text-area-wrapper > .note-textarea { visibility: hidden; poi
 .mdx-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
 .mdx-body {
   box-sizing: border-box; max-width: 860px; margin: 0 auto; padding: 22px 20px 96px;
-  color: var(--color); font-family: "Source Code Pro", monospace; font-size: 14.5px; line-height: 1.7;
+  color: var(--color); font-size: 14.5px; line-height: 1.7;
   user-select: text; -webkit-user-select: text; overflow-wrap: anywhere;
 }
 .mdx-body > :first-child { margin-top: 0; }
@@ -33,7 +33,7 @@ body.mdexec-active .text-area-wrapper > .note-textarea { visibility: hidden; poi
 .mdx-body blockquote { padding: .2em 1em; border-left: 3px solid var(--c-accent); background: color-mix(in srgb, var(--c-accent) 7%, transparent); border-radius: 0 6px 6px 0; }
 .mdx-body blockquote > :last-child { margin-bottom: 0; }
 
-.mdx-body code { font-family: inherit; font-size: .92em; padding: .15em .4em; border-radius: 5px; background: var(--c-panel-3); }
+.mdx-body code, .mdx-body pre { font-family: var(--font-edit); font-size: .92em; padding: .15em .4em; border-radius: 5px; background: var(--c-panel-3); }
 .mdx-body pre { padding: 12px 14px; overflow-x: auto; border-radius: 10px; background: var(--c-panel); border: 1px solid var(--c-border); line-height: 1.5; scrollbar-width: thin; }
 .mdx-body pre code { padding: 0; background: none; font-size: .9em; white-space: pre; overflow-wrap: normal; }
 

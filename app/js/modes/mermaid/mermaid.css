@@ -174,7 +174,6 @@ body.mode-mermaid .diff-bottombar.mermaid-bottombar { display: flex; }
   left: 50%;
   transform: translate(-50%, -50%);
   color: var(--c-white);
-  font-family: 'Source Code Pro', monospace;
   font-size: 0.82rem;
   padding: 22px 28px;
   text-align: center;
@@ -242,7 +241,6 @@ body.mode-mermaid .diff-bottombar.mermaid-bottombar { display: flex; }
   border-radius: 8px;
   background: var(--c-panel-3);
   color: var(--c-white);
-  font-family: 'Source Code Pro', monospace;
   font-size: 0.8rem;
 }
 #mermaidViewport .color-hex:hover { background: var(--c-black); }
@@ -278,11 +276,11 @@ body.mode-mermaid .diff-bottombar.mermaid-bottombar { display: flex; }
   gap: 7px;
 }
 #mermaidViewport .font-block-title { font-size: 0.82rem; color: var(--c-white); }
-#mermaidViewport .font-block-desc { font-family: 'Source Code Pro', monospace; font-size: 0.72rem; color: var(--c-text-faint); line-height: 1.5; }
+#mermaidViewport .font-block-desc { font-size: 0.72rem; color: var(--c-text-faint); line-height: 1.5; }
 #mermaidViewport .font-block-desc code { background: var(--c-panel-2); border-radius: 4px; padding: 1px 5px; font-size: 0.7rem; color: var(--c-text-dim); }
 #mermaidViewport .font-upload-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
 #mermaidViewport .font-upload-btn { flex-shrink: 0; cursor: pointer; }
-#mermaidViewport .font-upload-name { flex: 1; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; color: var(--c-text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mermaidViewport .font-upload-name { flex: 1; font-size: 0.75rem; color: var(--c-text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #mermaidViewport .font-gf-row { display: flex; align-items: center; gap: 8px; }
 #mermaidViewport .font-gf-row .setting-input { flex: 1; }
 #mermaidViewport .font-gf-row .btn { flex-shrink: 0; }
@@ -304,7 +302,6 @@ body.mode-mermaid .diff-bottombar.mermaid-bottombar { display: flex; }
   background: var(--c-panel-2);
   border: 1px solid color-mix(in srgb, var(--c-white) 8%, transparent);
   border-radius: 10px;
-  font-family: 'Source Code Pro', monospace;
   opacity: 0;
   transform: translateY(-4px);
   transition: opacity 0.15s ease, transform 0.15s ease;
