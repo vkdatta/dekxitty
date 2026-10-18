@@ -73,11 +73,11 @@
   color: var(--color);
 }
 html[data-theme="light"] {
-  --c-black: #dcfdf0;
+  --c-black: #e3fff6;
   --c-white: #000000;
-  --c-panel: #f0fffa;
-  --c-panel-2: #e6fef6;
-  --c-panel-3: #d3fcec;
+  --c-panel: #f7fffc;
+  --c-panel-2: #edfff9;
+  --c-panel-3: #d9fff2;
   --c-panel-4: #c7fcea;
   --c-text-dim: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
   --c-text-faint: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
@@ -93,7 +93,7 @@ html[data-theme="light"] {
   --c-accent-green-vold-2: var(--c-green);
   --selection-color: color-mix(in srgb, var(--c-accent) 20%, transparent);
   --shadow: 0 1px 0 var(--c-panel-3);
-  --editor-bg-light: #f8fffc;
+  --editor-bg-light: var(--c-panel-2);
   --editor-gutter-light: var(--c-panel);
   --editor-gutter-border-light: var(--c-border);
   color: var(--color);
