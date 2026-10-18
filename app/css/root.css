@@ -21,6 +21,7 @@
   /* Dark surface ladder — neutral greys, each step clearly lighter than the one below.
      L0 base (page + editor) -> L1 panel (bars, drawers, gutter) -> L2 inputs/buttons
      -> L3 borders/raised/hover -> L4 strongest separator. No blue cast. */
+  --theme-color: #c7fcea;
   --c-black: #0e0e0e;
   --c-white: #ecdfc3;
   --c-panel: #1b1b1b;
@@ -73,12 +74,15 @@
   color: var(--color);
 }
 html[data-theme="light"] {
-  --c-black: #f7ecd6;
+  /* Mint ladder built on #C7FCEA (hue ~160deg). Same relative spacing as the old
+     cream ladder, rescaled so #C7FCEA is the darkest surface step (panel-4). */
+  --theme-color: #c7fcea;
+  --c-black: #e4fef5;
   --c-white: #000000;
-  --c-panel: #fffaf0;
-  --c-panel-2: #fbf3e2;
-  --c-panel-3: #f3e6c8;
-  --c-panel-4: #e8d7b0;
+  --c-panel: #f7fffc;
+  --c-panel-2: #edfef8;
+  --c-panel-3: #dafdf1;
+  --c-panel-4: #c7fcea;
   --c-text-dim: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
   --c-text-faint: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
   --c-border: color-mix(in srgb, var(--c-white) 10%, transparent);
