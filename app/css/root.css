@@ -18,12 +18,19 @@
   --modalinput: var(--c-black);
   --category-box-width: 300px;
   --user-font-size: 14px;
-  --c-black: #000000;
+  /* Dark surface ladder — neutral greys, each step clearly lighter than the one below.
+     L0 base (page + editor) -> L1 panel (bars, drawers, gutter) -> L2 inputs/buttons
+     -> L3 borders/raised/hover -> L4 strongest separator. No blue cast. */
+  --c-black: #0e0e0e;
   --c-white: #ecdfc3;
-  --c-panel: #171717;
-  --c-panel-2: #181c1f;
-  --c-panel-3: #272727;
-  --c-panel-4: #373737;
+  --c-panel: #1b1b1b;
+  --c-panel-2: #262626;
+  --c-panel-3: #333333;
+  --c-panel-4: #404040;
+  /* Tab shape (concave flare where it meets the screen edge, convex round on free corners) */
+  --shape-bg: var(--c-panel);
+  --tab-flare: 16px;
+  --tab-radius: 22px;
   --c-text-dim: color-mix(in srgb, var(--c-white) 96%, var(--c-black));
   --c-text-faint: color-mix(in srgb, var(--c-white) 96%, var(--c-black));
   --c-border: color-mix(in srgb, var(--c-white) 10%, transparent);
@@ -49,8 +56,8 @@
   --added-bg: color-mix(in srgb, var(--c-green) 14%, transparent);
   --added-text: var(--c-green);
   --editor-bg-dark: var(--c-black);
-  --editor-gutter-dark: var(--c-panel-3);
-  --editor-gutter-border-dark: color-mix(in srgb, var(--c-white) 06%, transparent);
+  --editor-gutter-dark: var(--c-panel);
+  --editor-gutter-border-dark: transparent;
   --editor-bg-light: var(--c-text-dim);
   --editor-gutter-light: var(--c-white);
   --editor-gutter-border-light: color-mix(in srgb, var(--c-black) 08%, transparent);

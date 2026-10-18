@@ -3,7 +3,7 @@
    ============================================================ */
 .sidebar-header { padding:15px 20px; display:flex; justify-content:space-between; align-items:center; margin:20px auto 0; width:fit-content; min-width:350px; }
 .sidebar-actions { display:flex; gap:10px; background:var(--primary); }
-.sidebar { width:100vw; background:var(--primary); position:fixed; top:calc(10px + var(--topbar-height) + 10px); bottom:0; transform:translateX(-100%); transition:transform var(--transition-speed); will-change:transform; z-index:10; overflow-y:scroll; display:block; }
+.sidebar { width:100vw; background:var(--primary); position:fixed; top:calc(var(--topbar-height) + 8px); bottom:0; transform:translateX(-100%); transition:transform var(--transition-speed); will-change:transform; z-index:10; overflow-y:scroll; display:block; }
 body.topbar-closed .sidebar { top:10px; }
 .sidebar.open { transform:translateX(0); }
 .action-button { background:var(--matte); border:none; color:var(--color); cursor:pointer; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
@@ -38,9 +38,9 @@ body.topbar-closed .sidebar { top:10px; }
 .dex-tree { flex:1; overflow:auto; padding:8px 6px; }
 .dex-item { border-radius:8px; }
 .dex-row { display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:8px; cursor:pointer; transition:background .15s ease; }
-.dex-row:hover { background:color-mix(in srgb,var(--c-white) 04%,transparent); }
-.dex-row.sel { background:color-mix(in srgb,var(--c-accent) 12%,transparent); }
-.dex-row.dex-current { background:color-mix(in srgb,var(--c-blue) 12%,transparent); }
+.dex-row:hover { background:color-mix(in srgb,var(--c-white) 06%,transparent); }
+.dex-row.sel { background:color-mix(in srgb,var(--c-white) 10%,transparent); }
+.dex-row.dex-current { background:color-mix(in srgb,var(--c-white) 08%,transparent); }
 .dex-row.dex-current .dex-ic { color:var(--c-blue); }
 .dex-row.dex-current .dex-ic delluna-icon svg,
 .dex-row.dex-current .dex-ic delluna-icon svg * { fill:var(--c-blue); stroke:var(--c-blue); }
@@ -123,13 +123,13 @@ body.mode-filemanager.fm-nav-closed .fm-edge-hotspot { pointer-events:auto; opac
 @media (hover:none),(pointer:coarse) { body.mode-filemanager.fm-nav-closed .fm-edge-hotspot { width:34px; height:72px; background:color-mix(in srgb,var(--c-white) 06%,transparent); opacity:.72; } }
 
 /* FM nav bar */
-.filemanager-app-sidebar { display:none; position:fixed; left:10px; top:10px; bottom:10px; width:64px; flex-direction:column; align-items:center; padding:5px; background:var(--c-panel); border:1px solid color-mix(in srgb,var(--c-white) 8%,transparent); border-radius:19px; z-index:11; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; transition:width .35s cubic-bezier(.4,0,.2,1),border-radius .35s cubic-bezier(.4,0,.2,1); }
+.filemanager-app-sidebar { --sh:var(--shape-bg); --F:var(--tab-flare); --R:var(--tab-radius); display:none; position:fixed; left:0; top:6px; bottom:6px; width:64px; flex-direction:column; align-items:center; padding:calc(var(--F) + 8px) 5px calc(var(--F) + 8px); border:0; z-index:11; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; background-color:transparent; background-repeat:no-repeat; background-origin:border-box; background-image:linear-gradient(var(--sh),var(--sh)),linear-gradient(var(--sh),var(--sh)),radial-gradient(circle at 0 100%,var(--sh) var(--R),transparent calc(var(--R) + 1px)),radial-gradient(circle at 0 0,var(--sh) var(--R),transparent calc(var(--R) + 1px)),radial-gradient(circle at 100% 0,transparent var(--F),var(--sh) calc(var(--F) + 1px)),radial-gradient(circle at 100% 100%,transparent var(--F),var(--sh) calc(var(--F) + 1px)); background-size:calc(100% - var(--R)) calc(100% - 2 * var(--F)),100% calc(100% - 2 * var(--F) - 2 * var(--R)),var(--R) var(--R),var(--R) var(--R),var(--F) var(--F),var(--F) var(--F); background-position:0 var(--F),0 calc(var(--F) + var(--R)),100% var(--F),100% calc(100% - var(--F)),0 0,0 100%; transition:width .35s cubic-bezier(.4,0,.2,1); }
 .filemanager-app-sidebar::-webkit-scrollbar { display:none; }
 body.mode-filemanager .filemanager-app-sidebar { display:flex; }
 body.mode-filemanager.fm-nav-closed .filemanager-app-sidebar { display:none; }
 
 /* FM expand (top, order 1) */
-.fm-expand { flex:0 0 42px; width:42px; height:42px; display:grid; place-items:center; padding:0; border:0; border-radius:12px; background:transparent; color:var(--c-text-faint); cursor:pointer; transition:background .16s ease,color .16s ease,transform .16s ease; margin-bottom:2px; }
+.fm-expand { flex:0 0 42px; width:42px; height:42px; display:grid; place-items:center; padding:0; border:0; border-radius:999px; background:transparent; color:var(--c-text-faint); cursor:pointer; transition:background .16s ease,color .16s ease,transform .16s ease; margin-bottom:2px; }
 .fm-expand delluna-icon svg,
 .fm-expand delluna-icon svg * { fill:var(--c-text-faint); stroke:var(--c-text-faint); }
 .fm-expand:hover { background:color-mix(in srgb,var(--c-white) 06%,transparent); color:var(--c-white); }
@@ -139,7 +139,7 @@ body.mode-filemanager.fm-nav-closed .filemanager-app-sidebar { display:none; }
 .fm-expand:focus-visible { outline:2px solid var(--c-accent); outline-offset:-4px; }
 
 /* FM items (icon-only, RNW vertical icon-item dimensions) */
-.fm-app-item { flex:0 0 42px; width:52px; height:42px; display:grid; place-items:center; padding:0; border:none; border-radius:10px; background:transparent; color:var(--c-text-faint); font-family:inherit; cursor:pointer; transition:color .16s ease,transform .16s ease,background .16s ease; }
+.fm-app-item { flex:0 0 42px; width:52px; height:42px; display:grid; place-items:center; padding:0; border:none; border-radius:999px; background:transparent; color:var(--c-text-faint); font-family:inherit; cursor:pointer; transition:color .16s ease,transform .16s ease,background .16s ease; }
 .fm-app-item delluna-icon svg,
 .fm-app-item delluna-icon svg * { fill:var(--c-text-faint); stroke:var(--c-text-faint); }
 .fm-app-item:hover { background:color-mix(in srgb,var(--c-white) 06%,transparent); color:var(--c-white); }
@@ -161,7 +161,7 @@ body.mode-filemanager #sidebar2            { display:none !important; }
 body.mode-filemanager .voldemort-container { display:none !important; }
 
 /* File browser panel */
-body.mode-filemanager #sidebar1 { position:fixed; left:84px; right:0; top:0; bottom:0; width:auto; transform:none; z-index:10; }
+body.mode-filemanager #sidebar1 { position:fixed; left:72px; right:0; top:0; bottom:0; width:auto; transform:none; z-index:10; }
 body.mode-filemanager .note-app-container { padding-top:0; }
 body.mode-filemanager.fm-sidebar-collapsed #sidebar1 { display:none; }
 body.mode-filemanager.fm-nav-closed #sidebar1 { left:0; }
@@ -173,7 +173,7 @@ body.mode-filemanager #topbar .topbar-button[onclick*="toggleFullscreen"],
 body.mode-filemanager #topbar #voldemortToggle,
 body.mode-filemanager #topbar #secondary-sidebar-button { display:none; }
 
-@media (max-width:640px) { .filemanager-app-sidebar { left:7px; top:7px; bottom:7px; } body.mode-filemanager #sidebar1 { left:81px; } }
+@media (max-width:640px) { .filemanager-app-sidebar { top:4px; bottom:4px; } body.mode-filemanager #sidebar1 { left:70px; } }
 
 
 /* ============================================================

@@ -1,7 +1,10 @@
 /* ── TOPBAR ─────────────────────────────────────────────────────────
-   Shape: RNW top bar — full-width rounded rect, 10 px inset each side,
-   border-radius: 19 px, height: 64 px, 5 px inner padding.
-   Layout: [expand 42px] [section flex:1 centered] [close 42px]
+   Shape: hanging "tab" glued to the top screen edge. Where it meets the
+   edge the outline flares outward in a concave curve (--tab-flare); the two
+   free bottom corners are big convex rounds (--tab-radius). The whole shape
+   is painted with gradient layers on the element itself, so it works at any
+   width with no SVG/JS and nothing is clipped by overflow.
+   Layout: [close] [section flex:1 centered] [expand]
    ────────────────────────────────────────────────────────────────── */
 
 /* ── Top-edge hotspot: invisible, reopens bar when closed ── */
@@ -45,49 +48,67 @@ body.topbar-closed .topbar-edge-hotspot { pointer-events: auto; }
 
 /* ── Bar wrapper ── */
 .topbar {
+  --sh: var(--shape-bg);
+  --F: var(--tab-flare);
+  --R: var(--tab-radius);
   position: fixed;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  width: auto;
-  background: var(--c-panel);
-  border: 1px solid color-mix(in srgb, var(--c-white) 8%, transparent);
-  padding: 5px;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: min(100vw, 520px);
+  height: var(--topbar-height);
+  padding: 6px calc(var(--F) + 8px) 6px;
   display: flex;
   align-items: center;
   gap: 0;
-  border-radius: 19px;
   z-index: 100;
-  height: var(--topbar-height);
-  overflow: hidden;
-  transition:
-    height  0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 0;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  background-image:
+    linear-gradient(var(--sh), var(--sh)),                                                          /* body (left/right of centre) */
+    linear-gradient(var(--sh), var(--sh)),                                                          /* body (full-height centre)   */
+    radial-gradient(circle at 100% 0, var(--sh) var(--R), transparent calc(var(--R) + 1px)),       /* bottom-left  convex round   */
+    radial-gradient(circle at 0 0,    var(--sh) var(--R), transparent calc(var(--R) + 1px)),       /* bottom-right convex round   */
+    radial-gradient(circle at 0 100%,    transparent var(--F), var(--sh) calc(var(--F) + 1px)),    /* top-left  concave flare     */
+    radial-gradient(circle at 100% 100%, transparent var(--F), var(--sh) calc(var(--F) + 1px));    /* top-right concave flare     */
+  background-size:
+    calc(100% - 2 * var(--F)) calc(100% - var(--R)),
+    calc(100% - 2 * var(--F) - 2 * var(--R)) 100%,
+    var(--R) var(--R),
+    var(--R) var(--R),
+    var(--F) var(--F),
+    var(--F) var(--F);
+  background-position:
+    var(--F) 0,
+    calc(var(--F) + var(--R)) 0,
+    var(--F) 100%,
+    calc(100% - var(--F)) 100%,
+    0 0,
+    100% 0;
+  transform: translateY(0);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Closed state ── */
+/* ── Closed state: slide the whole tab (flares included) up off-screen ── */
 body.topbar-closed .topbar {
-  height: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  border-top-color: transparent !important;
-  border-bottom-color: transparent !important;
+  transform: translateY(-105%);
   pointer-events: none !important;
 }
 body.topbar-closed .note-app-container { padding-top: 10px; }
 
 /* ── Expand control (left end, order 1) ── */
 .topbar-expand {
-  flex: 0 0 42px;
-  width: 42px;
+  flex: 0 0 40px;
+  width: 40px;
   height: 42px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   background: transparent;
   color: var(--c-text-faint);
   cursor: pointer;
@@ -115,20 +136,24 @@ body.topbar-closed .note-app-container { padding-top: 10px; }
   flex: 1;
   min-width: 0;
   justify-content: center;
+  justify-content: safe center;
   gap: 2px;
   order: 2;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.topbar-section::-webkit-scrollbar { display: none; }
 
 /* ── Close control (right end, order 3) ── */
 .topbar-close {
-  flex: 0 0 42px;
-  width: 42px;
+  flex: 0 0 40px;
+  width: 40px;
   height: 42px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   background: transparent;
   color: var(--c-text-faint);
   cursor: pointer;
@@ -152,8 +177,8 @@ body.topbar-closed .note-app-container { padding-top: 10px; }
 /* ── Icon items ── */
 .topbar-button {
   position: relative;
-  flex: 0 0 42px;
-  width: 42px;
+  flex: 0 0 40px;
+  width: 40px;
   height: 52px;        /* template: bar-h .icon-item height = 52px */
   display: grid;
   place-items: center;
@@ -161,7 +186,7 @@ body.topbar-closed .note-app-container { padding-top: 10px; }
   margin: 0;
   border: 0;
   outline: 0;
-  border-radius: 10px; /* template: .icon-item border-radius */
+  border-radius: 999px;
   background: transparent;
   color: var(--c-text-faint);
   cursor: pointer;
@@ -204,5 +229,5 @@ body.mode-filemanager .topbar-edge-hotspot { display: none !important; }
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-  .topbar { top: 7px; left: 7px; right: 7px; }
+  .topbar { width: 100vw; }
 }

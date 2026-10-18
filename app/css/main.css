@@ -43,8 +43,8 @@ button { font-family: classy; }
   transform: translateY(0);
   animation: fadeInUp 0.8s ease-out 0.2s forwards;
   background: 0;
-  /* topbar: top: 10px + height: 64px + 10px gap = 84px */
-  padding-top: calc(var(--topbar-height) + 20px);
+  /* topbar is glued to the top edge: height 64px + 10px gap */
+  padding-top: calc(var(--topbar-height) + 10px);
   margin: 0;
 }
 
@@ -70,40 +70,68 @@ html[data-cm-tone="dark"] [class*="cm-s-"].CodeMirror,
 html[data-cm-tone="dark"] .CodeMirror {
   background: var(--editor-bg-dark) !important;
 }
-html[data-cm-tone="dark"] [class*="cm-s-"] .CodeMirror-gutters,
-html[data-cm-tone="dark"] .CodeMirror-gutters {
-  background: var(--editor-gutter-dark) !important;
-  border-right-color: var(--editor-gutter-border-dark) !important;
-}
-
 html[data-cm-tone="light"] [class*="cm-s-"].CodeMirror,
 html[data-cm-tone="light"] .CodeMirror {
   background: var(--editor-bg-light) !important;
 }
-html[data-cm-tone="light"] [class*="cm-s-"] .CodeMirror-gutters,
-html[data-cm-tone="light"] .CodeMirror-gutters {
-  background: var(--editor-gutter-light) !important;
-  border-right-color: var(--editor-gutter-border-light) !important;
-}
-
 html:not([data-cm-tone]) [class*="cm-s-"].CodeMirror,
 html:not([data-cm-tone]) .CodeMirror {
   background: var(--editor-bg-dark);
 }
-html:not([data-cm-tone]) [class*="cm-s-"] .CodeMirror-gutters,
-html:not([data-cm-tone]) .CodeMirror-gutters {
-  background: var(--editor-gutter-dark);
+/* ── Gutter: left-edge tab (concave flares at top/bottom, convex round on the right) ──
+   CodeMirror keeps .CodeMirror-gutters as one tall box (min-height:100%), so the
+   outline is painted with gradient layers on that box. The lines get matching
+   vertical padding so the first/last number sits inside the body, not in a flare. */
+.text-area-wrapper .CodeMirror {
+  --gutter-bg: var(--editor-gutter-dark);
+  --editor-pad-x: 12px;
+  --gF: 12px;
+  --gR: 16px;
 }
+html[data-cm-tone="light"] .text-area-wrapper .CodeMirror { --gutter-bg: var(--editor-gutter-light); }
+.text-area-wrapper .CodeMirror-lines { padding: 10px 0; }
+.text-area-wrapper .CodeMirror:not(.dex-no-gutter) .CodeMirror-lines { padding: calc(var(--gF) + 8px) 0; }
+.text-area-wrapper .CodeMirror pre.CodeMirror-line,
+.text-area-wrapper .CodeMirror pre.CodeMirror-line-like { padding: 0 var(--editor-pad-x); }
+.text-area-wrapper .CodeMirror .CodeMirror-gutters {
+  --sh: var(--gutter-bg);
+  border: 0 !important;
+  background-color: transparent !important;
+  background-repeat: no-repeat !important;
+  background-origin: border-box !important;
+  background-image:
+    linear-gradient(var(--sh), var(--sh)),
+    linear-gradient(var(--sh), var(--sh)),
+    radial-gradient(circle at 0 100%, var(--sh) var(--gR), transparent calc(var(--gR) + 1px)),
+    radial-gradient(circle at 0 0,    var(--sh) var(--gR), transparent calc(var(--gR) + 1px)),
+    radial-gradient(circle at 100% 0,    transparent var(--gF), var(--sh) calc(var(--gF) + 1px)),
+    radial-gradient(circle at 100% 100%, transparent var(--gF), var(--sh) calc(var(--gF) + 1px)) !important;
+  background-size:
+    calc(100% - var(--gR)) calc(100% - 2 * var(--gF)),
+    100% calc(100% - 2 * var(--gF) - 2 * var(--gR)),
+    var(--gR) var(--gR),
+    var(--gR) var(--gR),
+    var(--gF) var(--gF),
+    var(--gF) var(--gF) !important;
+  background-position:
+    0 var(--gF),
+    0 calc(var(--gF) + var(--gR)),
+    100% var(--gF),
+    100% calc(100% - var(--gF)),
+    0 0,
+    0 100% !important;
+}
+.text-area-wrapper .CodeMirror .CodeMirror-linenumber { padding: 0 8px 0 10px; }
 
 html[data-cm-tone="dark"] .CodeMirror-linenumber,
 html:not([data-cm-tone]) .CodeMirror-linenumber {
-  color: var(--c-text-faint) !important;
+  color: color-mix(in srgb, var(--c-white) 50%, transparent) !important;
 }
 
 html[data-cm-tone="light"] .CodeMirror-linenumber {
   color: #1a1a1a !important;
 }
-.cm-s-dracula .CodeMirror-activeline-background { background: color-mix(in srgb, var(--c-white) 03%, transparent); }
+.cm-s-dracula .CodeMirror-activeline-background { background: color-mix(in srgb, var(--c-white) 05%, transparent); }
 
 #noteTextarea { display: none !important; }
 #noteBackdrop { display: none !important; }
