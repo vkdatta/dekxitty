@@ -82,7 +82,7 @@ html[data-theme="light"] {
   --c-panel: #f7fffc;
   --c-panel-2: #edfef8;
   --c-panel-3: #dafdf1;
-  --c-panel-4: #c7fcea;
+  --c-panel-4: #CDF4E7;
   --c-text-dim: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
   --c-text-faint: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
   --c-border: color-mix(in srgb, var(--c-white) 10%, transparent);
