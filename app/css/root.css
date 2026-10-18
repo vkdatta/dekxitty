@@ -73,12 +73,12 @@
   color: var(--color);
 }
 html[data-theme="light"] {
-  --c-black: #f7ecd6;
+  --c-black: #c7fcea;
   --c-white: #000000;
-  --c-panel: #fffaf0;
-  --c-panel-2: #fbf3e2;
-  --c-panel-3: #f3e6c8;
-  --c-panel-4: #e8d7b0;
+  --c-panel: #e6fef6;
+  --c-panel-2: #d9fdf0;
+  --c-panel-3: #b2f3db;
+  --c-panel-4: #92e4c5;
   --c-text-dim: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
   --c-text-faint: color-mix(in srgb, var(--c-white) 80%, var(--c-black));
   --c-border: color-mix(in srgb, var(--c-white) 10%, transparent);
