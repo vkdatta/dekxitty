@@ -30,6 +30,61 @@ const welcomeMessage = document.getElementById('welcomeMessage');
 const infoName = document.getElementById('infoName');
 const findBackdrop = document.getElementById("findBackdrop");
 
+
+// ─── Typing-path scheduling (perf with large note counts) ─────────────────────
+// saveNotes() serialises EVERY note into one localStorage string and
+// populateNoteList() rebuilds every sidebar row. Both are O(number of notes),
+// so running them after each typing pause made the editor lag badly with ~1000
+// files. The typing path now uses the helpers below instead:
+//   · persist  → one idle write (600 ms quiet, forced after 4 s) + flush when the tab hides / a note switches
+//   · sidebar  → only re-rendered while it is actually visible, otherwise marked dirty and rendered on open
+//   · doc info → debounced (it scans the whole note text)
+let _savePending = false, _saveTimer = null, _saveFirstAt = 0;
+const SAVE_IDLE_MS = 600, SAVE_MAX_WAIT_MS = 4000;
+
+function scheduleSaveNotes() {
+  _savePending = true;
+  const now = Date.now();
+  if (!_saveFirstAt) _saveFirstAt = now;
+  clearTimeout(_saveTimer);
+  const wait = Math.max(0, Math.min(SAVE_IDLE_MS, SAVE_MAX_WAIT_MS - (now - _saveFirstAt)));
+  _saveTimer = setTimeout(flushSaveNotes, wait);
+}
+function flushSaveNotes() {
+  clearTimeout(_saveTimer); _saveTimer = null; _saveFirstAt = 0;
+  if (!_savePending) return;
+  saveNotes();                      // saveNotes() clears the pending flag
+}
+
+let _sbTimer = null, _sbDirty = false;
+function sidebarIsVisible() {
+  if (document.body.classList.contains('mode-filemanager')) return true;
+  const sb = document.getElementById('sidebar1');
+  return !!(sb && sb.classList.contains('open'));
+}
+function flushSidebarRefresh() {
+  clearTimeout(_sbTimer); _sbTimer = null;
+  if (!_sbDirty) return;
+  _sbDirty = false;
+  populateNoteList();
+}
+function scheduleSidebarRefresh() {
+  _sbDirty = true;
+  if (!sidebarIsVisible()) return;        // rendered later, when the sidebar opens
+  clearTimeout(_sbTimer);
+  _sbTimer = setTimeout(flushSidebarRefresh, 400);
+}
+
+let _infoTimer = null;
+function scheduleDocInfo() {
+  clearTimeout(_infoTimer);
+  _infoTimer = setTimeout(() => { _infoTimer = null; updateDocumentInfo(); }, 250);
+}
+
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSaveNotes(); });
+window.addEventListener('pagehide', flushSaveNotes);
+window.addEventListener('beforeunload', flushSaveNotes);
+
 function safeAddListener(e, t, n) {
   e ? e.addEventListener(t, n) : console.warn(`Element for ${t} listener not found`);
 }
@@ -72,6 +127,7 @@ function parseTimestamp(isoString) {
 }
 
 function openNote(n) {
+  flushSaveNotes();
   if (window.debounceTimer) clearTimeout(window.debounceTimer);
   if (window.updateTimeout) cancelAnimationFrame(window.updateTimeout);
   window.debounceTimer = null;
@@ -111,6 +167,20 @@ function openNote(n) {
   }, 80);
 
   try { window.dispatchEvent(new CustomEvent("dexNoteOpened", { detail: { note: e } })); } catch (err) {}
+}
+
+/** Typing path: copy the editor text into the note and schedule the heavy work. O(current note), not O(all notes). */
+function updateNoteOnInput() {
+  if (!currentNote || !noteTextarea) return;
+  const content = noteTextarea.value;
+  if (currentNote.content !== content) {
+    currentNote.content = content;
+    currentNote.lastEdited = new Date().toISOString();
+    currentNote._dirty = true;
+    scheduleSaveNotes();
+    scheduleSidebarRefresh();
+  }
+  scheduleDocInfo();
 }
 
 async function updateNoteMetadata() {
@@ -210,5 +280,6 @@ async function loadNotes() {
 
 function saveNotes() {
   if (!Array.isArray(notes)) return;
+  _savePending = false; _saveFirstAt = 0; clearTimeout(_saveTimer); _saveTimer = null;
   localStorage.setItem("notes", JSON.stringify(notes));
 }

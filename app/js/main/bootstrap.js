@@ -16,17 +16,21 @@ function setupEventListeners() {
     refreshDpadVisibility();
   });
 
-  const debouncedUpdate = debounce(updateNoteMetadata, 100);
-  // FIX (perf): populateNoteList() was firing on every single keystroke,
-  // rebuilding the entire sidebar note list DOM synchronously each time.
-  // It is now debounced at the same cadence as updateNoteMetadata so the
-  // list refreshes shortly after the user pauses typing rather than on
-  // every character. The debounced instances are kept separate so one
-  // never delays the other.
-  const debouncedPopulate = debounce(populateNoteList, 100);
+  // PERF: typing used to run updateNoteMetadata() + populateNoteList() (twice)
+  // after every pause. Both are O(all notes) — with ~1000 files each pause froze
+  // the UI for hundreds of ms. updateNoteOnInput() is O(current note); the
+  // JSON save, sidebar rebuild and doc-info refresh are scheduled lazily
+  // (see notes-state.js).
+  const debouncedUpdate = debounce(updateNoteOnInput, 100);
   safeAddListener(noteTextarea, "input", debouncedUpdate);
-  safeAddListener(noteTextarea, "input", debouncedPopulate);
-  safeAddListener(noteTextarea, "focus", () => { if (currentNote) updateNoteMetadata(); });
+  safeAddListener(noteTextarea, "focus", () => { if (currentNote) updateNoteOnInput(); });
+
+  // A sidebar that was closed while notes changed is stale — rebuild it the moment it opens.
+  if (sidebar1 && typeof MutationObserver === "function") {
+    new MutationObserver(() => {
+      if (sidebar1.classList.contains("open")) flushSidebarRefresh();
+    }).observe(sidebar1, { attributes: true, attributeFilter: ["class"] });
+  }
 
   safeAddListener(noteAppBtn, "click", () => { showFileManager(); });
   safeAddListener(docsBtn, "click", () => { if (docsOverlay) docsOverlay.classList.add("open"); });

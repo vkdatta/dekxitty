@@ -37,9 +37,9 @@ function boot() {
       const note = activeNote;               // always the note the edit belongs to, even mid-switch
       if (!note) return;
       if (note.content !== csv) { note.content = csv; note.lastEdited = new Date().toISOString(); note._dirty = true; }
-      if (typeof saveNotes === "function") saveNotes();
-      if (typeof updateDocumentInfo === "function" && note === currentNote) updateDocumentInfo();
-      if (typeof populateNoteList === "function") populateNoteList();
+      if (typeof scheduleSaveNotes === "function") scheduleSaveNotes(); else if (typeof saveNotes === "function") saveNotes();
+      if (typeof scheduleDocInfo === "function" && note === currentNote) scheduleDocInfo(); else if (typeof updateDocumentInfo === "function" && note === currentNote) updateDocumentInfo();
+      if (typeof scheduleSidebarRefresh === "function") scheduleSidebarRefresh(); else if (typeof populateNoteList === "function") populateNoteList();
       if (note === currentNote) {            // keep the hidden editor in step for sidebar tools
         selfWrite = true;
         try { window.dexEditor.setValue(csv, { silent: true }); } catch (e) {}

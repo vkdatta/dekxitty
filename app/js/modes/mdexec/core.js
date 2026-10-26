@@ -122,9 +122,9 @@ function boot() {
     const v = source();
     lastSrc = v;                           // the DOM already shows this state — no re-render needed
     if (note.content !== v) { note.content = v; note.lastEdited = new Date().toISOString(); note._dirty = true; }
-    if (typeof saveNotes === "function") saveNotes();
+    if (typeof scheduleSaveNotes === "function") scheduleSaveNotes(); else if (typeof saveNotes === "function") saveNotes();
     if (typeof updateDocumentInfo === "function") updateDocumentInfo();
-    if (typeof populateNoteList === "function") populateNoteList();
+    if (typeof scheduleSidebarRefresh === "function") scheduleSidebarRefresh(); else if (typeof populateNoteList === "function") populateNoteList();
   }
 
   const mmCache = new Map();   // theme + source → sanitised svg (design mode re-renders blocks often)
@@ -237,9 +237,9 @@ function boot() {
       const v = source();
       lastSrc = v;
       if (note.content !== v) { note.content = v; note.lastEdited = new Date().toISOString(); note._dirty = true; }
-      if (typeof saveNotes === "function") saveNotes();
+      if (typeof scheduleSaveNotes === "function") scheduleSaveNotes(); else if (typeof saveNotes === "function") saveNotes();
       if (typeof updateDocumentInfo === "function") updateDocumentInfo();
-      if (typeof populateNoteList === "function") populateNoteList();
+      if (typeof scheduleSidebarRefresh === "function") scheduleSidebarRefresh(); else if (typeof populateNoteList === "function") populateNoteList();
     }
   });
 

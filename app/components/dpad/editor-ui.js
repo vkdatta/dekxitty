@@ -8,7 +8,8 @@
   const DBL_TAP_MS       = 350;
   const MOVE_CANCEL_PX   = 10;
   const ATTACH_MAX_TRIES = 200;
-  const HANDLE_OFFSET    = 14;
+  const HANDLE_OFFSET    = 16;   // knob centre sits this far BELOW the text line (both handles)
+  const HANDLE_SIDE_SHIFT = 9;   // start knob leans left, end knob leans right — like native handles
   const FIND_MENU_ID     = 'find-replace-menu';
   const FIND_MENU_HIDDEN = 'find-replace-hidden';
 
@@ -335,7 +336,7 @@
         if (!isTouchLike(e)) return;
         e.preventDefault(); e.stopPropagation();
         try { el.setPointerCapture(e.pointerId); } catch (_e) {}
-        beginHandleDrag(which, e.pointerId);
+        beginHandleDrag(which, e.pointerId, e, el);
       }, { passive: false });
     });
 
@@ -350,21 +351,33 @@
     if (handleEnd)   handleEnd.style.display   = 'none';
   }
 
+  // Handles are fixed on <body> (z-index 9990) so they would float above the
+  // slide-in sidebars. Hide them whenever one of those panels is showing.
+  function overlayPanelOpen() {
+    const s2 = document.getElementById('secondary-sidebar');
+    if (s2 && s2.classList.contains('open')) return true;
+    const s1 = document.getElementById('sidebar1');
+    if (s1 && s1.classList.contains('open') && !document.body.classList.contains('mode-filemanager')) return true;
+    return false;
+  }
+
   function positionHandles() {
     const cm = getCm();
     if (!cm || !cm.somethingSelected()) { hideHandles(); return; }
-    if (findMenuOpen()) { hideHandles(); return; }
+    if (findMenuOpen() || overlayPanelOpen()) { hideHandles(); return; }
     ensureHandles();
 
     const a = cm.charCoords(cm.getCursor('from'), 'window');
     const b = cm.charCoords(cm.getCursor('to'),   'window');
 
-    handleStart.style.left = a.left + 'px';
-    handleStart.style.top  = (a.top - HANDLE_OFFSET) + 'px';
+    // Both knobs hang BELOW the text, start under the selection start and end
+    // under the selection end (the "smooth" native-style layout).
+    handleStart.style.left = (a.left  - HANDLE_SIDE_SHIFT) + 'px';
+    handleStart.style.top  = (a.bottom + HANDLE_OFFSET)    + 'px';
     handleStart.style.display = 'block';
 
-    handleEnd.style.left = b.right + 'px';
-    handleEnd.style.top  = (b.bottom + HANDLE_OFFSET) + 'px';
+    handleEnd.style.left = (b.right + HANDLE_SIDE_SHIFT) + 'px';
+    handleEnd.style.top  = (b.bottom + HANDLE_OFFSET)    + 'px';
     handleEnd.style.display = 'block';
   }
 
@@ -381,15 +394,35 @@
   window.dexPositionSelectionHandles = positionHandles;
   window.addEventListener('popstate', hideHandles);
 
-  // ─── Handle drag ──────────────────────────────────────────────────────────
-  let dragging = null, dragPointerId = null, dragFixedPoint = null;
+  (function watchPanels() {
+    if (typeof MutationObserver !== 'function') return;
+    let tries = 0;
+    (function bind() {
+      const targets = ['secondary-sidebar', 'sidebar1']
+        .map((id) => document.getElementById(id)).filter(Boolean);
+      if (targets.length < 2 && tries++ < 50) { setTimeout(bind, 200); }
+      const mo = new MutationObserver(() => scheduleHandles());
+      targets.forEach((el) => {
+        if (el.__dexHandleWatch) return;
+        el.__dexHandleWatch = true;
+        mo.observe(el, { attributes: true, attributeFilter: ['class'] });
+      });
+    })();
+  })();
 
-  function beginHandleDrag(which, pointerId) {
+  // ─── Handle drag ──────────────────────────────────────────────────────────
+  let dragging = null, dragPointerId = null, dragFixedPoint = null, dragGrabX = 0, dragGrabY = 0;
+
+  function beginHandleDrag(which, pointerId, e, el) {
     const cm = getCm();
     if (!cm || !cm.somethingSelected()) return;
     dragging       = which;
     dragPointerId  = pointerId;
     dragFixedPoint = (which === 'from') ? cm.getCursor('to') : cm.getCursor('from');
+    // where inside the knob the finger landed, so the selection doesn't jump on first move
+    const r = el.getBoundingClientRect();
+    dragGrabX = e.clientX - (r.left + r.width  / 2);
+    dragGrabY = e.clientY - (r.top  + r.height / 2);
     window.__dexSelHandleDragging = true;
     if (isMenuOpen()) closeMenu();
   }
@@ -399,8 +432,13 @@
     e.preventDefault();
     const cm = getCm();
     if (!cm) return;
-    const delta = dragging === 'from' ? HANDLE_OFFSET : -HANDLE_OFFSET;
-    const pos = cm.coordsChar({ left: e.clientX, top: e.clientY + delta }, 'window');
+    const side = dragging === 'from' ? -HANDLE_SIDE_SHIFT : HANDLE_SIDE_SHIFT;
+    const knobX = e.clientX - dragGrabX;
+    const knobY = e.clientY - dragGrabY;
+    // knob → the text point it belongs to (undo the side shift, climb above the knob offset to mid-line)
+    const x = knobX - side;
+    const y = knobY - HANDLE_OFFSET - cm.defaultTextHeight() / 2;
+    const pos = cm.coordsChar({ left: x, top: y }, 'window');
     cm.setSelection(dragFixedPoint, pos);
     positionHandles();
   }
