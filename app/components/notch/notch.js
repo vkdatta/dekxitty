@@ -316,6 +316,10 @@
     // editor and raises the keyboard, which is why the old "click outside" never closed it.) The touch still goes through.
     document.addEventListener("pointerdown", (e) => { if (open && dock && !dock.contains(e.target)) setOpen(false); }, true);
     document.addEventListener("keydown", (e) => { if (open && e.key === "Escape") setOpen(false); });
+    // Fullscreen puts <html> into the top layer AFTER the notch's popover, so it would cover the notch. Re-open the popover
+    // once fullscreen is on / off so the notch goes back on top of it (the top layer stacks in the order things were added).
+    const reraise = () => { if (dragging) return; try { if (dock.matches(":popover-open")) dock.hidePopover(); dock.showPopover(); } catch (e) {} queueAvoid(); };
+    ["fullscreenchange", "webkitfullscreenchange"].forEach((n) => document.addEventListener(n, () => { reraise(); setTimeout(reraise, 250); }));
     window.addEventListener("resize", () => { clampPinned(); queueAvoid(); });
     window.addEventListener("orientationchange", () => { clampPinned(); queueAvoid(); });
     window.addEventListener("scroll", queueAvoid, true);
