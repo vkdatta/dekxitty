@@ -7,9 +7,10 @@
  *   - tap    : opens the details panel. Close it with the × button, by tapping the bar again, Esc,
  *              or by touching anything outside it (the touch still goes through, so tapping the editor
  *              closes the notch AND focuses the editor).
- *   - two notches: STATUS (notifications + running jobs) and DEBUG (warnings / errors). The Pasito stepper that
- *     shows which one you are on appears only while the notch is open; closed, an amber dot marks unread
- *   - swipe left / right anywhere on the notch — closed or inside the opened panel — switches notch
+ *   - closed, the notch receives BOTH streams (running jobs, notifications, debug lines) and stacks them
+ *   - open, two views: ACTIVITY and DEBUG (warnings / errors, with an Expand button for the app's Developer Console).
+ *     The Pasito stepper shows which one you are on and only exists while open; closed, an amber dot marks unread
+ *   - swipe left / right anywhere on the opened notch switches view
  *
  * Placement:
  *   - starts bottom-right and grows away from the screen edge it is attached to
@@ -35,7 +36,7 @@
   const HISTORY_MAX = 100, DEBUG_MAX = 300, SHOW_MS = 3600, SHOW_ERR_MS = 7000;
   const M = 10, SNAP_EDGE = 90, HOLD_MS = 300, POS_KEY = "dexNotchPos";
   const tasks = new Map(), history = [], dbg = [];
-  let el = null, dock = null, stepper = null, open = false, view = 0, flashMsg = null, flashTimer = 0;
+  let el = null, dock = null, stepper = null, open = false, view = 0, flashMsg = null, flashTimer = 0, dbgFlash = null, dbgFlashTimer = 0;
   let seq = 0, dbgSeq = 0, histSeq = 0, tick = null, lastState = "", swipedAt = 0, renderTimer = 0, lastRaise = 0;
   let dragging = false, avoidTimer = 0;
   const unread = [false, false];
@@ -73,10 +74,16 @@
   }
 
   // ── Debug capture: warnings / errors / uncaught problems (the console still gets everything) ──────────
-  function dlog(text, level) {
-    dbg.unshift({ n: ++dbgSeq, at: Date.now(), level: level || "info", text: String(text).slice(0, 1500) });
+  function dlog(text, level, quiet) {   // quiet: log only (the same text already flashed as a notification)
+    level = level || "info"; text = String(text).slice(0, 1500);
+    dbg.unshift({ n: ++dbgSeq, at: Date.now(), level, text });
     if (dbg.length > DEBUG_MAX) dbg.length = DEBUG_MAX;
-    if (view !== 1) { if (stepper) mark(1); } else schedule();
+    if (view !== 1 && stepper) mark(1);
+    if (!quiet) {
+      dbgFlash = { text, level }; clearTimeout(dbgFlashTimer);
+      dbgFlashTimer = setTimeout(() => { dbgFlash = null; render(); queueAvoid(); }, level === "error" ? SHOW_ERR_MS : SHOW_MS);
+    }
+    schedule();
   }
   const fmtArg = (a) => typeof a === "string" ? a : a instanceof Error ? a.name + ": " + a.message : (() => { try { return JSON.stringify(a); } catch (e) { return String(a); } })();
   ["warn", "error"].forEach((m) => {
@@ -262,7 +269,7 @@
         if (mode !== "wait") return;
         const dx = ev.clientX - sx, dy = ev.clientY - sy;
         if (Math.hypot(dx, dy) > 8) clearTimeout(holdT);
-        if (!mouseInLog && Math.abs(dx) >= 36 && Math.abs(dx) >= Math.abs(dy) * 1.5) {
+        if (open && !mouseInLog && Math.abs(dx) >= 36 && Math.abs(dx) >= Math.abs(dy) * 1.5) {
           mode = "swipe"; swipedAt = Date.now(); cleanup();
           setView(Math.max(0, Math.min(1, view + (dx < 0 ? 1 : -1))));   // swipe left -> next, right -> previous
         }
@@ -293,6 +300,12 @@
       if (Date.now() - swipedAt < 400) return;                      // a swipe / drag must not also toggle the notch
       if (e.target.closest("[data-close]")) { e.stopPropagation(); setOpen(false); return; }
       if (e.target.closest("[data-unpin]")) { autoPosition(); return; }
+      if (e.target.closest("[data-expand]")) {   // hand over to the app's own Developer Console
+        setOpen(false);
+        if (typeof window.debug === "function") { try { window.debug(); } catch (err) { dlog("Expand failed: " + fmtArg(err), "error"); } }
+        else window.dexNotch.flash("Developer console is not available", "error");
+        return;
+      }
       const copy = e.target.closest("[data-copy]");
       if (copy) { copyLog(copy); return; }
       if (e.target.closest("[data-clear]")) { if (view === 1) dbg.length = 0; else history.length = 0; render(); return; }
@@ -339,23 +352,15 @@
         (t.detail ? "<p>" + esc(t.detail) + "</p>" : "") +
         (t.total ? '<div class="dex-notch-progress"><i style="width:' + pct + '%"></i></div><small>' + t.done + "/" + t.total + " · " + pct + "%</small>" : "") + "</div>";
     }).join("") : '<p class="dex-notch-empty">Nothing is running right now.</p>';
-    const recent = history.length ? history.map((h) => '<div class="dex-notch-log ' + h.type + '"><em class="dex-notch-ico">' + (ICON[h.type] || ICON.info) + "</em><span>" + esc(h.text) + "</span><small>" + clock(h.at) + "</small></div>").join("") : '<p class="dex-notch-empty">No recent activity.</p>';
+    const recent = history.length ? history.map((h) => '<div class="dex-notch-log is-' + h.type + '"><em class="dex-notch-ico">' + (ICON[h.type] || ICON.info) + "</em><span>" + esc(h.text) + "</span><small>" + clock(h.at) + "</small></div>").join("") : '<p class="dex-notch-empty">No recent activity.</p>';
     return '<div class="dex-notch-details"><div class="dex-notch-section"><h4>Running now</h4>' + running + '</div><div class="dex-notch-section"><h4>Recent · ' + history.length + "/" + HISTORY_MAX + ' · newest first</h4>' + recent + "</div>" +
       '<div class="dex-notch-actions"><button type="button" class="dex-notch-btn" data-copy>Copy</button>' + (history.length ? '<button type="button" class="dex-notch-btn" data-clear>Clear</button>' : "") + unpinBtn() + "</div>" + hint + "</div>";
   }
-  function debugHTML() {
-    const last = dbg[0];
-    const lvl = last ? (last.level === "error" ? "error" : last.level === "warn" ? "warn" : "") : "";
-    // open: just a title (the log below already lists every line, so no repeat of the newest one up here)
-    const row = open ? headRow("Debug")
-      : last ? '<div class="dex-notch-row ' + lvl + '"><em class="dex-notch-ico">' + (lvl ? ICON.error : ICON.info) + '</em><span class="dex-notch-text">' + esc(last.text) + "</span></div>"
-      : '<div class="dex-notch-row idle" aria-label="Debug notch"></div>';
-    const panel = open
-      ? '<div class="dex-notch-details"><div class="dex-notch-section"><h4>Debug log · ' + dbg.length + "/" + DEBUG_MAX + ' · newest first</h4><div class="dex-dbg-log">' +
-        (dbg.map((d) => '<div class="dex-dbg-line ' + d.level + '">' + esc(clock(d.at) + " " + d.level.toUpperCase().padEnd(5) + " " + d.text) + "</div>").join("") || '<p class="dex-notch-empty">Nothing logged yet.</p>') +
-        '</div></div><div class="dex-notch-actions"><button type="button" class="dex-notch-btn" data-copy>Copy log</button><button type="button" class="dex-notch-btn" data-clear>Clear</button>' + unpinBtn() + "</div>" + hint + "</div>"
-      : "";
-    return { html: row + panel, multi: open, idle: !dbg.length && !open };
+  function debugHTML() {   // open debug panel (closed, debug lines flash on the same notch as activity — see render)
+    return headRow("Debug") + '<div class="dex-notch-details"><div class="dex-notch-section"><h4>Debug log · ' + dbg.length + "/" + DEBUG_MAX + ' · newest first</h4><div class="dex-dbg-log">' +
+      (dbg.map((d) => '<div class="dex-dbg-line is-' + d.level + '">' + esc(clock(d.at) + " " + d.level.toUpperCase().padEnd(5) + " " + d.text) + "</div>").join("") || '<p class="dex-notch-empty">Nothing logged yet.</p>') +
+      '</div></div><div class="dex-notch-actions"><button type="button" class="dex-notch-btn" data-copy>Copy log</button><button type="button" class="dex-notch-btn" data-clear>Clear</button>' +
+      '<button type="button" class="dex-notch-btn" data-expand>Expand</button>' + unpinBtn() + "</div>" + hint + "</div>";
   }
 
   function render() {
@@ -366,18 +371,23 @@
     const prevScroll = node.querySelector(".dex-notch-details, .dex-dbg-log");
     const saved = prevScroll ? prevScroll.scrollTop : 0;
     let html, multi, idle = false;
-    if (view === 1) {
-      const d = debugHTML(); html = d.html; multi = d.multi; idle = d.idle;
+    if (open) {
+      html = view === 1 ? debugHTML() : headRow("Activity") + statusPanel(list);
+      multi = true;
     } else {
+      // closed: one receiver for everything — running job, notification and debug line stack here, whichever view is selected
       const main = list[list.length - 1];
       const pct = main && main.total ? Math.min(100, Math.round(main.done / main.total * 100)) : null;
-      const rows = (main ? 1 : 0) + (flashMsg ? 1 : 0);
-      idle = !rows && !open;
-      html = open ? headRow("Activity") + statusPanel(list) :
-        (main ? '<div class="dex-notch-row running">' + bars + '<span class="dex-notch-text">' + esc(main.total ? main.done + "/" + main.total + " " + main.label : main.label) + "</span>" + (list.length > 1 ? '<b class="dex-notch-more">+' + (list.length - 1) + "</b>" : "") + (pct !== null ? '<span class="dex-notch-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></span>' : "") + "</div>" : "") +
-        (flashMsg ? '<div class="dex-notch-row ' + flashMsg.type + '"><em class="dex-notch-ico">' + (ICON[flashMsg.type] || ICON.info) + '</em><span class="dex-notch-text">' + esc(flashMsg.text) + "</span></div>" : "") +
-        (!rows ? '<div class="dex-notch-row idle" aria-label="Status notch"></div>' : "");
-      multi = rows > 1 || open;
+      const row = (type, text) => '<div class="dex-notch-row is-' + type + '"><em class="dex-notch-ico">' + (ICON[type] || ICON.info) + '</em><span class="dex-notch-text">' + esc(text) + "</span></div>";
+      const dtype = dbgFlash ? (dbgFlash.level === "error" ? "error" : dbgFlash.level === "warn" ? "warn" : "info") : "";
+      const rows = (main ? 1 : 0) + (flashMsg ? 1 : 0) + (dbgFlash ? 1 : 0);
+      idle = !rows;
+      html =
+        (main ? '<div class="dex-notch-row is-running">' + bars + '<span class="dex-notch-text">' + esc(main.total ? main.done + "/" + main.total + " " + main.label : main.label) + "</span>" + (list.length > 1 ? '<b class="dex-notch-more">+' + (list.length - 1) + "</b>" : "") + (pct !== null ? '<span class="dex-notch-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></span>' : "") + "</div>" : "") +
+        (flashMsg ? row(flashMsg.type, flashMsg.text) : "") +
+        (dbgFlash ? row(dtype, dbgFlash.text) : "") +
+        (idle ? '<div class="dex-notch-row idle" aria-label="Notch"></div>' : "");
+      multi = rows > 1;
     }
     node.innerHTML = html;
     if (open) {   // × lives at the end of the header (first) row
@@ -407,7 +417,7 @@
       type = type === "error" || type === "success" || type === "info" ? type : infer(text);
       flashMsg = { text, type };
       record(type, text);
-      if (type === "error") dlog("notification: " + text, "warn");
+      if (type === "error") dlog("notification: " + text, "warn", true);
       clearTimeout(flashTimer);
       flashTimer = setTimeout(() => { flashMsg = null; render(); queueAvoid(); }, type === "error" ? SHOW_ERR_MS : SHOW_MS);
       render();
