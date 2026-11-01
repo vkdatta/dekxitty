@@ -7,15 +7,17 @@
  *   - tap    : opens the details panel. Close it with the × button, by tapping the bar again, Esc,
  *              or by touching anything outside it (the touch still goes through, so tapping the editor
  *              closes the notch AND focuses the editor).
- *   - two notches under a Pasito stepper: STATUS (notifications + running jobs) and DEBUG (warnings / errors)
- *   - swipe left / right anywhere on the notch — including inside the opened panel — switches notch
+ *   - two notches: STATUS (notifications + running jobs) and DEBUG (warnings / errors). The Pasito stepper that
+ *     shows which one you are on appears only while the notch is open; closed, an amber dot marks unread
+ *   - swipe left / right anywhere on the notch — closed or inside the opened panel — switches notch
  *
  * Placement:
  *   - starts bottom-right and grows away from the screen edge it is attached to
+ *   - snaps to 8 edge points: the 4 corners, top / bottom centre and left / right middle
  *   - dodges controls: if buttons / links / inputs sit under it, it moves to the nearest free spot on the
  *     screen edges, and goes back as soon as its own spot is free again
  *   - HOLD (~0.3s) the circle, the bar or the stepper, then drag it anywhere. On release it snaps to the
- *     nearest left/right edge (and to the top/bottom edge when close). A hand-placed notch stays where you
+ *     nearest edge point (corner, top/bottom centre, side middle), or slides along a side edge. A hand-placed notch stays where you
  *     put it (it no longer dodges) until you press "Auto position" in the panel.
  *
  * API:  window.dexNotch.flash(text, type?)            type: "info" | "success" | "error" (guessed if omitted)
@@ -39,12 +41,15 @@
   const unread = [false, false];
   try { view = Number(sessionStorage.getItem("dexNotchView")) === 1 ? 1 : 0; } catch (e) {}
 
-  // position: h = which side edge (l|r), v = top or bottom half (t|b); dx / dy = distance from those edges
+  // position: h = left / centre / right (l|c|r), v = top / middle / bottom (t|m|b); dx / dy = distance from the l / r / t / b edge
+  // (c and m are centred, so dx / dy do not matter there). The centre of the screen (c + m) is not a valid spot.
   const DEFAULT_POS = { h: "r", v: "b", dx: M, dy: M };
   let pref = Object.assign({}, DEFAULT_POS), pinned = false, cur = pref;
   try {
     const s = JSON.parse(localStorage.getItem(POS_KEY) || "null");
-    if (s && (s.h === "l" || s.h === "r") && (s.v === "t" || s.v === "b")) { pref = { h: s.h, v: s.v, dx: M, dy: Math.max(M, +s.dy || M) }; pinned = true; cur = pref; }
+    if (s && "lcr".includes(s.h) && "tmb".includes(s.v) && !(s.h === "c" && s.v === "m")) {
+      pref = { h: s.h, v: s.v, dx: M, dy: s.v === "m" || s.h === "c" ? M : Math.max(M, +s.dy || M) }; pinned = true; cur = pref;
+    }
   } catch (e) {}
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -86,10 +91,12 @@
   function applyPos(p) {
     cur = p; dock.dataset.h = p.h; dock.dataset.v = p.v;
     const sa = (side) => "env(safe-area-inset-" + side + ",0px)";
-    dock.style.left = p.h === "l" ? "calc(" + sa("left") + " + " + p.dx + "px)" : "auto";
-    dock.style.right = p.h === "r" ? "calc(" + sa("right") + " + " + p.dx + "px)" : "auto";
-    dock.style.top = p.v === "t" ? "calc(" + sa("top") + " + " + p.dy + "px)" : "auto";
-    dock.style.bottom = p.v === "b" ? "calc(" + sa("bottom") + " + " + p.dy + "px)" : "auto";
+    // centred axes pin both sides and let the auto margins centre the (max-content sized) dock
+    dock.style.left = p.h === "l" ? "calc(" + sa("left") + " + " + p.dx + "px)" : p.h === "c" ? sa("left") : "auto";
+    dock.style.right = p.h === "r" ? "calc(" + sa("right") + " + " + p.dx + "px)" : p.h === "c" ? sa("right") : "auto";
+    dock.style.top = p.v === "t" ? "calc(" + sa("top") + " + " + p.dy + "px)" : p.v === "m" ? sa("top") : "auto";
+    dock.style.bottom = p.v === "b" ? "calc(" + sa("bottom") + " + " + p.dy + "px)" : p.v === "m" ? sa("bottom") : "auto";
+    dock.style.margin = (p.v === "m" ? "auto" : "0") + " " + (p.h === "c" ? "auto" : "0");
   }
   function moveTo(p, animate) {   // FLIP: jump to the new anchors, then slide from where it was
     if (!dock) return;
@@ -104,7 +111,8 @@
   }
   const rectFor = (p, w, h) => {
     const vw = window.innerWidth, vh = window.innerHeight;
-    const left = p.h === "r" ? vw - p.dx - w : p.dx, top = p.v === "b" ? vh - p.dy - h : p.dy;
+    const left = p.h === "r" ? vw - p.dx - w : p.h === "c" ? (vw - w) / 2 : p.dx;
+    const top = p.v === "b" ? vh - p.dy - h : p.v === "m" ? (vh - h) / 2 : p.dy;
     return { left, top, right: left + w, bottom: top + h };
   };
   const hit = (a, b) => a.left < b.right + 4 && a.right > b.left - 4 && a.top < b.bottom + 4 && a.bottom > b.top - 4;
@@ -127,14 +135,14 @@
   function findFree(pf, w, h, obs) {
     const vh = window.innerHeight, pr = rectFor(pf, w, h), pcx = pr.left + w / 2, pcy = pr.top + h / 2;
     let best = null, bd = Infinity;
-    for (const hh of [pf.h, pf.h === "r" ? "l" : "r"]) for (const vv of [pf.v, pf.v === "b" ? "t" : "b"]) {
-      for (let dy = M; dy <= vh - h - M; dy += 20) {
-        const c = { h: hh, v: vv, dx: M, dy }, rc = rectFor(c, w, h);
-        if (obs.some((o) => hit(rc, o))) continue;
-        const d = Math.hypot(rc.left + w / 2 - pcx, rc.top + h / 2 - pcy);
-        if (d < bd) { bd = d; best = c; }
-      }
-    }
+    const tryAt = (c) => {
+      const rc = rectFor(c, w, h);
+      if (obs.some((o) => hit(rc, o))) return;
+      const d = Math.hypot(rc.left + w / 2 - pcx, rc.top + h / 2 - pcy);
+      if (d < bd) { bd = d; best = c; }
+    };
+    for (const hh of ["l", "r"]) for (const vv of ["t", "b"]) for (let dy = M; dy <= vh - h - M; dy += 20) tryAt({ h: hh, v: vv, dx: M, dy });
+    tryAt({ h: "c", v: "t", dx: M, dy: M }); tryAt({ h: "c", v: "b", dx: M, dy: M });   // top / bottom centre
     return best;
   }
   function avoid() {
@@ -148,7 +156,7 @@
   }
   function queueAvoid() { clearTimeout(avoidTimer); avoidTimer = setTimeout(avoid, 120); }
   function clampPinned() {   // keep a hand-placed notch on screen after a resize / rotation
-    if (!pinned || !dock) return;
+    if (!pinned || !dock || pref.v === "m" || pref.h === "c") return;
     const maxDy = Math.max(M, window.innerHeight - dock.offsetHeight - M);
     if (pref.dy > maxDy) { pref = Object.assign({}, pref, { dy: maxDy }); moveTo(pref, false); }
   }
@@ -159,6 +167,7 @@
     grab = { x: cx - r.left, y: cy - r.top, w: r.width, h: r.height };
     dragging = true; dock.classList.add("dragging");
     dock.style.transition = "none"; dock.style.transform = "";
+    dock.style.margin = "0";
     dock.style.left = r.left + "px"; dock.style.top = r.top + "px"; dock.style.right = "auto"; dock.style.bottom = "auto";
     try { navigator.vibrate && navigator.vibrate(12); } catch (e) {}
   }
@@ -167,14 +176,24 @@
     dock.style.left = Math.max(0, Math.min(vw - grab.w, cx - grab.x)) + "px";
     dock.style.top = Math.max(0, Math.min(vh - grab.h, cy - grab.y)) + "px";
   }
+  // Where a dropped notch lands. Magnets: corners, top / bottom centre, left / right middle.
+  // Along a side edge it slides freely (dy = distance from the nearest of top / bottom) until it gets close to a magnet.
+  function snapFor(r) {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dTop = r.top, dBot = vh - r.bottom;
+    const nearV = Math.min(dTop, dBot) < SNAP_EDGE;                       // close to the top / bottom edge
+    const zx = Math.max(56, vw * 0.16), zy = Math.max(56, vh * 0.1);      // how close to the centre line counts as "centre"
+    if (nearV && Math.abs(cx - vw / 2) < zx) return { h: "c", v: dTop < dBot ? "t" : "b", dx: M, dy: M };   // top / bottom centre
+    const h = cx < vw / 2 ? "l" : "r";
+    if (Math.abs(cy - vh / 2) < zy) return { h, v: "m", dx: M, dy: M };                                    // left / right middle
+    if (nearV) return { h, v: dTop < dBot ? "t" : "b", dx: M, dy: M };                                      // corner
+    const v = cy < vh / 2 ? "t" : "b";
+    return { h, v, dx: M, dy: Math.max(M, v === "t" ? dTop : dBot) };                                       // free along the side edge
+  }
   function endDrag() {
-    const r = dock.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+    const r = dock.getBoundingClientRect();
     dragging = false; dock.classList.remove("dragging"); swipedAt = Date.now();
-    const h = r.left + r.width / 2 < vw / 2 ? "l" : "r", dTop = r.top, dBot = vh - r.bottom;
-    let v, dy;
-    if (Math.min(dTop, dBot) < SNAP_EDGE) { v = dTop < dBot ? "t" : "b"; dy = M; }          // magnet: stick to the top / bottom edge
-    else { v = r.top + r.height / 2 < vh / 2 ? "t" : "b"; dy = Math.max(M, v === "t" ? dTop : dBot); }
-    pref = { h, v, dx: M, dy }; pinned = true;                                              // always stick to a side edge
+    pref = snapFor(r); pinned = true;
     try { localStorage.setItem(POS_KEY, JSON.stringify(pref)); } catch (e) {}
     moveTo(pref, true);
     render();
@@ -213,10 +232,12 @@
       mark(i, on) { slots[i].classList.toggle("unread", on); }
     };
   }
-  function mark(i) { if (!unread[i]) { unread[i] = true; if (stepper) stepper.mark(i, true); } }
+  // the stepper is only visible while the notch is open, so a closed notch carries an amber dot when the other notch has news
+  function syncUnread() { if (el) el.classList.toggle("has-unread", !open && unread.some((u, i) => u && i !== view)); }
+  function mark(i) { if (!unread[i]) { unread[i] = true; if (stepper) stepper.mark(i, true); syncUnread(); } }
   function setView(i) {
     if (i === view) return;
-    view = i; unread[i] = false; stepper.mark(i, false); stepper.set(i);
+    view = i; unread[i] = false; stepper.mark(i, false); stepper.set(i); syncUnread();
     try { sessionStorage.setItem("dexNotchView", String(i)); } catch (e) {}
     render();
   }
@@ -271,7 +292,6 @@
     el.addEventListener("click", (e) => {
       if (Date.now() - swipedAt < 400) return;                      // a swipe / drag must not also toggle the notch
       if (e.target.closest("[data-close]")) { e.stopPropagation(); setOpen(false); return; }
-      if (e.target.closest("[data-dismiss]")) { flashMsg = null; clearTimeout(flashTimer); render(); return; }
       if (e.target.closest("[data-unpin]")) { autoPosition(); return; }
       const copy = e.target.closest("[data-copy]");
       if (copy) { copyLog(copy); return; }
@@ -310,6 +330,7 @@
   // ── HTML ──────────────────────────────────────────────────────────────────────────────────────────────
   const hint = '<p class="dex-notch-hint">Tap the bar again or press Esc to close · swipe to switch · hold to move</p>';
   const unpinBtn = () => pinned ? '<button type="button" class="dex-notch-btn" data-unpin>Auto position</button>' : "";
+  const headRow = (title) => '<div class="dex-notch-row head"><span class="dex-notch-text">' + title + "</span></div>";
   function statusPanel(list) {
     const now = Date.now();
     const running = list.length ? list.slice().reverse().map((t) => {
@@ -320,14 +341,15 @@
     }).join("") : '<p class="dex-notch-empty">Nothing is running right now.</p>';
     const recent = history.length ? history.map((h) => '<div class="dex-notch-log ' + h.type + '"><em class="dex-notch-ico">' + (ICON[h.type] || ICON.info) + "</em><span>" + esc(h.text) + "</span><small>" + clock(h.at) + "</small></div>").join("") : '<p class="dex-notch-empty">No recent activity.</p>';
     return '<div class="dex-notch-details"><div class="dex-notch-section"><h4>Running now</h4>' + running + '</div><div class="dex-notch-section"><h4>Recent · ' + history.length + "/" + HISTORY_MAX + ' · newest first</h4>' + recent + "</div>" +
-      '<div class="dex-notch-actions">' + (flashMsg ? '<button type="button" class="dex-notch-btn" data-dismiss>Dismiss message</button>' : "") + '<button type="button" class="dex-notch-btn" data-copy>Copy</button>' + (history.length ? '<button type="button" class="dex-notch-btn" data-clear>Clear</button>' : "") + unpinBtn() + "</div>" + hint + "</div>";
+      '<div class="dex-notch-actions"><button type="button" class="dex-notch-btn" data-copy>Copy</button>' + (history.length ? '<button type="button" class="dex-notch-btn" data-clear>Clear</button>' : "") + unpinBtn() + "</div>" + hint + "</div>";
   }
   function debugHTML() {
     const last = dbg[0];
     const lvl = last ? (last.level === "error" ? "error" : last.level === "warn" ? "warn" : "") : "";
-    const row = last
-      ? '<div class="dex-notch-row ' + lvl + '"><em class="dex-notch-ico">' + (lvl ? ICON.error : ICON.info) + '</em><span class="dex-notch-text">' + esc(last.text) + "</span></div>"
-      : open ? '<div class="dex-notch-row"><em class="dex-notch-ico">' + ICON.info + '</em><span class="dex-notch-text">Debug</span></div>' : '<div class="dex-notch-row idle" aria-label="Debug notch"></div>';
+    // open: just a title (the log below already lists every line, so no repeat of the newest one up here)
+    const row = open ? headRow("Debug")
+      : last ? '<div class="dex-notch-row ' + lvl + '"><em class="dex-notch-ico">' + (lvl ? ICON.error : ICON.info) + '</em><span class="dex-notch-text">' + esc(last.text) + "</span></div>"
+      : '<div class="dex-notch-row idle" aria-label="Debug notch"></div>';
     const panel = open
       ? '<div class="dex-notch-details"><div class="dex-notch-section"><h4>Debug log · ' + dbg.length + "/" + DEBUG_MAX + ' · newest first</h4><div class="dex-dbg-log">' +
         (dbg.map((d) => '<div class="dex-dbg-line ' + d.level + '">' + esc(clock(d.at) + " " + d.level.toUpperCase().padEnd(5) + " " + d.text) + "</div>").join("") || '<p class="dex-notch-empty">Nothing logged yet.</p>') +
@@ -351,12 +373,10 @@
       const pct = main && main.total ? Math.min(100, Math.round(main.done / main.total * 100)) : null;
       const rows = (main ? 1 : 0) + (flashMsg ? 1 : 0);
       idle = !rows && !open;
-      html =
+      html = open ? headRow("Activity") + statusPanel(list) :
         (main ? '<div class="dex-notch-row running">' + bars + '<span class="dex-notch-text">' + esc(main.total ? main.done + "/" + main.total + " " + main.label : main.label) + "</span>" + (list.length > 1 ? '<b class="dex-notch-more">+' + (list.length - 1) + "</b>" : "") + (pct !== null ? '<span class="dex-notch-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></span>' : "") + "</div>" : "") +
         (flashMsg ? '<div class="dex-notch-row ' + flashMsg.type + '"><em class="dex-notch-ico">' + (ICON[flashMsg.type] || ICON.info) + '</em><span class="dex-notch-text">' + esc(flashMsg.text) + "</span></div>" : "") +
-        (!rows && !open ? '<div class="dex-notch-row idle" aria-label="Status notch"></div>' : "") +
-        (!rows && open ? '<div class="dex-notch-row"><em class="dex-notch-ico">' + ICON.info + '</em><span class="dex-notch-text">Activity</span></div>' : "") +
-        (open ? statusPanel(list) : "");
+        (!rows ? '<div class="dex-notch-row idle" aria-label="Status notch"></div>' : "");
       multi = rows > 1 || open;
     }
     node.innerHTML = html;
@@ -367,6 +387,8 @@
     node.classList.toggle("multi", multi);
     node.classList.toggle("expanded", open);
     node.classList.toggle("idle", idle);
+    stepper.root.classList.toggle("show", open);   // the stepper only exists while the notch is open
+    syncUnread();
     node.setAttribute("aria-expanded", String(open));
     node.classList.add("show");
     const state = view + ":" + (idle ? "rest" : open ? "open" : multi ? "stack" : "pill");

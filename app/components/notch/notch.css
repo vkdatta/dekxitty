@@ -1,38 +1,67 @@
-/* ═══ Notch — bottom-right smoked-glass circle that grows into a pill / card, with a Pasito stepper under it ═══
-   Same look as the delluna admin notch, anchored to the bottom-right corner. It grows UPWARD. */
-#dexNotchDock{position:fixed;inset:auto;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);left:auto;top:auto;margin:0;padding:0;border:0;background:transparent;overflow:visible;width:max-content;max-width:calc(100vw - 20px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;color:#fff;font-family:inherit;font-size:11px;line-height:1.4;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-#dexNotchDock[data-h="l"]{align-items:flex-start}
-#dexNotchDock[data-h="r"] .dex-notch{transform-origin:100% 100%}
-#dexNotchDock[data-h="l"] .dex-notch{transform-origin:0 100%}
-#dexNotchDock[data-v="t"][data-h="r"] .dex-notch{transform-origin:100% 0}
-#dexNotchDock[data-v="t"][data-h="l"] .dex-notch{transform-origin:0 0}
+/* ═══ Notch — smoked-glass circle that grows into a pill / card, with a Pasito stepper that appears only while it is open ═══
+   Same look as the delluna admin notch. Starts bottom-right and snaps to any of 8 edge points:
+   4 corners, top / bottom centre, left / right middle. It always grows away from the edge it is attached to.
+   Colours are tokens (--nx-*): dark glass by default, a light-glass set under html[data-theme="light"]. */
+#dexNotchDock{
+  /* dark (default) */
+  --nx-bg:rgba(0,0,0,.52);--nx-bd:rgba(255,255,255,.06);--nx-sh:0 0 37px rgba(0,0,0,.28);--nx-ring:rgba(255,255,255,.28);
+  --nx-fg:#fff;--nx-fg2:#e9eaec;--nx-mute:rgba(255,255,255,.65);--nx-dim:rgba(255,255,255,.5);--nx-h4:rgba(255,255,255,.55);--nx-hint:rgba(255,255,255,.4);
+  --nx-line:rgba(255,255,255,.1);--nx-chip:rgba(255,255,255,.18);--nx-chip2:rgba(255,255,255,.12);--nx-chip2h:rgba(255,255,255,.26);
+  --nx-track:rgba(255,255,255,.15);--nx-solid:#fff;--nx-dot:rgba(255,255,255,.55);--nx-pdot:rgba(255,255,255,.3);
+  --nx-btn:rgba(255,255,255,.08);--nx-btnbd:rgba(255,255,255,.14);--nx-btnh:rgba(255,255,255,.18);--nx-scroll:rgba(255,255,255,.25);
+  --nx-ok-t:#b8f1d2;--nx-err-t:#ffc2bb;--nx-warn-t:#ffe29a;
+  --nx-ok-c:rgba(52,199,120,.65);--nx-err-c:rgba(235,87,70,.75);--nx-warn-c:rgba(255,207,92,.7);--nx-warn-g:#fff;--nx-unread:#ffcf5c;
+  --ox:100%;--oy:100%;
+  position:fixed;inset:auto;right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);left:auto;top:auto;margin:0;padding:0;border:0;background:transparent;overflow:visible;width:max-content;height:max-content;max-width:calc(100vw - 20px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;color:var(--nx-fg);font-family:inherit;font-size:11px;line-height:1.4;text-align:left;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+
+/* light: frosted light glass with dark ink, so it reads on the mint / white page instead of a muddy grey slab */
+html[data-theme="light"] #dexNotchDock{
+  --nx-bg:rgba(250,255,253,.78);--nx-bd:rgba(12,38,47,.16);--nx-sh:0 6px 30px rgba(12,38,47,.2),0 1px 3px rgba(12,38,47,.12);--nx-ring:rgba(12,38,47,.3);
+  --nx-fg:#0c262f;--nx-fg2:#17353f;--nx-mute:rgba(12,38,47,.72);--nx-dim:rgba(12,38,47,.58);--nx-h4:rgba(12,38,47,.6);--nx-hint:rgba(12,38,47,.5);
+  --nx-line:rgba(12,38,47,.12);--nx-chip:rgba(12,38,47,.1);--nx-chip2:rgba(12,38,47,.08);--nx-chip2h:rgba(12,38,47,.16);
+  --nx-track:rgba(12,38,47,.13);--nx-solid:#0c262f;--nx-dot:rgba(12,38,47,.55);--nx-pdot:rgba(12,38,47,.25);
+  --nx-btn:rgba(12,38,47,.06);--nx-btnbd:rgba(12,38,47,.16);--nx-btnh:rgba(12,38,47,.12);--nx-scroll:rgba(12,38,47,.3);
+  --nx-ok-t:#0b5a35;--nx-err-t:#8c2116;--nx-warn-t:#7a4a00;
+  --nx-ok-c:rgba(24,150,88,.95);--nx-err-c:rgba(207,60,45,.95);--nx-warn-c:#f2b01e;--nx-warn-g:#3a2600;--nx-unread:#d98a00}
+
+/* anchors: h = l | c | r, v = t | m | b  (the notch grows away from the edge it is attached to) */
+#dexNotchDock[data-h="l"]{align-items:flex-start;--ox:0}
+#dexNotchDock[data-h="c"]{align-items:center;--ox:50%}
+#dexNotchDock[data-h="r"]{align-items:flex-end;--ox:100%}
+#dexNotchDock[data-v="t"]{--oy:0}
+#dexNotchDock[data-v="m"]{--oy:50%}
+#dexNotchDock[data-v="b"]{--oy:100%}
 #dexNotchDock.dragging{cursor:grabbing}
-#dexNotchDock.dragging .dex-notch,#dexNotchDock.dragging .dex-notch-stepper{box-shadow:0 0 0 2px rgba(255,255,255,.28),0 10px 44px rgba(0,0,0,.5)}
-.dex-notch,.dex-notch-stepper{background:rgba(0,0,0,.52);-webkit-backdrop-filter:blur(38px) saturate(100%);backdrop-filter:blur(38px) saturate(100%);border:2px solid rgba(255,255,255,.06);box-shadow:0 0 37px rgba(0,0,0,.28);color:#fff}
-.dex-notch{display:none;flex-direction:column;box-sizing:border-box;max-width:calc(100vw - 20px);border-radius:999px;overflow:hidden;cursor:pointer;transform-origin:100% 100%}
+#dexNotchDock.dragging .dex-notch,#dexNotchDock.dragging .dex-notch-stepper{box-shadow:0 0 0 2px var(--nx-ring),0 10px 44px rgba(0,0,0,.35)}
+.dex-notch,.dex-notch-stepper{background:var(--nx-bg);-webkit-backdrop-filter:blur(38px) saturate(120%);backdrop-filter:blur(38px) saturate(120%);border:2px solid var(--nx-bd);box-shadow:var(--nx-sh);color:var(--nx-fg)}
+.dex-notch{position:relative;display:none;flex-direction:column;box-sizing:border-box;max-width:calc(100vw - 20px);border-radius:999px;overflow:hidden;cursor:pointer;transform-origin:var(--ox) var(--oy);text-align:left}
 .dex-notch.show{display:flex}
 .dex-notch.multi{border-radius:23px}
 .dex-notch.expanded{width:min(380px,calc(100vw - 20px))}
 .dex-notch.pop{animation:dex-notch-pop .34s cubic-bezier(.2,.9,.25,1)}
 @keyframes dex-notch-pop{0%{transform:scale(.7);opacity:.55}100%{transform:none;opacity:1}}
 .dex-notch.idle{width:26px;height:26px;border-radius:50%}
-.dex-notch-row{display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:11px;font-weight:600;line-height:1.3;position:relative;overflow:hidden}
+/* unread marker on the closed notch (the stepper dots are only visible while it is open) */
+.dex-notch.has-unread::before{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--nx-unread);z-index:1;pointer-events:none}
+.dex-notch-row{display:flex;align-items:center;justify-content:flex-start;gap:9px;padding:9px 16px;font-size:11px;font-weight:600;line-height:1.3;text-align:left;position:relative;overflow:hidden}
 .dex-notch-row.idle{width:22px;height:22px;padding:0;justify-content:center}
-.dex-notch-row.idle::after{content:'';width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55)}
-.dex-notch-row+.dex-notch-row{border-top:1px solid rgba(255,255,255,.1)}
-.dex-notch-row.success .dex-notch-text{color:#b8f1d2}
-.dex-notch-row.error .dex-notch-text{color:#ffc2bb}
-.dex-notch-text{flex:1;min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.dex-notch-row.idle::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--nx-dot)}
+/* opened panel header: just a title + close button, same 14px inset as the panel body so everything lines up on one left edge */
+.dex-notch-row.head{padding:9px 12px 9px 14px;font-size:12px;font-weight:700}
+.dex-notch-row+.dex-notch-row{border-top:1px solid var(--nx-line)}
+.dex-notch-row.success .dex-notch-text{color:var(--nx-ok-t)}
+.dex-notch-row.error .dex-notch-text{color:var(--nx-err-t)}
+.dex-notch-text{flex:1;min-width:0;text-align:left;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .dex-notch-more{font-size:9px;opacity:.7}
-.dex-notch-ico{font-style:normal;width:16px;height:16px;flex:0 0 16px;border-radius:50%;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;color:#fff;line-height:0;overflow:hidden}
+.dex-notch-ico{font-style:normal;width:16px;height:16px;flex:0 0 16px;border-radius:50%;background:var(--nx-chip);display:inline-flex;align-items:center;justify-content:center;color:var(--nx-fg);line-height:0;overflow:hidden}
 .dex-notch-ico delluna-icon{width:12px!important;height:12px!important;min-width:12px!important;min-height:12px!important;flex:0 0 12px!important}
 .dex-notch-ico delluna-icon svg{width:100%;height:100%;stroke-width:1.5!important}
-.dex-notch-ico delluna-icon svg,.dex-notch-ico delluna-icon svg *,.dex-notch-close delluna-icon svg,.dex-notch-close delluna-icon svg *{fill:#fff;stroke:#fff}
-.dex-notch-row.success .dex-notch-ico,.dex-notch-log.success .dex-notch-ico{background:rgba(52,199,120,.65)}
-.dex-notch-row.error .dex-notch-ico,.dex-notch-log.error .dex-notch-ico{background:rgba(235,87,70,.75)}
-.dex-notch-row.warn .dex-notch-ico{background:rgba(255,207,92,.7)}
-.dex-notch-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.14)}
-.dex-notch-bar i{display:block;height:100%;background:#fff;transition:width .12s linear}
+.dex-notch-ico delluna-icon svg,.dex-notch-ico delluna-icon svg *,.dex-notch-close delluna-icon svg,.dex-notch-close delluna-icon svg *{fill:currentColor;stroke:currentColor}
+.dex-notch-row.success .dex-notch-ico,.dex-notch-log.success .dex-notch-ico{background:var(--nx-ok-c);color:#fff}
+.dex-notch-row.error .dex-notch-ico,.dex-notch-log.error .dex-notch-ico{background:var(--nx-err-c);color:#fff}
+.dex-notch-row.warn .dex-notch-ico{background:var(--nx-warn-c);color:var(--nx-warn-g)}
+.dex-notch-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--nx-track)}
+.dex-notch-bar i{display:block;height:100%;background:var(--nx-solid);transition:width .12s linear}
 
 /* loader: three softly pulsing bars */
 .dex-bars{display:inline-flex;gap:4px;align-items:center;justify-content:center;height:13px;flex:0 0 auto}
@@ -43,49 +72,51 @@
 @keyframes dex-bar-pulse{0%,100%{transform:scaleY(.55);opacity:.55}50%{transform:scaleY(1);opacity:1}}
 
 /* opened panel */
-.dex-notch-details{border-top:1px solid rgba(255,255,255,.1);color:#e9eaec;padding:12px 14px 10px;font-size:11px;line-height:1.45;max-height:min(60dvh,420px);overflow:auto;overscroll-behavior:contain;cursor:default;touch-action:pan-y;-webkit-user-select:text;user-select:text}
+.dex-notch-details{border-top:1px solid var(--nx-line);color:var(--nx-fg2);padding:12px 14px 10px;font-size:11px;line-height:1.45;text-align:left;max-height:min(60dvh,420px);overflow:auto;overscroll-behavior:contain;cursor:default;touch-action:pan-y;-webkit-user-select:text;user-select:text}
 .dex-notch-details::-webkit-scrollbar,.dex-dbg-log::-webkit-scrollbar{width:6px}
-.dex-notch-details::-webkit-scrollbar-thumb,.dex-dbg-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:9px}
+.dex-notch-details::-webkit-scrollbar-thumb,.dex-dbg-log::-webkit-scrollbar-thumb{background:var(--nx-scroll);border-radius:9px}
 .dex-notch-section+.dex-notch-section{margin-top:12px}
-.dex-notch-section h4{margin:0 0 6px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);font-weight:700}
-.dex-notch-item{padding:8px 0;border-top:1px solid rgba(255,255,255,.1)}
+.dex-notch-section h4{margin:0 0 6px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--nx-h4);font-weight:700;text-align:left}
+.dex-notch-item{padding:8px 0;border-top:1px solid var(--nx-line)}
 .dex-notch-item:first-of-type{border-top:0;padding-top:2px}
 .dex-notch-item-head{display:flex;align-items:center;gap:8px}
 .dex-notch-item-head b{flex:1;min-width:0;font-size:11px;overflow-wrap:anywhere}
-.dex-notch-item-head small,.dex-notch-log small{color:rgba(255,255,255,.5);font-size:9px;white-space:nowrap}
-.dex-notch-item p{margin:4px 0 0 21px;color:rgba(255,255,255,.65);font-size:10.5px}
-.dex-notch-progress{height:3px;margin:7px 0 3px 21px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.16)}
-.dex-notch-progress i{display:block;height:100%;background:#fff;transition:width .15s}
-.dex-notch-item>small{display:block;margin-left:21px;color:rgba(255,255,255,.5);font-size:9px}
-.dex-notch-log{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:start;padding:4px 0}
+.dex-notch-item-head small,.dex-notch-log small{color:var(--nx-dim);font-size:9px;white-space:nowrap}
+.dex-notch-item p{margin:4px 0 0 21px;color:var(--nx-mute);font-size:10.5px}
+.dex-notch-progress{height:3px;margin:7px 0 3px 21px;border-radius:99px;overflow:hidden;background:var(--nx-track)}
+.dex-notch-progress i{display:block;height:100%;background:var(--nx-solid);transition:width .15s}
+.dex-notch-item>small{display:block;margin-left:21px;color:var(--nx-dim);font-size:9px}
+.dex-notch-log{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:start;padding:4px 0;text-align:left}
 .dex-notch-log .dex-notch-ico{margin-top:1px}
-.dex-notch-log>span{min-width:0}
+.dex-notch-log>span{min-width:0;text-align:left}
 .dex-notch-log>small{padding-top:2px}
 .dex-notch-log span{overflow-wrap:anywhere}
-.dex-notch-log.error span{color:#ffc2bb}
-.dex-notch-empty{margin:2px 0;color:rgba(255,255,255,.55)}
-.dex-notch-hint{margin:10px 0 0;text-align:center;color:rgba(255,255,255,.35);font-size:9px}
+.dex-notch-log.error span{color:var(--nx-err-t)}
+.dex-notch-empty{margin:2px 0;color:var(--nx-h4)}
+.dex-notch-hint{margin:10px 0 0;text-align:left;color:var(--nx-hint);font-size:9px}
 .dex-notch-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.dex-notch-btn{flex:1 1 42%;min-height:30px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;font:600 10px/1 inherit;font-family:inherit;cursor:pointer;transition:background .15s;padding:0 10px}
-.dex-notch-btn:hover{background:rgba(255,255,255,.18)}
+.dex-notch-btn{flex:1 1 42%;min-height:30px;border:1px solid var(--nx-btnbd);background:var(--nx-btn);color:var(--nx-fg);border-radius:999px;font:600 10px/1 inherit;font-family:inherit;cursor:pointer;transition:background .15s;padding:0 10px}
+.dex-notch-btn:hover{background:var(--nx-btnh)}
 .dex-dbg-log{max-height:260px;overflow:auto;touch-action:pan-y}
-.dex-dbg-line{font:9.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:2px 0;color:rgba(255,255,255,.75);overflow-wrap:anywhere;white-space:pre-wrap}
-.dex-dbg-line.error{color:#ffc2bb}
-.dex-dbg-line.warn{color:#ffe29a}
+.dex-dbg-line{font:9.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:2px 0;color:var(--nx-mute);overflow-wrap:anywhere;white-space:pre-wrap;text-align:left}
+.dex-dbg-line.error{color:var(--nx-err-t)}
+.dex-dbg-line.warn{color:var(--nx-warn-t)}
 
-/* Pasito stepper (fluid pill: stretches over both dots, then settles) */
-.dex-notch-stepper{display:inline-flex;padding:5px 7px;border-radius:999px;touch-action:pan-y}
+/* Pasito stepper — only shown while the notch is open (fluid pill: stretches over both dots, then settles) */
+.dex-notch-stepper{display:none;padding:5px 7px;border-radius:999px;touch-action:pan-y}
+.dex-notch-stepper.show{display:inline-flex;animation:dex-stepper-in .22s ease-out both}
+@keyframes dex-stepper-in{0%{opacity:0;transform:translateY(-4px)}100%{opacity:1;transform:none}}
 .dex-notch-stepper .pasito{--ps:7px;--pl:20px;position:relative;display:flex}
 .dex-notch-stepper .pasito-slot{position:relative;width:var(--pl);height:var(--ps);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .dex-notch-stepper .pasito-slot::after{content:'';position:absolute;inset:-10px -2px}
-.dex-notch-stepper .pasito-dot{width:var(--ps);height:var(--ps);border-radius:50%;background:rgba(255,255,255,.3);transition:background .25s,transform .2s,box-shadow .2s}
+.dex-notch-stepper .pasito-dot{width:var(--ps);height:var(--ps);border-radius:50%;background:var(--nx-pdot);transition:background .25s,transform .2s,box-shadow .2s}
 .dex-notch-stepper .pasito-slot:hover .pasito-dot{transform:scale(1.25)}
-.dex-notch-stepper .pasito-slot.unread .pasito-dot{background:#ffcf5c;box-shadow:0 0 0 3px rgba(255,207,92,.25)}
-.dex-notch-stepper .pasito-ind{position:absolute;top:0;left:0;height:var(--ps);width:var(--pl);border-radius:999px;background:#fff;pointer-events:none;transition:left .2s cubic-bezier(.4,0,.2,1),width .2s cubic-bezier(.4,0,.2,1)}
-@media (prefers-reduced-motion:reduce){.dex-notch-stepper .pasito-ind{transition:none}.dex-notch.pop{animation:none}.dex-bars i{animation-duration:2.4s}}
+.dex-notch-stepper .pasito-slot.unread .pasito-dot{background:var(--nx-unread);box-shadow:0 0 0 3px color-mix(in srgb,var(--nx-unread) 25%,transparent)}
+.dex-notch-stepper .pasito-ind{position:absolute;top:0;left:0;height:var(--ps);width:var(--pl);border-radius:999px;background:var(--nx-solid);pointer-events:none;transition:left .2s cubic-bezier(.4,0,.2,1),width .2s cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion:reduce){.dex-notch-stepper .pasito-ind{transition:none}.dex-notch.pop,.dex-notch-stepper.show{animation:none}.dex-bars i{animation-duration:2.4s}}
 
 /* close button (opened panel) */
-.dex-notch-close{flex:0 0 auto;width:22px;height:22px;margin-left:auto;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;line-height:0;transition:background .15s}
-.dex-notch-close:hover{background:rgba(255,255,255,.26)}
+.dex-notch-close{flex:0 0 auto;width:22px;height:22px;margin-left:auto;padding:0;border:0;border-radius:50%;background:var(--nx-chip2);color:var(--nx-fg);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;line-height:0;transition:background .15s}
+.dex-notch-close:hover{background:var(--nx-chip2h)}
 .dex-notch-close delluna-icon{width:12px!important;height:12px!important;min-width:12px!important;min-height:12px!important;flex:0 0 12px!important}
 .dex-notch-close delluna-icon svg{width:100%;height:100%}
