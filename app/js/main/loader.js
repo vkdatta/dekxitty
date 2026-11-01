@@ -41,6 +41,10 @@
   loadScript("https://cdn.jsdelivr.net/gh/vkdatta/delluna@v0.0.121/dist/delluna.js");
   loadScript(APP + "components/icons/icon-config.js");
 
+  // Notch (bottom-right notifications)
+
+  loadScript(APP + "components/notch/notch.js");
+
   // Dpad
 
   loadModule(APP + "components/dpad/core.js");

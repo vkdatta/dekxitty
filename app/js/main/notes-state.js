@@ -97,14 +97,11 @@ function preserveSelection(e) {
   };
 }
 
-function showNotification(e) {
-  if (!notification) return;
-  notification.textContent = e;
-  notification.classList.add("show");
-  if (notification.__dexHideTimer) clearTimeout(notification.__dexHideTimer);
-  if (notification.__dexClearTimer) clearTimeout(notification.__dexClearTimer);
-  notification.__dexHideTimer = setTimeout(() => notification.classList.remove("show"), 3000);
-  notification.__dexClearTimer = setTimeout(() => { notification.textContent = ""; }, 3600);
+// Toasts live in the bottom-right notch (components/notch). `type` is optional: "info" | "success" | "error"
+// (guessed from the wording when omitted). Calls made before the notch has loaded are queued.
+function showNotification(e, type) {
+  if (window.dexNotch) { window.dexNotch.flash(e, type); return; }
+  (window.__dexNotchQueue = window.__dexNotchQueue || []).push([e, type]);
 }
 
 function capitalizeName(name) {

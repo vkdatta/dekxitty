@@ -1,22 +1,3 @@
-.notification {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 12px 20px;
-  background: var(--c-panel-2);
-  border: 1px solid color-mix(in srgb, var(--c-white) 8%, transparent);
-  color: var(--c-white);
-  border-radius: 8px;
-  z-index: 1001;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity var(--transition-speed), transform var(--transition-speed);
-}
-.notification.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .batch-progress-overlay {
   position: fixed;
   inset: 0;

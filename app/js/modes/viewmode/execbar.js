@@ -1,8 +1,8 @@
 /**
- * execbar — the Read / Design bottom bar shown under a .csv or .md note in exec view.
+ * execbar — the Write / Read bottom bar shown under a .csv or .md note in exe view.
  *
- * Same bar as Diffusion / Mermaid (#execBottombar uses .diff-bottombar). Read is the default and
- * shows the file without letting anything change; Design makes it editable. The state itself lives
+ * Same bar as Diffusion / Mermaid (#execBottombar uses .diff-bottombar). Write is the default and
+ * makes the file editable; Read shows it without letting anything change. The state itself lives
  * in viewmode.js (window.dexView.editing / setEditing) — this file only draws it and reacts to taps.
  *
  * The bar is shown exactly when an exec pane is showing (body.csvexec-active / mdexec-active), so
@@ -36,7 +36,7 @@
       const toDesign = btn.dataset.target === "design";
       window.dexView.setEditing(note, toDesign);
       paint();
-      if (typeof showNotification === "function") showNotification(toDesign ? "Design — editing on" : "Read — view only");
+      if (typeof showNotification === "function") showNotification(toDesign ? "Write — editing on" : "Read — view only");
     });
   }
 

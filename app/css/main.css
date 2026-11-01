@@ -51,8 +51,6 @@ button { font-family: classy; }
 
 #noteAppContainer { display: none; }
 
-#notification { pointer-events: none; }
-#notification.show { pointer-events: auto; }
 
 
 .text-area-wrapper .CodeMirror {

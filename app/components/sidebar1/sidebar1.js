@@ -7,6 +7,17 @@ let pathFolderIds = new Set();
 let searchQuery = "";
 let sortMode = localStorage.getItem("dexSortMode") || "date_new";
 let sortMixed = localStorage.getItem("dexSortMixed") === "1";
+// search options: type = "name" (instant, oninput) | "content" (Enter to run)
+let searchType = localStorage.getItem("dexSearchType") === "content" ? "content" : "name";
+let searchRecursive = localStorage.getItem("dexSearchRecursive") !== "0";
+let searchNested = localStorage.getItem("dexSearchNested") === "1";
+let contentCommitted = "";   // lowercase query contentHits belongs to
+let contentHits = null;      // Map noteId -> snippet
+let contentBusy = null;      // { done, total } while a content scan runs
+let contentToken = 0;        // bumps to cancel a running scan
+let nestFilter = null;       // { folders:Set, notes:Set } while drawing nested results
+let searchCounts = null;     // Map folderId -> matching files directly inside
+let searchSnips = null;      // Map noteId -> snippet while drawing content results
 let expanded = loadExpanded();
 function loadExpanded() { try { return new Set(JSON.parse(localStorage.getItem("dexExpanded") || "[]")); } catch (e) { return new Set(); } }
 function saveExpanded() { localStorage.setItem("dexExpanded", JSON.stringify([...expanded])); }
@@ -120,8 +131,225 @@ function openSortMenu(anchor) {
   }, 0);
 }
 
+// ---------------------------------------------------------------- search engine
+// Lower-bound binary search on a sorted array (first index whose key >= target).
+function bsLowerBy(arr, key, get) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const mid = (lo + hi) >>> 1; if (get(arr[mid]) < key) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+function bsHas(sorted, key) { const i = bsLowerBy(sorted, key, x => x); return i < sorted.length && sorted[i] === key; }
+
+// Which folders a search covers: current folder only, or it + every subfolder.
+function searchScope() {
+  if (!searchRecursive) return { direct: true };
+  if (!currentFolderId) return { all: true };
+  return { ids: getDescendantFolderIds(currentFolderId).slice().sort() };   // sorted -> binary-searchable
+}
+function inScope(pid, sc) {
+  pid = pid || null;
+  if (sc.all) return true;
+  if (sc.direct) return pid === (currentFolderId || null);
+  return pid !== null && bsHas(sc.ids, pid);
+}
+
+// Name index = suffix array over all lowercased names. Every substring match of q
+// is a prefix of some suffix, and those suffixes are contiguous once sorted, so a
+// lower-bound binary search finds them in O(|q| log N). Rebuilt only when names change.
+let nameIdx = null;
+function nameSignature() {
+  let h = 5381;
+  const mix = (str) => { for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; h = (h * 33 + 7) | 0; };
+  folders.forEach(f => { mix(String(f.id)); mix(f.name || ""); });
+  notes.forEach(n => { mix(String(n.id)); mix(n.title || ""); });
+  return h + ":" + folders.length + ":" + notes.length;
+}
+function ensureNameIndex() {
+  const sig = nameSignature();
+  if (nameIdx && nameIdx.sig === sig) return nameIdx;
+  const arr = [];
+  const add = (k, p, name) => { const l = String(name || "").toLowerCase(); for (let i = 0; i < l.length; i++) arr.push({ s: l.slice(i), k, p }); };
+  folders.forEach((f, p) => add("f", p, f.name));
+  notes.forEach((n, p) => add("n", p, n.title));
+  arr.sort((a, b) => a.s < b.s ? -1 : a.s > b.s ? 1 : 0);
+  nameIdx = { sig, arr };
+  return nameIdx;
+}
+function nameSearch(q) {
+  const ix = ensureNameIndex(), out = { f: new Set(), n: new Set() };
+  let i = bsLowerBy(ix.arr, q, e => e.s);
+  while (i < ix.arr.length && ix.arr[i].s.startsWith(q)) { out[ix.arr[i].k].add(ix.arr[i].p); i++; }
+  return out;
+}
+
+// Content search: a substring scan can't be binary searched without a corpus-sized
+// index, so it runs chunked (yields to the UI) and is cancellable.
+function makeSnippet(c, idx, len) {
+  const s = Math.max(0, idx - 30), e = Math.min(c.length, idx + len + 50);
+  return {
+    pre: (s > 0 ? "\u2026" : "") + c.slice(s, idx).replace(/\s+/g, " "),
+    hit: c.slice(idx, idx + len),
+    post: c.slice(idx + len, e).replace(/\s+/g, " ") + (e < c.length ? "\u2026" : ""),
+    line: c.slice(0, idx).split("\n").length
+  };
+}
+function resetContent() { contentToken++; contentCommitted = ""; contentHits = null; contentBusy = null; }
+function runContentSearch(raw) {
+  const q = String(raw || "").trim().toLowerCase();
+  if (!q) { resetContent(); renderSidebar(); return; }
+  const token = ++contentToken;
+  const sc = searchScope();
+  const list = notes.filter(n => inScope(n.folderId, sc));
+  const hits = new Map();
+  contentCommitted = q; contentHits = hits; contentBusy = { done: 0, total: list.length };
+  renderSidebar();
+  let i = 0;
+  const step = () => {
+    if (token !== contentToken) return;
+    const t0 = performance.now();
+    while (i < list.length && performance.now() - t0 < 12) {
+      const n = list[i++], c = n.content || "";
+      if (c) { const idx = c.toLowerCase().indexOf(q); if (idx !== -1) hits.set(String(n.id), makeSnippet(c, idx, q.length)); }
+    }
+    if (i < list.length) {
+      contentBusy.done = i;
+      const el = document.getElementById("dexSearchProg");
+      if (el) el.textContent = "Searching\u2026 " + i + "/" + list.length;
+      setTimeout(step, 0);
+    } else { contentBusy = null; renderSidebar(); }
+  };
+  setTimeout(step, 0);
+}
+
+function searchReady() {
+  const q = searchQuery.trim().toLowerCase();
+  return searchType === "name" || (!!q && !contentBusy && contentCommitted === q && !!contentHits);
+}
+function computeResults() {
+  const q = searchQuery.trim().toLowerCase(), sc = searchScope();
+  const mF = [], mN = [];
+  if (searchType === "name") {
+    const r = nameSearch(q);
+    r.f.forEach(p => { const f = folders[p]; if (f && inScope(f.parentId, sc)) mF.push(f); });
+    r.n.forEach(p => { const n = notes[p]; if (n && inScope(n.folderId, sc)) mN.push(n); });
+    return { folders: mF, notes: mN, counts: null, snips: null };
+  }
+  const counts = new Map();
+  notes.forEach(n => {
+    if (!contentHits.has(String(n.id)) || !inScope(n.folderId, sc)) return;
+    mN.push(n);
+    const fid = n.folderId || null;
+    if (fid) counts.set(fid, (counts.get(fid) || 0) + 1);
+  });
+  folders.forEach(f => { if (counts.has(f.id) && inScope(f.parentId, sc)) mF.push(f); });
+  return { folders: mF, notes: mN, counts, snips: contentHits };
+}
+// Matched items + all their ancestor folders (up to the current folder) for nested view.
+function buildNestFilter(mF, mN) {
+  const vf = new Set(), vn = new Set(mN.map(n => String(n.id))), stop = currentFolderId || null;
+  const chain = (fid) => {
+    let cur = fid || null, g = 0;
+    while (cur && cur !== stop && g++ < 100) { if (vf.has(cur)) break; vf.add(cur); const f = folderById(cur); cur = f ? (f.parentId || null) : null; }
+  };
+  mF.forEach(f => chain(f.id));
+  mN.forEach(n => chain(n.folderId));
+  return { folders: vf, notes: vn };
+}
+function renderContentFileRow(n) {
+  const item = renderFileRow(n);
+  const sn = searchSnips && searchSnips.get(String(n.id));
+  if (sn) {
+    const d = document.createElement("div");
+    d.className = "dex-snip";
+    d.innerHTML = '<span class="ln">L' + sn.line + "</span>" + escapeHtml(sn.pre) + "<mark>" + escapeHtml(sn.hit) + "</mark>" + escapeHtml(sn.post);
+    d.onclick = () => item.firstChild.onclick({ target: d });
+    item.appendChild(d);
+  }
+  return item;
+}
+function renderSearchResults(tree, frag) {
+  const msg = (t, id) => { const e = document.createElement("div"); e.className = "dex-empty"; if (id) e.id = id; e.textContent = t; tree.appendChild(e); };
+  if (!searchReady()) {
+    if (contentBusy && contentCommitted === searchQuery.trim().toLowerCase()) msg("Searching\u2026 " + contentBusy.done + "/" + contentBusy.total, "dexSearchProg");
+    else msg("Press Enter to search inside files");
+    return;
+  }
+  const res = computeResults();
+  searchCounts = res.counts; searchSnips = res.snips;
+  const fileRow = res.snips ? renderContentFileRow : renderFileRow;
+  try {
+    if (searchNested && searchRecursive && (res.folders.length || res.notes.length)) {
+      nestFilter = buildNestFilter(res.folders, res.notes);
+      const top = foldersInFolder(currentFolderId).filter(f => nestFilter.folders.has(f.id));
+      const topFiles = notesInFolder(currentFolderId).filter(n => nestFilter.notes.has(String(n.id)));
+      orderItems(top, topFiles, renderFolderNode, fileRow).forEach(node => frag.appendChild(node));
+    } else {
+      orderItems(res.folders, res.notes, renderFolderMatchRow, fileRow).forEach(node => frag.appendChild(node));
+    }
+  } finally { nestFilter = null; searchCounts = null; searchSnips = null; }
+  tree.appendChild(frag);
+  if (!res.folders.length && !res.notes.length) msg("No matches");
+}
+
+function searchPlaceholder() { return searchType === "content" ? "Search inside files & folders \u2014 press Enter" : "Search files & folders"; }
+function openSearchMenu(anchor) {
+  const sm = document.getElementById("dexSortMenu"); if (sm) sm.remove();
+  const existing = document.getElementById("dexSearchMenu");
+  if (existing) { existing.remove(); return; }
+  const menu = document.createElement("div");
+  menu.id = "dexSearchMenu";
+  menu.className = "dex-sort-menu";
+  const syncUi = () => {
+    const si = document.getElementById("dexSearch"); if (si) si.placeholder = searchPlaceholder();
+    const b = document.getElementById("dexSearchBtn"); if (b) b.classList.toggle("active", searchType === "content");
+  };
+  const types = [["name", "File & folder names"], ["content", "File & folder contents"]];
+  const typeEls = {};
+  types.forEach(([key, label]) => {
+    const it = document.createElement("div");
+    it.className = "dex-sort-item" + (key === searchType ? " on" : "");
+    it.textContent = label;
+    it.onclick = (e) => {
+      e.stopPropagation();
+      if (key === searchType) return;
+      searchType = key; localStorage.setItem("dexSearchType", key);
+      resetContent();
+      Object.keys(typeEls).forEach(k => typeEls[k].classList.toggle("on", k === key));
+      syncUi(); renderSidebar();
+    };
+    typeEls[key] = it; menu.appendChild(it);
+  });
+  const sep = document.createElement("div"); sep.className = "dex-sort-sep"; menu.appendChild(sep);
+  const toggles = [];
+  const mkToggle = (label, get, set, disabled) => {
+    const chk = document.createElement("div");
+    const paint = () => {
+      chk.className = "dex-sort-item dex-sort-toggle" + (get() ? " on" : "") + (disabled && disabled() ? " dis" : "");
+      chk.innerHTML = '<span class="dex-mini-check">' + (get() ? dellunaIcon("tick") : "") + "</span>" + label;
+    };
+    chk.onclick = (e) => { e.stopPropagation(); if (disabled && disabled()) return; set(!get()); toggles.forEach(t => t()); };
+    paint(); toggles.push(paint); menu.appendChild(chk);
+  };
+  mkToggle("Recursive (include subfolders)", () => searchRecursive, (v) => {
+    searchRecursive = v; localStorage.setItem("dexSearchRecursive", v ? "1" : "0");
+    if (searchType === "content" && contentCommitted) runContentSearch(searchQuery); else renderSidebar();
+  });
+  mkToggle("Nested (show results inside folders)", () => searchNested, (v) => {
+    searchNested = v; localStorage.setItem("dexSearchNested", v ? "1" : "0"); renderSidebar();
+  }, () => !searchRecursive);
+  document.body.appendChild(menu);
+  const r = anchor.getBoundingClientRect();
+  menu.style.top = (r.bottom + 4) + "px";
+  menu.style.left = Math.max(8, Math.min(window.innerWidth - menu.offsetWidth - 8, r.right - menu.offsetWidth)) + "px";
+  setTimeout(() => {
+    const off = (e) => { if (!menu.contains(e.target) && !anchor.contains(e.target)) { menu.remove(); document.removeEventListener("click", off); } };
+    document.addEventListener("click", off);
+  }, 0);
+}
+
 function clearSearch() {
   searchQuery = "";
+  resetContent();
   const si = document.getElementById("dexSearch");
   if (si) si.value = "";
 }
@@ -132,12 +360,25 @@ function buildSidebar() {
   sb.innerHTML =
     '<div class="dex-head"><div class="dex-crumbs" id="dexCrumbs"></div><div class="dex-tools" id="dexTools"></div></div>' +
     '<div class="dex-subhead">' +
-      '<input class="dex-search" id="dexSearch" placeholder="Search files & folders" autocomplete="off" spellcheck="false" />' +
+      '<input class="dex-search" id="dexSearch" placeholder="Search files & folders" autocomplete="off" spellcheck="false" enterkeyhint="search" />' +
+      '<div class="dex-sort' + (searchType === "content" ? " active" : "") + '" id="dexSearchBtn" title="Search options">' + dellunaIcon("search") + '</div>' +
       '<div class="dex-sort" id="dexSortBtn" title="Sort">' + dellunaIcon("sort") + '</div>' +
     '</div>' +
     '<div class="dex-tree" id="noteTree"></div>';
   const si = document.getElementById("dexSearch");
-  if (si) { si.value = searchQuery; si.oninput = () => { searchQuery = si.value; renderSidebar(); }; }
+  if (si) {
+    si.value = searchQuery;
+    si.placeholder = searchPlaceholder();
+    // names: instant on every keystroke. contents: only on Enter (a scan per keystroke would hang).
+    si.oninput = () => {
+      searchQuery = si.value;
+      if (searchType === "content" && !si.value.trim()) resetContent();
+      renderSidebar();
+    };
+    si.onkeydown = (e) => { if (e.key === "Enter" && searchType === "content") { e.preventDefault(); runContentSearch(si.value); } };
+  }
+  const qbtn = document.getElementById("dexSearchBtn");
+  if (qbtn) qbtn.onclick = () => openSearchMenu(qbtn);
   const sbtn = document.getElementById("dexSortBtn");
   if (sbtn) sbtn.onclick = () => openSortMenu(sbtn);
   renderSidebar();
@@ -185,6 +426,7 @@ function closeSidebar() {
   if (sb) sb.classList.remove("open");
   if (tog) tog.innerHTML = '<delluna-icon name="view_object_track"></delluna-icon>';
   const m = document.getElementById("dexSortMenu"); if (m) m.remove();
+  const m2 = document.getElementById("dexSearchMenu"); if (m2) m2.remove();
   clipboard = null;
 }
 
@@ -198,19 +440,21 @@ function renderFileRow(n) {
   let html = "";
   if (selectMode) html += '<div class="dex-check' + (isSel("n:" + n.id) ? " on" : "") + '">' + (isSel("n:" + n.id) ? dellunaIcon("tick") : "") + "</div>";
   html += '<div class="dex-ic">' + dellunaIcon("file") + "</div>";
-  html += '<div class="dex-name">' + escapeHtml(n.title || ("note " + n.id)) + "</div>";
+  // raw / exe — per-file view choice, only for file types that have an exe view
+  // (.csv -> spreadsheet, .md -> rendered). Sits right after the file name. Hidden
+  // while selecting or while a Diffusion/Mermaid "pick a note" prompt is up.
+  let viewHtml = "";
+  if (!selectMode && window.dexView && window.dexView.supports(n) && !window.__dexNotePick) {
+    const v = window.dexView.get(n);
+    viewHtml = '<div class="dex-view" role="group" aria-label="View mode">' +
+      '<span class="dex-view-opt' + (v === "raw" ? " on" : "") + '" data-view="raw" title="Raw text">raw</span>' +
+      '<span class="dex-view-opt' + (v === "exec" ? " on" : "") + '" data-view="exec" title="' + (window.dexView.kind(n) === "csv" ? "Spreadsheet with formulas" : "Rendered markdown") + '">exe</span>' +
+      "</div>";
+  }
+  html += '<div class="dex-name' + (viewHtml ? " fit" : "") + '">' + escapeHtml(n.title || ("note " + n.id)) + "</div>";
+  if (viewHtml) html += viewHtml + '<div class="dex-grow"></div>';
   html += '<div class="dex-badge">' + (n.content || "").length + "c \u00b7 ." + (n.extension || "txt") + "</div>";
   if (!selectMode) {
-    // raw / exec — per-file view choice, only for file types that have an exec
-    // view (.csv → spreadsheet, .md → rendered). Hidden while a Diffusion/Mermaid
-    // "pick a note" prompt is up, since that tap must only pick the note.
-    if (window.dexView && window.dexView.supports(n) && !window.__dexNotePick) {
-      const v = window.dexView.get(n);
-      html += '<div class="dex-view" role="group" aria-label="View mode">' +
-        '<span class="dex-view-opt' + (v === "raw" ? " on" : "") + '" data-view="raw" title="Raw text">raw</span>' +
-        '<span class="dex-view-opt' + (v === "exec" ? " on" : "") + '" data-view="exec" title="' + (window.dexView.kind(n) === "csv" ? "Spreadsheet with formulas" : "Rendered markdown") + '">exec</span>' +
-        "</div>";
-    }
     html += '<div class="dex-add" data-rename="1" title="Rename">' + dellunaIcon("edit") + "</div>";
     html += '<div class="dex-add" data-dl="1" title="Download">' + dellunaIcon("download") + "</div>";
   }
@@ -237,7 +481,7 @@ function renderFileRow(n) {
   return item;
 }
 
-// Flip one file between raw and exec from its sidebar row.
+// Flip one file between raw and exe from its sidebar row.
 function sidebarSetView(n, mode) {
   if (!window.dexView || !window.dexView.set(n, mode)) return;
   const isCurrent = currentNote && String(currentNote.id) === String(n.id);
@@ -256,8 +500,11 @@ function renderFolderNode(f) {
   item.className = "dex-item";
   const row = document.createElement("div");
   row.className = "dex-row" + (isSel("f:" + f.id) ? " sel" : "");
-  const isOpen = expanded.has(f.id);
-  const count = foldersInFolder(f.id).length + notesInFolder(f.id).length;
+  const nf = nestFilter;
+  const isOpen = nf ? true : expanded.has(f.id);
+  const kidFolders = nf ? foldersInFolder(f.id).filter(x => nf.folders.has(x.id)) : foldersInFolder(f.id);
+  const kidFiles = nf ? notesInFolder(f.id).filter(n => nf.notes.has(String(n.id))) : notesInFolder(f.id);
+  const count = kidFolders.length + kidFiles.length;
   let html = "";
   if (selectMode) html += '<div class="dex-check' + (isSel("f:" + f.id) ? " on" : "") + '">' + (isSel("f:" + f.id) ? dellunaIcon("tick") : "") + "</div>";
   else html += '<div class="dex-chev' + (isOpen ? " open" : "") + (pathFolderIds.has(f.id) ? " onpath" : "") + '" data-chev="1">' + dellunaIcon("chev") + "</div>";
@@ -275,16 +522,16 @@ function renderFolderNode(f) {
     if (e.target.closest("[data-dl]")) { downloadFolder(f); return; }
     if (e.target.closest("[data-enter]")) { navigateTo(f.id); return; }
     if (selectMode) { toggleSel("f:" + f.id); return; }
-    toggleExpand(f.id);
+    if (!nf) toggleExpand(f.id);
   };
   item.appendChild(row);
-  if (isOpen && !selectMode) {
+  if (isOpen && (!selectMode || nf)) {
     const ch = document.createElement("div");
     ch.className = "dex-children";
-    const subs = foldersInFolder(f.id);
-    const files = notesInFolder(f.id);
-    orderItems(subs, files, renderFolderNode, renderFileRow).forEach(node => ch.appendChild(node));
-    if (!subs.length && !files.length) { const e = document.createElement("div"); e.className = "dex-empty"; e.textContent = "Empty"; ch.appendChild(e); }
+    const subs = kidFolders;
+    const files = kidFiles;
+    orderItems(subs, files, renderFolderNode, searchSnips ? renderContentFileRow : renderFileRow).forEach(node => ch.appendChild(node));
+    if (!nf && !subs.length && !files.length) { const e = document.createElement("div"); e.className = "dex-empty"; e.textContent = "Empty"; ch.appendChild(e); }
     item.appendChild(ch);
   }
   return item;
@@ -324,17 +571,7 @@ function renderSidebar() {
   tree.innerHTML = "";
   const frag = document.createDocumentFragment();
 
-  const q = searchQuery.trim().toLowerCase();
-  if (q) {
-    const mFolders = folders.filter(f => (f.name || "").toLowerCase().indexOf(q) !== -1);
-    const mNotes = notes.filter(n => (n.title || "").toLowerCase().indexOf(q) !== -1);
-    orderItems(mFolders, mNotes, renderFolderMatchRow, renderFileRow).forEach(node => frag.appendChild(node));
-    tree.appendChild(frag);
-    if (!mFolders.length && !mNotes.length) {
-      const e = document.createElement("div"); e.className = "dex-empty"; e.textContent = "No matches"; tree.appendChild(e);
-    }
-    return;
-  }
+  if (searchQuery.trim()) { renderSearchResults(tree, frag); return; }
 
   const subs = foldersInFolder(currentFolderId);
   const files = notesInFolder(currentFolderId);
@@ -357,6 +594,7 @@ function renderFolderMatchRow(f) {
   let html = "";
   if (selectMode) html += '<div class="dex-check' + (isSel("f:" + f.id) ? " on" : "") + '">' + (isSel("f:" + f.id) ? dellunaIcon("tick") : "") + "</div>";
   html += '<div class="dex-ic">' + dellunaIcon("folder") + "</div><div class=\"dex-name folder\">" + escapeHtml(f.name) + "</div>";
+  if (searchCounts && searchCounts.has(f.id)) html += '<div class="dex-badge">' + searchCounts.get(f.id) + "</div>";
   if (!selectMode) html += '<div class="dex-add" title="Open">' + dellunaIcon("enter") + "</div>";
   row.innerHTML = html;
   row.onclick = () => { if (selectMode) { toggleSel("f:" + f.id); return; } navigateTo(f.id); };
@@ -389,12 +627,14 @@ function sidebarToggleSelect() {
 }
 
 function sidebarSelectAll() {
-  const q = searchQuery.trim().toLowerCase();
-  const keys = q
-    ? folders.filter(f => (f.name || "").toLowerCase().indexOf(q) !== -1).map(f => "f:" + f.id)
-        .concat(notes.filter(n => (n.title || "").toLowerCase().indexOf(q) !== -1).map(n => "n:" + n.id))
-    : foldersInFolder(currentFolderId).map(f => "f:" + f.id)
-        .concat(notesInFolder(currentFolderId).map(n => "n:" + n.id));
+  let keys;
+  if (searchQuery.trim()) {
+    const r = searchReady() ? computeResults() : { folders: [], notes: [] };
+    keys = r.folders.map(f => "f:" + f.id).concat(r.notes.map(n => "n:" + n.id));
+  } else {
+    keys = foldersInFolder(currentFolderId).map(f => "f:" + f.id)
+      .concat(notesInFolder(currentFolderId).map(n => "n:" + n.id));
+  }
   const allOn = keys.length > 0 && keys.every(k => selected.has(k));
   if (allOn) keys.forEach(k => selected.delete(k));
   else keys.forEach(k => selected.add(k));
@@ -848,5 +1088,5 @@ window.sidebarCancelClipboard = sidebarCancelClipboard;
 window.sidebarDeleteSelected = sidebarDeleteSelected;
 
 window.__dexSidebarReady = true;
-// keep the raw / exec toggles in step if a file's view mode is changed from anywhere else
+// keep the raw / exe toggles in step if a file's view mode is changed from anywhere else
 window.addEventListener("dexViewModeChanged", () => { try { renderSidebar(); } catch (e) {} });
