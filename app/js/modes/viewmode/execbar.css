@@ -3,3 +3,8 @@
 body.execbar-on .diff-bottombar.exec-bottombar { display: flex; }
 body.execbar-on.execbar-typing .diff-bottombar.exec-bottombar { display: none; }   /* soft keyboard up → get out of the way */
 .diff-bottombar.exec-bottombar .diff-topbar-button { min-width: 84px; }
+
+/* Layering: the diffusion bar it reuses has z-index:1000, which put Write/Read on top of
+   sidebar1 (z 10) and sidebar2 (z 51). Keep it above the editor but below every sidebar. */
+.diff-bottombar.exec-bottombar { z-index: 9; }
+body.mode-filemanager .diff-bottombar.exec-bottombar { display: none !important; }

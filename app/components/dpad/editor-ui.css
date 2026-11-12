@@ -3,6 +3,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Selection highlight ─────────────────────────────────────────────────── */
+/* Dark theme keeps the grey highlight; light theme uses the soft accent tint
+   (--selection-color) and keeps the text colour so syntax colours stay readable. */
 .CodeMirror-selected,
 .CodeMirror-focused .CodeMirror-selected,
 .CodeMirror .CodeMirror-selectedtext,
@@ -12,6 +14,19 @@
 ::selection {
   background: #707070 !important;
   color: #fff !important;
+}
+html[data-theme="light"] .CodeMirror-selected,
+html[data-theme="light"] .CodeMirror-focused .CodeMirror-selected,
+html[data-theme="light"] .CodeMirror .CodeMirror-selectedtext {
+  background: color-mix(in srgb, var(--c-accent) 22%, transparent) !important;
+  color: inherit !important;
+}
+html[data-theme="light"] .CodeMirror-line ::selection,
+html[data-theme="light"] .CodeMirror-line > span ::selection,
+html[data-theme="light"] .CodeMirror-line > span > span ::selection,
+html[data-theme="light"] ::selection {
+  background: color-mix(in srgb, var(--c-accent) 22%, transparent) !important;
+  color: inherit !important;
 }
 
 /* ── Native toolbar menu — icon-only horizontal pill ─────────────────────── */
