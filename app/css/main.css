@@ -64,29 +64,31 @@ button { font-family: classy; }
 }
 .text-area-wrapper .CodeMirror-scroll { min-height: 100%; }
 
+/* Editor background comes from the active theme (--cm-bg, see cm-themes.css);
+   the old per-tone variables remain only as a fallback. */
 html[data-cm-tone="dark"] [class*="cm-s-"].CodeMirror,
 html[data-cm-tone="dark"] .CodeMirror {
-  background: var(--editor-bg-dark) !important;
+  background: var(--cm-bg, var(--editor-bg-dark)) !important;
 }
 html[data-cm-tone="light"] [class*="cm-s-"].CodeMirror,
 html[data-cm-tone="light"] .CodeMirror {
-  background: var(--editor-bg-light) !important;
+  background: var(--cm-bg, var(--editor-bg-light)) !important;
 }
 html:not([data-cm-tone]) [class*="cm-s-"].CodeMirror,
 html:not([data-cm-tone]) .CodeMirror {
-  background: var(--editor-bg-dark);
+  background: var(--cm-bg, var(--editor-bg-dark));
 }
 /* ── Gutter: left-edge tab (concave flares at top/bottom, convex round on the right) ──
    CodeMirror keeps .CodeMirror-gutters as one tall box (min-height:100%), so the
    outline is painted with gradient layers on that box. The lines get matching
    vertical padding so the first/last number sits inside the body, not in a flare. */
 .text-area-wrapper .CodeMirror {
-  --gutter-bg: var(--editor-gutter-dark);
+  --gutter-bg: var(--cm-gutter, var(--editor-gutter-dark));
   --editor-pad-x: 12px;
   --gF: 12px;
   --gR: 16px;
 }
-html[data-cm-tone="light"] .text-area-wrapper .CodeMirror { --gutter-bg: var(--editor-gutter-light); }
+html[data-cm-tone="light"] .text-area-wrapper .CodeMirror { --gutter-bg: var(--cm-gutter, var(--editor-gutter-light)); }
 .text-area-wrapper .CodeMirror-lines { padding: 10px 0; }
 .text-area-wrapper .CodeMirror:not(.dex-no-gutter) .CodeMirror-lines { padding: calc(var(--gF) + 8px) 0; }
 .text-area-wrapper .CodeMirror pre.CodeMirror-line,
@@ -121,15 +123,16 @@ html[data-cm-tone="light"] .text-area-wrapper .CodeMirror { --gutter-bg: var(--e
 }
 .text-area-wrapper .CodeMirror .CodeMirror-linenumber { padding: 0 8px 0 10px; }
 
+/* Line numbers follow the theme (--cm-linenum is derived in cm-themes.css);
+   the old fixed colours are only the fallback when no theme is active. */
 html[data-cm-tone="dark"] .CodeMirror-linenumber,
 html:not([data-cm-tone]) .CodeMirror-linenumber {
-  color: color-mix(in srgb, var(--c-white) 50%, transparent) !important;
+  color: var(--cm-linenum, color-mix(in srgb, var(--c-white) 50%, transparent)) !important;
 }
 
 html[data-cm-tone="light"] .CodeMirror-linenumber {
-  color: #1a1a1a !important;
+  color: var(--cm-linenum, #1a1a1a) !important;
 }
-.cm-s-dracula .CodeMirror-activeline-background { background: color-mix(in srgb, var(--c-white) 05%, transparent); }
 
 #noteTextarea { display: none !important; }
 #noteBackdrop { display: none !important; }

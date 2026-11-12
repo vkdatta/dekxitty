@@ -70,7 +70,7 @@
     if (!view) return;
 
     if (window.dexEditor && window.dexEditor.cm) {
-      const theme = window.dexEditor.cm.getOption('theme') || 'dracula';
+      const theme = window.dexEditor.cm.getOption('theme') || 'mint-night';
       Array.from(view.classList).forEach(c => { if (c.startsWith('cm-s-')) view.classList.remove(c); });
       view.classList.add('cm-s-' + theme.replace(/\s+/g, '-'));
     }
@@ -508,7 +508,7 @@
         document.body.dataset.theme = next;
         const cmExplicit = localStorage.getItem('cmTheme');
         if (!cmExplicit && window.dexEditor && typeof window.dexEditor.setTheme === 'function') {
-          window.dexEditor.setTheme(next === 'light' ? 'eclipse' : 'dracula');
+          window.dexEditor.setTheme(next === 'light' ? 'mint-paper' : 'mint-night');
         }
       }
     });

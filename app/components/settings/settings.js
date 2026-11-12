@@ -15,23 +15,28 @@ export function createSettingsManager() {
     MERMAID:   'mermaidEnabled'
   };
 
+  // Themes are defined in app/css/cm-themes.css. Keep ids in sync with
+  // editor.js. `id` is what is stored and used as the CSS class (cm-s-<id>).
+  const THEME_LABELS = {
+    'mint-night': 'Mint Night', 'cream-ink': 'Cream Ink', 'deep-teal': 'Deep Teal',
+    'midnight-indigo': 'Midnight Indigo', 'ember-moss': 'Ember Moss',
+    'deep-ocean': 'Deep Ocean', 'peacock-lagoon': 'Peacock Lagoon',
+    'mint-paper': 'Mint Paper', 'sea-glass': 'Sea Glass', 'pistachio': 'Pistachio',
+    'frost-lilac': 'Frost Lilac', 'linen-mint': 'Linen Mint',
+    'sea-breeze': 'Sea Breeze', 'turquoise-shore': 'Turquoise Shore'
+  };
   const DARK_THEMES = [
-    '3024-night','abbott','abcdef','ambiance','ayu-dark','ayu-mirage','base16-dark',
-    'bespin','blackboard','cobalt','colorforth','darcula','dracula','duotone-dark',
-    'erlang-dark','gruvbox-dark','hopscotch','icecoder','isotope','juejin','lesser-dark',
-    'liquibyte','lucario','material','material-darker','material-ocean','material-palenight',
-    'mbo','midnight','monokai','moxer','night','nord','oceanic-next','panda-syntax',
-    'paraiso-dark','pastel-on-dark','railscasts','rubyblue','seti','shadowfox',
-    'solarized dark','the-matrix','tomorrow-night-bright','tomorrow-night-eighties',
-    'twilight','vibrant-ink','xq-dark','yonce','zenburn'
+    'mint-night','cream-ink','deep-teal','midnight-indigo','ember-moss',
+    'deep-ocean','peacock-lagoon'
   ];
   const LIGHT_THEMES = [
-    '3024-day','base16-light','duotone-light','eclipse','elegant','idea','mdn-like',
-    'neat','neo','paraiso-light','solarized light','ssms','ttcn','xq-light','yeti'
+    'mint-paper','sea-glass','pistachio','frost-lilac','linen-mint',
+    'sea-breeze','turquoise-shore'
   ];
   const ALL_THEMES = new Set([...DARK_THEMES, ...LIGHT_THEMES]);
-  const DEFAULT_CM_DARK  = 'dracula';
-  const DEFAULT_CM_LIGHT = 'eclipse';
+  const DEFAULT_CM_DARK  = 'mint-night';
+  const DEFAULT_CM_LIGHT = 'mint-paper';
+  const themeLabel = (id) => THEME_LABELS[id] || id;
 
   function lsRead(k) {
     try { return localStorage.getItem(k); } catch (e) { return null; }
@@ -222,7 +227,7 @@ export function createSettingsManager() {
               <div class="settings-item-label">Editor theme</div>
               <div class="settings-item-desc">CodeMirror colour scheme. Editor background stays uniform (#000 for dark themes, #cacaca for light).</div>
             </div>
-            <div class="settings-row-value" id="cmThemeCurrent">dracula</div>
+            <div class="settings-row-value" id="cmThemeCurrent">Mint Night</div>
             <div class="settings-row-chevron">›</div>
           </div>
           <div class="settings-item" data-key="PRISM">
@@ -363,7 +368,7 @@ export function createSettingsManager() {
         const actualTheme = window.dexEditor.cm.getOption('theme');
         if (actualTheme) displayed = actualTheme;
       }
-      cur.textContent = displayed;
+      cur.textContent = themeLabel(displayed);
     }
   }
 
@@ -371,7 +376,7 @@ export function createSettingsManager() {
     const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const buildRows = (arr) => arr.map(t => {
       const active = (t === current);
-      return `<button class="theme-pick${active ? ' theme-pick-active' : ''}" data-theme="${esc(t)}">${esc(t)}</button>`;
+      return `<button class="theme-pick${active ? ' theme-pick-active' : ''}" data-theme="${esc(t)}">${esc(themeLabel(t))}</button>`;
     }).join('');
     const themesToShow = (tone === 'light') ? LIGHT_THEMES : DARK_THEMES;
     const groupTitle = (tone === 'light') ? 'Light' : 'Dark';

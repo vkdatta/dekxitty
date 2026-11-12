@@ -22,50 +22,37 @@
 
     CodeMirror.modeURL = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/%N/%N.min.js";
 
-    const THEME_BASE = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/";
-    const loadedThemes = new Set(['dracula']);
-    const pendingThemeCallbacks = {};
-
+    // Editor themes live in app/css/cm-themes.css (loaded through core.css), so
+    // there is nothing to download when the theme changes: setting the CM
+    // `theme` option is enough. Keep these lists in sync with settings.js and
+    // the palettes in cm-themes.css.
+    const DARK_CM_THEMES = [
+      'mint-night','cream-ink','deep-teal','midnight-indigo','ember-moss',
+      'deep-ocean','peacock-lagoon'
+    ];
     const LIGHT_CM_THEMES = new Set([
-      '3024-day','base16-light','duotone-light','eclipse','elegant','idea','mdn-like',
-      'neat','neo','paraiso-light','solarized light','ssms','ttcn','xq-light','yeti'
+      'mint-paper','sea-glass','pistachio','frost-lilac','linen-mint',
+      'sea-breeze','turquoise-shore'
     ]);
+    const DEFAULT_CM_DARK  = 'mint-night';
+    const DEFAULT_CM_LIGHT = 'mint-paper';
+
+    // Returns the theme id if known, otherwise null (e.g. a stored 'dracula'
+    // from before the custom themes existed).
+    function normalizeCmTheme(name) {
+      const n = String(name || '').trim();
+      return (LIGHT_CM_THEMES.has(n) || DARK_CM_THEMES.includes(n)) ? n : null;
+    }
     function applyCmToneAttr(themeName) {
       const tone = LIGHT_CM_THEMES.has(String(themeName || '').trim()) ? 'light' : 'dark';
       document.documentElement.dataset.cmTone = tone;
     }
-
-    function cssFileForTheme(name) {
-      const n = String(name || '').trim();
-      if (n === 'solarized dark' || n === 'solarized light') return 'solarized.min.css';
-      return n.replace(/\s+/g, '-') + '.min.css';
-    }
-    function ensureThemeLoaded(name, cb) {
-      const key = String(name || '').trim();
-      if (!key || loadedThemes.has(key)) { if (cb) cb(); return; }
-      if (pendingThemeCallbacks[key]) { if (cb) pendingThemeCallbacks[key].push(cb); return; }
-      pendingThemeCallbacks[key] = cb ? [cb] : [];
-      const href = THEME_BASE + cssFileForTheme(key);
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = href;
-      const done = () => {
-        loadedThemes.add(key);
-        const cbs = pendingThemeCallbacks[key] || [];
-        delete pendingThemeCallbacks[key];
-        cbs.forEach((fn) => { if (fn) fn(); });
-      };
-      link.onload = done;
-      link.onerror = done;
-      document.head.appendChild(link);
-    }
     function pickInitialCmTheme() {
-      const explicit = localStorage.getItem('cmTheme');
+      const explicit = normalizeCmTheme(localStorage.getItem('cmTheme'));
       if (explicit) return explicit;
-      return localStorage.getItem('appTheme') === 'light' ? 'eclipse' : 'dracula';
+      return localStorage.getItem('appTheme') === 'light' ? DEFAULT_CM_LIGHT : DEFAULT_CM_DARK;
     }
     const initialTheme = pickInitialCmTheme();
-    if (initialTheme && initialTheme !== 'dracula') ensureThemeLoaded(initialTheme);
     applyCmToneAttr(initialTheme);
 
     // Defaults: wrap, line numbers, and syntax highlighting are ON out of the
@@ -344,11 +331,10 @@
       setWrap: (on) => cm.setOption('lineWrapping', !!on),
 
       setTheme: function (name) {
-        if (!name) return;
-        ensureThemeLoaded(name, () => {
-          cm.setOption('theme', name);
-          applyCmToneAttr(name);
-        });
+        const theme = normalizeCmTheme(name);
+        if (!theme) return;
+        cm.setOption('theme', theme);
+        applyCmToneAttr(theme);
       },
 
       saveHistoryFor: (noteId) => {

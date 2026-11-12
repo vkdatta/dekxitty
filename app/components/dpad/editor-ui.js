@@ -11,6 +11,16 @@
   const FIND_MENU_ID     = 'find-replace-menu';
   const FIND_MENU_HIDDEN = 'find-replace-hidden';
 
+  // Toolbar placement (touch best practice: keep the toolbar OFF the selection handles' touch zones,
+  // inside the visible viewport, away from the top-bar hotspot, and ignore the finger that opened it).
+  const MENU_EDGE_PAD    = 8;    // min distance from viewport edges (px)
+  const MENU_GAP_SEL     = 38;   // gap from a selection: handle dot + its ~27px touch halo + breathing room
+  const MENU_GAP_CARET   = 14;   // gap from a bare caret (no handles are shown)
+  const MENU_TAP_GUARD   = 140;  // ms after opening during which item taps are ignored (stray finger release)
+  const TOP_HOTSPOT_PX   = 44;   // keep clear of the top-bar edge hotspot on touch devices
+  const MODIFIER_KEYS    = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'];
+  const FOREIGN_SOURCES  = { generic: 1, diff: 1 };   // menus owned by other selection surfaces
+
   // ─── Utilities ────────────────────────────────────────────────────────────
   const notify = (m) => { if (typeof showNotification === 'function') showNotification(m); };
   const getCm  = () => { const ed = window.dexEditor; return ed && ed.cm ? ed.cm : null; };
@@ -59,6 +69,7 @@
   let activeActions = null;
   let activeMenuSource = null;
   let menuSelection = null;
+  let menuAnchor = null, menuOpenedAt = 0, menuDesign = null, repositionRaf = null;
   const surfaceTimers = Object.create(null);
 
   function clearPendingFor(surface) {
@@ -76,6 +87,9 @@
     menuEl = document.createElement('div');
     menuEl.id = 'dexNativeMenu';
     document.body.appendChild(menuEl);
+    // Tapping a toolbar button must not steal focus from the editor (that collapses the selection and
+    // dismisses the soft keyboard). 'click' still fires normally.
+    ['pointerdown', 'mousedown'].forEach((t) => menuEl.addEventListener(t, (e) => e.preventDefault()));
     document.addEventListener('pointerdown', (e) => {
       // *** THE FIX ***  When we open a menu synchronously from within a
       // pointerdown handler (double-tap), the same event then bubbles up to
@@ -98,12 +112,22 @@
     } else {
       clearAllPending();
     }
-    if (menuEl) menuEl.classList.remove('open');
+    if (menuEl) { menuEl.classList.remove('open'); menuEl.style.visibility = ''; }
     activeActions = null;
     activeMenuSource = null;
     menuSelection = null;
+    menuAnchor = null;
+    menuDesign = null;
   }
   window.dexCloseNativeMenu = () => closeMenu();
+
+  // Close a menu that belongs to the editor (long-press, double-tap, handle release, toolbar button, ...),
+  // whatever 'source' label it was opened with. closeMenu('codemirror') alone only closes menus opened with
+  // that exact label, which is why the toolbar used to survive Backspace/Delete.
+  function closeEditorMenu() {
+    clearPendingFor('codemirror');
+    if (isMenuOpen() && !FOREIGN_SOURCES[activeMenuSource]) closeMenu();
+  }
 
   function escapeAttr(text) {
     return String(text)
@@ -135,6 +159,7 @@
     activeActions = actions;
     activeMenuSource = source || null;
     menuSelection = snapshotSelection();
+    menuDesign = designOn() ? designSnap() : null;
 
     let html = '';
     actions.forEach((a, i) => {
@@ -151,6 +176,7 @@
 
     menuEl.querySelectorAll('[data-nm-idx]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        if (Date.now() - menuOpenedAt < MENU_TAP_GUARD) return;   // stray release of the opening gesture
         const idx = parseInt(btn.dataset.nmIdx, 10);
         const action = activeActions && activeActions[idx];
         closeMenu();
@@ -160,20 +186,99 @@
 
     menuEl.style.visibility = 'hidden';
     menuEl.classList.add('open');
-    const mw = menuEl.offsetWidth;
-    const mh = menuEl.offsetHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    menuOpenedAt = Date.now();
+    menuAnchor = rect || null;
+    placeMenu();
+  }
 
-    let left = rect ? rect.left - mw / 2 : (vw - mw) / 2;
-    let top  = rect ? rect.top - mh - 10 : (vh - mh) / 2;
-    if (rect && top < 8) top = rect.bottom + 10;
-    left = Math.max(8, Math.min(vw - mw - 8, left));
-    top  = Math.max(8, Math.min(vh - mh - 8, top));
+  // Visible area (accounts for the soft keyboard / pinch-zoom through visualViewport).
+  function viewportBox() {
+    const vv = window.visualViewport;
+    const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const x0 = vv ? vv.offsetLeft : 0, y0 = vv ? vv.offsetTop : 0;
+    const w  = vv ? vv.width  : window.innerWidth;
+    const h  = vv ? vv.height : window.innerHeight;
+    return {
+      left:   x0 + MENU_EDGE_PAD,
+      right:  x0 + w - MENU_EDGE_PAD,
+      top:    y0 + (coarse ? TOP_HOTSPOT_PX : MENU_EDGE_PAD),
+      bottom: y0 + h - MENU_EDGE_PAD
+    };
+  }
 
-    menuEl.style.left = left + 'px';
-    menuEl.style.top  = top  + 'px';
-    menuEl.style.visibility = '';
+  // Preferred spot: centred above the selection, clear of the handles. Otherwise below it, clear of the
+  // end handle. If the selection fills the screen, float over its visible part. Hidden while the selection
+  // is scrolled completely out of view.
+  function placeMenu() {
+    if (!menuEl || !menuEl.classList.contains('open')) return;
+    const mw = menuEl.offsetWidth, mh = menuEl.offsetHeight;
+    const b = viewportBox();
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const rect = menuAnchor;
+    let left, top, offscreen = false;
+    if (!rect) {
+      left = (b.left + b.right - mw) / 2;
+      top  = (b.top + b.bottom - mh) / 2;
+    } else {
+      const gap   = rect.caret ? MENU_GAP_CARET : MENU_GAP_SEL;
+      const above = rect.top - gap - mh;
+      const below = rect.bottom + gap;
+      left = clamp(rect.left - mw / 2, b.left, Math.max(b.left, b.right - mw));
+      if (above >= b.top)                  top = above;
+      else if (below + mh <= b.bottom)     top = below;
+      else {
+        const vt = Math.max(rect.top, b.top), vb = Math.min(rect.bottom, b.bottom);
+        top = clamp((vt + vb) / 2 - mh / 2, b.top, Math.max(b.top, b.bottom - mh));
+      }
+      offscreen = rect.bottom < b.top || rect.top > b.bottom;
+    }
+    menuEl.style.left = Math.round(left) + 'px';
+    menuEl.style.top  = Math.round(top)  + 'px';
+    menuEl.style.visibility = offscreen ? 'hidden' : '';
+  }
+
+  // Where the open editor menu should be anchored right now (selection may have scrolled / viewport resized).
+  function editorAnchor() {
+    if (designOn()) return designMenuRect() || null;
+    const cm = getCm();
+    if (!cm) return null;
+    if (cm.somethingSelected()) return rectForRange(cm, { from: cm.getCursor('from'), to: cm.getCursor('to') });
+    const c = cm.charCoords(cm.getCursor(), 'window');
+    return { left: c.right, top: c.top, bottom: c.bottom, caret: true };
+  }
+
+  function repositionMenu() {
+    if (!isMenuOpen() || repositionRaf !== null) return;
+    repositionRaf = requestAnimationFrame(() => {
+      repositionRaf = null;
+      if (!isMenuOpen()) return;
+      try {
+        if (FOREIGN_SOURCES[activeMenuSource]) {
+          const sel = window.getSelection();
+          if (sel && sel.rangeCount && !sel.isCollapsed) {
+            const r = sel.getRangeAt(0).getBoundingClientRect();
+            if (r.width || r.height) menuAnchor = { left: r.left + r.width / 2, top: r.top, bottom: r.bottom };
+          }
+        } else {
+          const a = editorAnchor();
+          if (a) menuAnchor = a;
+        }
+      } catch (_e) {}
+      placeMenu();
+    });
+  }
+
+  // Design-mode selection snapshot, to notice when the selection moved or vanished under an open menu.
+  function designSnap() {
+    const t = designTarget(); if (!t) return null;
+    if (t.kind === 'ta') return { el: t.el, a: t.s, b: t.e };
+    const r = t.range;
+    return { el: t.el, n1: r.startContainer, o1: r.startOffset, n2: r.endContainer, o2: r.endOffset };
+  }
+  function sameDesign(x, y) {
+    if (!x || !y) return x === y;
+    return x.el === y.el && x.a === y.a && x.b === y.b &&
+           x.n1 === y.n1 && x.o1 === y.o1 && x.n2 === y.n2 && x.o2 === y.o2;
   }
 
   function scheduleMenu(surface, getActionsAndRect) {
@@ -296,7 +401,7 @@
       if (!cm.somethingSelected()) {
         const pos = cm.getCursor();
         const c   = cm.charCoords(pos, 'window');
-        renderMenu(cursorActions(cm), { left: c.right, top: c.top, bottom: c.bottom }, source);
+        renderMenu(cursorActions(cm), { left: c.right, top: c.top, bottom: c.bottom, caret: true }, source);
         return;
       }
       const range = {
@@ -457,6 +562,7 @@
     const now = Date.now();
     if (!window.__dexSelHandleDragging && now - lastKeyAt > 400 && now - lastTouchAt < 4000 && !curV()) virtualize();
     scheduleHandles();
+    if (isMenuOpen() && !FOREIGN_SOURCES[activeMenuSource] && !window.__dexSelHandleDragging && !sameDesign(designSnap(), menuDesign)) closeMenu();
   });
 
   function designTarget() {
@@ -827,18 +933,19 @@
     if (prev && typeof prev.off === 'function') {
       if (prev.__dexCursorHandler) { try { prev.off('cursorActivity', prev.__dexCursorHandler); } catch (_e) {} }
       if (prev.__dexScrollHandler) { try { prev.off('scroll',         prev.__dexScrollHandler); } catch (_e) {} }
+      if (prev.__dexChangeHandler) { try { prev.off('change',         prev.__dexChangeHandler); } catch (_e) {} }
     }
     attachToCm._cm = cm;
 
     const onCursorActivity = () => {
       scheduleHandles();
       if (window.__dexSelHandleDragging) return;
-      if (findMenuOpen()) { closeMenu('codemirror'); return; }
+      if (findMenuOpen()) { closeEditorMenu(); return; }
 
-      if (isMenuOpen()) {
+      if (isMenuOpen() && !FOREIGN_SOURCES[activeMenuSource]) {
         const cur = snapshotSelection();
         if (sameSel(cur, menuSelection)) return;   // echo of our own setSelection
-        closeMenu('codemirror');
+        closeEditorMenu();                         // selection moved / collapsed (e.g. after Backspace)
       }
 
       if (!cm.somethingSelected()) return;
@@ -855,12 +962,16 @@
         return { actions: codeMirrorActions(cm, range), rect: rectForRange(cm, range) };
       });
     };
-    const onScroll = () => scheduleHandles();
+    const onScroll = () => { scheduleHandles(); repositionMenu(); };
+    // Any edit invalidates the toolbar (its actions were built for the old text/selection).
+    const onChange = () => closeEditorMenu();
 
     cm.on('cursorActivity', onCursorActivity);
     cm.on('scroll',         onScroll);
+    cm.on('change',         onChange);
     cm.__dexCursorHandler = onCursorActivity;
     cm.__dexScrollHandler = onScroll;
+    cm.__dexChangeHandler = onChange;
 
     attachLongPress();
     return true;
@@ -938,6 +1049,27 @@
       cmEl.addEventListener('selectstart', (e) => e.preventDefault());
     };
     attach();
+  }
+
+  // ─── Keep the toolbar honest (typing, scrolling, keyboard) ────────────────
+  // Typing / deleting / arrow keys end the selection interaction: dismiss the toolbar (also covers
+  // Design-mode textareas and contenteditable blocks, which have no CodeMirror events).
+  document.addEventListener('keydown', (e) => {
+    if (!isMenuOpen() || MODIFIER_KEYS.indexOf(e.key) >= 0) return;
+    if (menuEl.contains(e.target)) return;      // keyboard activation of a toolbar button
+    closeEditorMenu();
+  }, true);
+  ['beforeinput', 'input'].forEach((ev) => document.addEventListener(ev, () => closeEditorMenu(), true));
+
+  // Follow the selection while the page scrolls or the soft keyboard / zoom changes the visible area.
+  window.addEventListener('scroll', (e) => {
+    if (!isMenuOpen() || (menuEl && menuEl.contains(e.target))) return;
+    repositionMenu();
+  }, true);
+  window.addEventListener('resize', repositionMenu);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', repositionMenu);
+    window.visualViewport.addEventListener('scroll', repositionMenu);
   }
 
   // ─── Lifecycle ────────────────────────────────────────────────────────────

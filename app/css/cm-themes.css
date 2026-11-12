@@ -1,0 +1,704 @@
+/* ============================================================================
+   Dekxitty editor themes (CodeMirror 5)
+   ----------------------------------------------------------------------------
+   14 custom themes, 7 dark + 7 light. They replace the stock CodeMirror themes
+   (dracula, eclipse, ...) so nothing is fetched from the cdnjs theme folder.
+
+   HOW IT WORKS
+   1. Each theme is a block of 18 colour variables on .cm-s-<id> (Part 1).
+   2. Part 2 maps those variables to EVERY CodeMirror class once, for all themes.
+      A theme therefore cannot forget to colour something: if a variable
+      exists, every class that uses it is coloured.
+
+   TO ADD A THEME
+   - Add a Part 1 block (copy one, change the id and the 18 values).
+   - Nothing else in this file: Part 2 applies to any element whose class
+     contains "cm-s-" (CodeMirror puts cm-s-<theme> on the editor).
+   - Register the id in editor.js (DARK/LIGHT lists) and settings.js.
+
+   VARIABLE -> WHAT IT COLOURS
+   --cm-bg       editor background          --cm-gutter  line-number gutter
+   --cm-fg       plain text, variables      --cm-comment comments, quotes, rules
+   --cm-keyword  keywords, headings, links  --cm-atom    true/null, escapes
+   --cm-number   numbers, warnings          --cm-fn      function/def names, links
+   --cm-type     types, builtins            --cm-prop    object properties
+   --cm-op       operators, punctuation     --cm-string  strings (and regex/template)
+   --cm-meta     decorators, @rules         --cm-tag     HTML/XML tag names
+   --cm-attr     attributes, CSS selectors  --cm-error   errors, invalid chars
+   --cm-add      diff additions, positive
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   PART 1: palettes
+   --------------------------------------------------------------------------- */
+
+/* DARK */
+/* Mint Night: Mint-led. Closest to your brand. */
+.cm-s-mint-night,
+.CodeMirror-hints.mint-night {
+  color-scheme: dark;
+  --cm-bg: #0f1312;
+  --cm-gutter: #161b19;
+  --cm-fg: #dde6e1;
+  --cm-comment: #6f8279;
+  --cm-keyword: #7fe3b5;
+  --cm-atom: #f0a9c6;
+  --cm-number: #f2ab8c;
+  --cm-fn: #9cc4ff;
+  --cm-type: #7fd8e2;
+  --cm-prop: #c6d3ff;
+  --cm-op: #9db0a8;
+  --cm-string: #ecd19e;
+  --cm-meta: #9ad9c4;
+  --cm-tag: #7fe3b5;
+  --cm-attr: #d9c28f;
+  --cm-error: #ff9f9f;
+  --cm-add: #7fe3b5;
+  --cm-warn: #f2ab8c;
+}
+
+/* Cream Ink: Your current ink and cream, using your own pastels. */
+.cm-s-cream-ink,
+.CodeMirror-hints.cream-ink {
+  color-scheme: dark;
+  --cm-bg: #0e0e0e;
+  --cm-gutter: #1b1b1b;
+  --cm-fg: #ecdfc3;
+  --cm-comment: #82796a;
+  --cm-keyword: #b4ddcb;
+  --cm-atom: #ffc6c6;
+  --cm-number: #ecd19e;
+  --cm-fn: #c6d3ff;
+  --cm-type: #b9d9e6;
+  --cm-prop: #e1c280;
+  --cm-op: #a59d86;
+  --cm-string: #d9c9a0;
+  --cm-meta: #b4ddcb;
+  --cm-tag: #b4ddcb;
+  --cm-attr: #c6d3ff;
+  --cm-error: #ff9a9a;
+  --cm-add: #b4ddcb;
+  --cm-warn: #ecd19e;
+}
+
+/* Deep Teal: Teal-tinted ground with coral and aqua accents. */
+.cm-s-deep-teal,
+.CodeMirror-hints.deep-teal {
+  color-scheme: dark;
+  --cm-bg: #0b1a1b;
+  --cm-gutter: #112224;
+  --cm-fg: #d6e6e4;
+  --cm-comment: #668789;
+  --cm-keyword: #5fe0c4;
+  --cm-atom: #ff9d8a;
+  --cm-number: #ffb86b;
+  --cm-fn: #86b7ff;
+  --cm-type: #6fd3ee;
+  --cm-prop: #a8e6cf;
+  --cm-op: #8fb0ae;
+  --cm-string: #f5d28b;
+  --cm-meta: #a8c8ff;
+  --cm-tag: #7fe9d2;
+  --cm-attr: #f0c27a;
+  --cm-error: #ff8f8f;
+  --cm-add: #5fe0c4;
+  --cm-warn: #ffb86b;
+}
+
+/* Midnight Indigo: Indigo ground, lavender and mint. Calm for long sessions. */
+.cm-s-midnight-indigo,
+.CodeMirror-hints.midnight-indigo {
+  color-scheme: dark;
+  --cm-bg: #10121f;
+  --cm-gutter: #161a2b;
+  --cm-fg: #dbe0f2;
+  --cm-comment: #7079a3;
+  --cm-keyword: #b79cff;
+  --cm-atom: #ff9fc0;
+  --cm-number: #ffb086;
+  --cm-fn: #7fb4ff;
+  --cm-type: #6fe0d0;
+  --cm-prop: #9fe3c1;
+  --cm-op: #97a0c8;
+  --cm-string: #f2d49a;
+  --cm-meta: #8fd4ff;
+  --cm-tag: #b79cff;
+  --cm-attr: #9fe3c1;
+  --cm-error: #ff8f9f;
+  --cm-add: #9fe3c1;
+  --cm-warn: #ffb086;
+}
+
+/* Ember Moss: Warm charcoal with amber and moss. Least blue light. */
+.cm-s-ember-moss,
+.CodeMirror-hints.ember-moss {
+  color-scheme: dark;
+  --cm-bg: #15130f;
+  --cm-gutter: #1d1a15;
+  --cm-fg: #e6dfce;
+  --cm-comment: #80796a;
+  --cm-keyword: #e8b659;
+  --cm-atom: #d98cb0;
+  --cm-number: #f08f6a;
+  --cm-fn: #9cc5a1;
+  --cm-type: #8fd0c0;
+  --cm-prop: #b8d98a;
+  --cm-op: #a39b86;
+  --cm-string: #c9d98f;
+  --cm-meta: #9fc9e6;
+  --cm-tag: #e8b659;
+  --cm-attr: #d9c58a;
+  --cm-error: #ff8f7f;
+  --cm-add: #b8d98a;
+  --cm-warn: #f08f6a;
+}
+
+/* Deep Ocean: Navy sea at night. Turquoise, sky blue and seafoam. */
+.cm-s-deep-ocean,
+.CodeMirror-hints.deep-ocean {
+  color-scheme: dark;
+  --cm-bg: #07172b;
+  --cm-gutter: #0d2238;
+  --cm-fg: #d3e4f2;
+  --cm-comment: #5f819c;
+  --cm-keyword: #4dd0e1;
+  --cm-atom: #ffa28f;
+  --cm-number: #f6cf91;
+  --cm-fn: #82b1ff;
+  --cm-type: #5eead4;
+  --cm-prop: #b3c7ff;
+  --cm-op: #86a8c4;
+  --cm-string: #98e6bd;
+  --cm-meta: #6fd3c0;
+  --cm-tag: #4dd0e1;
+  --cm-attr: #9fd3ff;
+  --cm-error: #ff8f9a;
+  --cm-add: #5eead4;
+  --cm-warn: #f6cf91;
+}
+
+/* Peacock Lagoon: Peacock teal ground with violet-blue and beach green. */
+.cm-s-peacock-lagoon,
+.CodeMirror-hints.peacock-lagoon {
+  color-scheme: dark;
+  --cm-bg: #082229;
+  --cm-gutter: #0e2c35;
+  --cm-fg: #d4ebea;
+  --cm-comment: #5f8b92;
+  --cm-keyword: #38e0c0;
+  --cm-atom: #ff8fb1;
+  --cm-number: #ffd27d;
+  --cm-fn: #5aa9ff;
+  --cm-type: #a99cff;
+  --cm-prop: #7de0f0;
+  --cm-op: #8bb4b8;
+  --cm-string: #a6f0c6;
+  --cm-meta: #6fe0d0;
+  --cm-tag: #38e0c0;
+  --cm-attr: #8fd0ff;
+  --cm-error: #ff8f8f;
+  --cm-add: #a6f0c6;
+  --cm-warn: #ffd27d;
+}
+
+/* LIGHT */
+/* Mint Paper: Pale mint paper with deep green keywords. Matches your site. */
+.cm-s-mint-paper,
+.CodeMirror-hints.mint-paper {
+  color-scheme: light;
+  --cm-bg: #f4fffb;
+  --cm-gutter: #e4fef5;
+  --cm-fg: #1f2d28;
+  --cm-comment: #6a827b;
+  --cm-keyword: #0a7a55;
+  --cm-atom: #b02e6c;
+  --cm-number: #b8470f;
+  --cm-fn: #1f56c4;
+  --cm-type: #0b7285;
+  --cm-prop: #4a5fbf;
+  --cm-op: #5d736b;
+  --cm-string: #8a5a00;
+  --cm-meta: #0b7285;
+  --cm-tag: #0a7a55;
+  --cm-attr: #8a6a1f;
+  --cm-error: #c0262d;
+  --cm-add: #0a7a55;
+  --cm-warn: #b8470f;
+}
+
+/* Sea Glass: Cooler mint-blue. Clean and crisp. */
+.cm-s-sea-glass,
+.CodeMirror-hints.sea-glass {
+  color-scheme: light;
+  --cm-bg: #eefaf6;
+  --cm-gutter: #dff5ee;
+  --cm-fg: #1b2b2c;
+  --cm-comment: #657f82;
+  --cm-keyword: #0b7d73;
+  --cm-atom: #c2305f;
+  --cm-number: #b84a0b;
+  --cm-fn: #2b5fd0;
+  --cm-type: #0a6d8f;
+  --cm-prop: #6b4fc4;
+  --cm-op: #587274;
+  --cm-string: #9a6700;
+  --cm-meta: #2b5fd0;
+  --cm-tag: #0b7d73;
+  --cm-attr: #8a6a1f;
+  --cm-error: #c0262d;
+  --cm-add: #0b7d73;
+  --cm-warn: #b84a0b;
+}
+
+/* Pistachio: Yellow-green paper with olive and berry. Warmest light option. */
+.cm-s-pistachio,
+.CodeMirror-hints.pistachio {
+  color-scheme: light;
+  --cm-bg: #f7fbee;
+  --cm-gutter: #ebf3da;
+  --cm-fg: #27301f;
+  --cm-comment: #76825f;
+  --cm-keyword: #4a7a0e;
+  --cm-atom: #a8326f;
+  --cm-number: #b5500c;
+  --cm-fn: #2a5db0;
+  --cm-type: #0c7080;
+  --cm-prop: #7a4fb8;
+  --cm-op: #68745a;
+  --cm-string: #946200;
+  --cm-meta: #0c7080;
+  --cm-tag: #3f7a2a;
+  --cm-attr: #86701f;
+  --cm-error: #b8412c;
+  --cm-add: #3f7a2a;
+  --cm-warn: #b5500c;
+}
+
+/* Frost Lilac: Mint-white with violet keywords. Cool and light. */
+.cm-s-frost-lilac,
+.CodeMirror-hints.frost-lilac {
+  color-scheme: light;
+  --cm-bg: #f3fbfa;
+  --cm-gutter: #e3f4f2;
+  --cm-fg: #232a33;
+  --cm-comment: #6f7c8b;
+  --cm-keyword: #6a42c9;
+  --cm-atom: #c0346a;
+  --cm-number: #b54d0e;
+  --cm-fn: #1f60c9;
+  --cm-type: #0b7a8a;
+  --cm-prop: #0a7a55;
+  --cm-op: #5f6d7c;
+  --cm-string: #8f6200;
+  --cm-meta: #0b7a8a;
+  --cm-tag: #6a42c9;
+  --cm-attr: #0a7a55;
+  --cm-error: #c0262d;
+  --cm-add: #0a7a55;
+  --cm-warn: #b54d0e;
+}
+
+/* Linen Mint: Warm off-white with mint. Terracotta and forest. */
+.cm-s-linen-mint,
+.CodeMirror-hints.linen-mint {
+  color-scheme: light;
+  --cm-bg: #f8fcf7;
+  --cm-gutter: #eef6ec;
+  --cm-fg: #2a2a24;
+  --cm-comment: #7d7e72;
+  --cm-keyword: #b4472b;
+  --cm-atom: #9a3a78;
+  --cm-number: #a85a00;
+  --cm-fn: #2c6a8f;
+  --cm-type: #0f7a68;
+  --cm-prop: #2f7d3a;
+  --cm-op: #6f7062;
+  --cm-string: #6b6a00;
+  --cm-meta: #2c6a8f;
+  --cm-tag: #b4472b;
+  --cm-attr: #2f7d3a;
+  --cm-error: #c0262d;
+  --cm-add: #2f7d3a;
+  --cm-warn: #a85a00;
+}
+
+/* Sea Breeze: Pale sky paper with peacock teal and clear blues. */
+.cm-s-sea-breeze,
+.CodeMirror-hints.sea-breeze {
+  color-scheme: light;
+  --cm-bg: #f1faff;
+  --cm-gutter: #e2f2fb;
+  --cm-fg: #14303d;
+  --cm-comment: #5a7a8a;
+  --cm-keyword: #00717f;
+  --cm-atom: #a03a6e;
+  --cm-number: #b3540c;
+  --cm-fn: #1859b8;
+  --cm-type: #0b6e99;
+  --cm-prop: #3f4fb5;
+  --cm-op: #55707d;
+  --cm-string: #1b7a50;
+  --cm-meta: #0b6e99;
+  --cm-tag: #00717f;
+  --cm-attr: #5a45b0;
+  --cm-error: #c0262d;
+  --cm-add: #1b7a50;
+  --cm-warn: #b3540c;
+}
+
+/* Turquoise Shore: Turquoise-white sand, ocean blue and sea green. */
+.cm-s-turquoise-shore,
+.CodeMirror-hints.turquoise-shore {
+  color-scheme: light;
+  --cm-bg: #effcf8;
+  --cm-gutter: #dcf6ef;
+  --cm-fg: #12302d;
+  --cm-comment: #57797a;
+  --cm-keyword: #0a6f8f;
+  --cm-atom: #b03a5e;
+  --cm-number: #a85408;
+  --cm-fn: #2b5fbf;
+  --cm-type: #087f6e;
+  --cm-prop: #4a55b8;
+  --cm-op: #55756f;
+  --cm-string: #1d7a46;
+  --cm-meta: #087f6e;
+  --cm-tag: #0a6f8f;
+  --cm-attr: #6a4aa8;
+  --cm-error: #c0262d;
+  --cm-add: #1d7a46;
+  --cm-warn: #a85408;
+}
+
+/* ---------------------------------------------------------------------------
+   PART 2: rules shared by every theme
+   --------------------------------------------------------------------------- */
+
+/* ---- Derived colours (computed from each theme's own palette) ---- */
+[class*="cm-s-"] {
+  --cm-linenum: color-mix(in srgb, var(--cm-fg) 55%, var(--cm-gutter))
+}
+
+/* ---- Editor surface ---- */
+[class*="cm-s-"].CodeMirror {
+  background: var(--cm-bg);
+  color: var(--cm-fg)
+}
+
+[class*="cm-s-"] .CodeMirror-gutters {
+  background: var(--cm-gutter);
+  border-right: 0
+}
+
+[class*="cm-s-"] .CodeMirror-gutter-filler,
+[class*="cm-s-"] .CodeMirror-scrollbar-filler {
+  background-color: var(--cm-bg)
+}
+
+[class*="cm-s-"] .CodeMirror-linenumber {
+  color: var(--cm-linenum)
+}
+
+[class*="cm-s-"] .CodeMirror-guttermarker {
+  color: var(--cm-keyword)
+}
+
+[class*="cm-s-"] .CodeMirror-guttermarker-subtle {
+  color: var(--cm-comment)
+}
+
+[class*="cm-s-"] .CodeMirror-activeline-gutter {
+  background: color-mix(in srgb, var(--cm-fg) 6%, transparent)
+}
+
+[class*="cm-s-"] .CodeMirror-activeline-gutter .CodeMirror-linenumber {
+  color: var(--cm-fg)
+}
+
+[class*="cm-s-"] .CodeMirror-activeline-background,
+[class*="cm-s-"] .CodeMirror-activeline {
+  background: color-mix(in srgb, var(--cm-fg) 6%, transparent)
+}
+
+[class*="cm-s-"] .CodeMirror-placeholder {
+  color: var(--cm-comment)
+}
+
+[class*="cm-s-"] .CodeMirror-ruler {
+  border-left: 1px solid color-mix(in srgb, var(--cm-fg) 12%, transparent)
+}
+
+/* ---- Cursor ---- */
+[class*="cm-s-"] .CodeMirror-cursor {
+  border-left: 2px solid var(--cm-fg)
+}
+
+[class*="cm-s-"] .CodeMirror-secondarycursor {
+  border-left: 1px solid color-mix(in srgb, var(--cm-fg) 50%, transparent)
+}
+
+[class*="cm-s-"].cm-fat-cursor .CodeMirror-cursor {
+  background: color-mix(in srgb, var(--cm-keyword) 70%, transparent);
+  border: 0 !important
+}
+
+[class*="cm-s-"].cm-fat-cursor .CodeMirror-line::selection,
+[class*="cm-s-"].cm-fat-cursor .CodeMirror-line > span::selection,
+[class*="cm-s-"].cm-fat-cursor .CodeMirror-line > span > span::selection {
+  background: transparent
+}
+
+[class*="cm-s-"] .cm-fat-cursor-mark,
+[class*="cm-s-"] .cm-animate-fat-cursor {
+  background-color: color-mix(in srgb, var(--cm-keyword) 70%, transparent)
+}
+
+/* ---- Selection ---- */
+[class*="cm-s-"] .CodeMirror-selected {
+  background: color-mix(in srgb, var(--cm-keyword) 24%, transparent)
+}
+
+[class*="cm-s-"].CodeMirror-focused .CodeMirror-selected {
+  background: color-mix(in srgb, var(--cm-keyword) 34%, transparent)
+}
+
+[class*="cm-s-"] .CodeMirror-line::selection,
+[class*="cm-s-"] .CodeMirror-line > span::selection,
+[class*="cm-s-"] .CodeMirror-line > span > span::selection {
+  background: color-mix(in srgb, var(--cm-keyword) 34%, transparent)
+}
+
+[class*="cm-s-"] .CodeMirror-line::-moz-selection,
+[class*="cm-s-"] .CodeMirror-line > span::-moz-selection,
+[class*="cm-s-"] .CodeMirror-line > span > span::-moz-selection {
+  background: color-mix(in srgb, var(--cm-keyword) 34%, transparent)
+}
+
+[class*="cm-s-"] .CodeMirror-selection-highlight-scrollbar {
+  background-color: var(--cm-keyword)
+}
+
+/* ---- Brackets, tags, search, whitespace ---- */
+[class*="cm-s-"] .CodeMirror-matchingbracket {
+  color: var(--cm-fg) !important;
+  background: color-mix(in srgb, var(--cm-keyword) 26%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--cm-keyword) 60%, transparent);
+  text-decoration: none
+}
+
+[class*="cm-s-"] .CodeMirror-nonmatchingbracket {
+  color: var(--cm-error) !important;
+  background: color-mix(in srgb, var(--cm-error) 20%, transparent)
+}
+
+[class*="cm-s-"] .CodeMirror-matchingtag {
+  background: color-mix(in srgb, var(--cm-keyword) 20%, transparent)
+}
+
+[class*="cm-s-"] .CodeMirror-searching,
+[class*="cm-s-"] .cm-searching {
+  background-color: color-mix(in srgb, var(--cm-warn) 38%, transparent)
+}
+
+[class*="cm-s-"] .cm-matchhighlight {
+  background-color: color-mix(in srgb, var(--cm-keyword) 22%, transparent)
+}
+
+[class*="cm-s-"] .cm-trailingspace {
+  background-color: color-mix(in srgb, var(--cm-error) 28%, transparent)
+}
+
+[class*="cm-s-"] .cm-tab {
+  background: none
+}
+
+[class*="cm-s-"] .cm-invalidchar {
+  color: var(--cm-error)
+}
+
+/* ---- Code folding ---- */
+[class*="cm-s-"] .CodeMirror-foldmarker {
+  color: var(--cm-comment);
+  text-shadow: none;
+  font-family: inherit
+}
+
+[class*="cm-s-"] .CodeMirror-foldgutter-open,
+[class*="cm-s-"] .CodeMirror-foldgutter-folded {
+  color: var(--cm-comment)
+}
+
+[class*="cm-s-"] .CodeMirror-foldgutter-open:hover,
+[class*="cm-s-"] .CodeMirror-foldgutter-folded:hover {
+  color: var(--cm-fg)
+}
+
+/* ---- Syntax tokens (the classes CodeMirror modes emit) ---- */
+[class*="cm-s-"] .cm-keyword {
+  color: var(--cm-keyword)
+}
+
+[class*="cm-s-"] .cm-atom {
+  color: var(--cm-atom)
+}
+
+[class*="cm-s-"] .cm-number {
+  color: var(--cm-number)
+}
+
+[class*="cm-s-"] .cm-def {
+  color: var(--cm-fn)
+}
+
+[class*="cm-s-"] .cm-variable {
+  color: var(--cm-fg)
+}
+
+[class*="cm-s-"] .cm-variable-2 {
+  color: color-mix(in srgb, var(--cm-fg) 72%, var(--cm-prop))
+}
+
+[class*="cm-s-"] .cm-variable-3,
+[class*="cm-s-"] .cm-type,
+[class*="cm-s-"] .cm-builtin {
+  color: var(--cm-type)
+}
+
+[class*="cm-s-"] .cm-property {
+  color: var(--cm-prop)
+}
+
+[class*="cm-s-"] .cm-operator,
+[class*="cm-s-"] .cm-punctuation,
+[class*="cm-s-"] .cm-bracket {
+  color: var(--cm-op)
+}
+
+[class*="cm-s-"] .cm-string {
+  color: var(--cm-string)
+}
+
+[class*="cm-s-"] .cm-string-2 {
+  color: color-mix(in srgb, var(--cm-string) 65%, var(--cm-atom))
+}
+
+[class*="cm-s-"] .cm-comment {
+  color: var(--cm-comment);
+  font-style: italic
+}
+
+[class*="cm-s-"] .cm-meta {
+  color: var(--cm-meta)
+}
+
+[class*="cm-s-"] .cm-tag {
+  color: var(--cm-tag)
+}
+
+[class*="cm-s-"] .cm-tag.cm-bracket {
+  color: var(--cm-op)
+}
+
+[class*="cm-s-"] .cm-attribute,
+[class*="cm-s-"] .cm-qualifier {
+  color: var(--cm-attr)
+}
+
+[class*="cm-s-"] .cm-error {
+  color: var(--cm-error)
+}
+
+[class*="cm-s-"] .cm-positive {
+  color: var(--cm-add)
+}
+
+[class*="cm-s-"] .cm-negative {
+  color: var(--cm-error)
+}
+
+/* ---- Markdown and prose ---- */
+[class*="cm-s-"] .cm-header,
+[class*="cm-s-"] .cm-header-1,
+[class*="cm-s-"] .cm-header-2,
+[class*="cm-s-"] .cm-header-3,
+[class*="cm-s-"] .cm-header-4,
+[class*="cm-s-"] .cm-header-5,
+[class*="cm-s-"] .cm-header-6 {
+  color: var(--cm-keyword);
+  font-weight: 700
+}
+
+[class*="cm-s-"] .cm-strong {
+  font-weight: 700
+}
+
+[class*="cm-s-"] .cm-em {
+  font-style: italic
+}
+
+[class*="cm-s-"] .cm-strikethrough {
+  color: var(--cm-comment);
+  text-decoration: line-through
+}
+
+[class*="cm-s-"] .cm-quote {
+  color: var(--cm-comment);
+  font-style: italic
+}
+
+[class*="cm-s-"] .cm-hr {
+  color: var(--cm-comment)
+}
+
+[class*="cm-s-"] .cm-link {
+  color: var(--cm-fn);
+  text-decoration: underline
+}
+
+[class*="cm-s-"] .cm-url {
+  color: var(--cm-fn)
+}
+
+[class*="cm-s-"] .cm-image-marker,
+[class*="cm-s-"] .cm-image-alt-text {
+  color: var(--cm-atom)
+}
+
+[class*="cm-s-"] .cm-formatting,
+[class*="cm-s-"] .cm-formatting-quote,
+[class*="cm-s-"] .cm-formatting-code,
+[class*="cm-s-"] .cm-formatting-code-block,
+[class*="cm-s-"] .cm-formatting-link,
+[class*="cm-s-"] .cm-formatting-link-string,
+[class*="cm-s-"] .cm-formatting-strong,
+[class*="cm-s-"] .cm-formatting-em,
+[class*="cm-s-"] .cm-formatting-strikethrough {
+  color: var(--cm-comment)
+}
+
+[class*="cm-s-"] .cm-formatting-header {
+  color: var(--cm-keyword)
+}
+
+[class*="cm-s-"] .cm-formatting-list,
+[class*="cm-s-"] .cm-formatting-escape {
+  color: var(--cm-atom)
+}
+
+/* ---- Popups (completion hints, dialogs) ---- */
+.CodeMirror-hints,
+.CodeMirror-hints .CodeMirror-hint {
+  background: color-mix(in srgb, var(--cm-fg) 8%, var(--cm-bg));
+  color: var(--cm-fg);
+  border-color: color-mix(in srgb, var(--cm-fg) 16%, transparent)
+}
+
+.CodeMirror-hints li.CodeMirror-hint-active {
+  background: color-mix(in srgb, var(--cm-keyword) 34%, var(--cm-bg));
+  color: var(--cm-fg)
+}
+
+[class*="cm-s-"] .CodeMirror-dialog {
+  background: color-mix(in srgb, var(--cm-fg) 8%, var(--cm-bg));
+  color: var(--cm-fg)
+}
