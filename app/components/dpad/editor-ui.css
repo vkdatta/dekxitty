@@ -132,34 +132,54 @@
   background: color-mix(in srgb, var(--c-white) 10%, transparent);
 }
 
-/* ── Selection handles — 44px touch target, 22px visible knob ────────────── */
+/* ── Selection handles — Caps: line through the selected line with a dot cap (black/white theme colours) ────────────── */
 .dex-sel-handle {
   position: fixed;
   display: none;
   width: 44px;
-  height: 44px;
   z-index: 9990;
+  pointer-events: none;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
-  cursor: grab;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
+  --hc: var(--color);
+  --hr: var(--c-panel);
 }
 
-.dex-sel-handle::after {
-  content: '';
+.dex-sel-handle .dex-sh-l {
   position: absolute;
-  top: 50%;
   left: 50%;
-  width: 22px;
-  height: 22px;
+  top: 18px;
+  height: var(--lh, 22px);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--hc);
+  box-shadow: 0 0 0 1px var(--hr);
+  border-radius: 1px;
+}
+
+.dex-sel-handle .dex-sh-d {
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
   border-radius: 50%;
-  background: var(--c-accent, #4a9eff);
-  border: 2px solid var(--c-panel-2, #111);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-  transform: translate(-50%, -50%);
+  background: var(--hc);
+  box-shadow: 0 0 0 1.5px var(--hr);
+  pointer-events: auto;
+  cursor: grab;
   transition: transform 0.10s ease;
 }
 
-.dex-sel-handle:active::after {
-  transform: translate(-50%, -50%) scale(1.2);
+.dex-sel-handle-start .dex-sh-d { top: 8px; }
+.dex-sel-handle-end   .dex-sh-d { top: calc(18px + var(--lh, 22px)); }
+
+.dex-sel-handle .dex-sh-d::before {
+  content: '';
+  position: absolute;
+  inset: -17px;
+  border-radius: 50%;
 }
+
+.dex-sel-handle:active .dex-sh-d { transform: scale(1.25); }

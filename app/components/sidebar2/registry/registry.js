@@ -268,6 +268,7 @@ FunctionRegistry.registerMany([
   { function: 'openFetchModal',        icon: 'data_object',           name: 'Fetch URL',             under: ['document'], batch: 'exclude', onclick: 'openFetchModal()' },
   { function: 'handleOpenFile',        icon: 'folder_open',           name: 'Open File',             under: ['document'], batch: 'app', onclick: 'handleOpenFile()' },
   { function: 'debug',                 icon: 'bug_report',            name: 'Debug',                 under: ['document'], batch: 'app', onclick: 'debug()' },
+  { function: 'openVersionRecovery',   icon: 'history',               name: 'Recover Versions',      under: ['document'], batch: 'app', onclick: 'openVersionRecovery()' },
   { function: 'forceSyncToCloud',      icon: 'cloud_upload',          name: 'Force Sync to Cloud',   under: ['document'], batch: 'app', onclick: 'forceSyncToCloud()' },
 { function: 'foldAll',                   icon: 'unfold_less',   name: 'Fold All',                    under: ['document'], onclick: 'foldAll()' },
 { function: 'unfoldAll',                 icon: 'unfold_more',   name: 'Unfold All',                  under: ['document'], onclick: 'unfoldAll()' },

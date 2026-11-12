@@ -78,6 +78,7 @@
   // Main
 
   loadScript(APP + "js/main/editor.js");
+  loadScript(APP + "js/helpers/snapshots.js");
   loadScript(APP + "js/main/notes-state.js");
 
   // Diffusion

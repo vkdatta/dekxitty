@@ -144,3 +144,6 @@ body.mdexec-active .text-area-wrapper > .note-textarea { visibility: hidden; poi
 .mdb-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 6px; padding: 7px 10px; font-size: 12px; border-radius: 8px; background: var(--c-panel); border: 1px solid var(--c-border); }
 .mdb-note span { flex: 1 1 180px; opacity: .8; }
 .mdb-note button { height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-panel-2); color: var(--color); font: inherit; font-size: 12px; cursor: pointer; }
+
+/* Non-collapsed selection: only our handles and menu show, so the browser's own caret is hidden. */
+#mdexecPane.mdx-sel .mdb-ta, #mdexecPane.mdx-sel .mdb-rich, #mdexecPane.mdx-sel .mdb-cell { caret-color: transparent; }

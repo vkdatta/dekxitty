@@ -339,6 +339,7 @@ export function createDesigner(env) {
     if (active.ta) { s = active.ta.selectionStart; e = active.ta.selectionEnd; }
     else if (active.rich) { const r = richSel(); if (!r) return; s = r.s; e = r.e; }
     else { s = 0; e = b.end - b.start; }
+    try { pane.classList.toggle("mdx-sel", s !== e); } catch (x) {}   // hide the browser's own caret while our selection UI is showing
     env.selfWrite(() => { try { doc().setSelection(pos(b.start + s), pos(b.start + e), { scroll: false }); } catch (x) {} });
   }
 
@@ -1404,7 +1405,7 @@ export function createDesigner(env) {
     on = false; active = null; viewPref = "auto";
     clearTimeout(extTimer); clearTimeout(tblTimer); clearTimeout(pvTimer);
     closeMenu(); closeAsk(); closeFx();
-    pane.classList.remove("mdx-design");
+    pane.classList.remove("mdx-design", "mdx-sel");
     toolbar.style.display = "none";
     document.removeEventListener("selectionchange", onSelChange);
   }

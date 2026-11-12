@@ -8,8 +8,6 @@
   const DBL_TAP_MS       = 350;
   const MOVE_CANCEL_PX   = 10;
   const ATTACH_MAX_TRIES = 200;
-  const HANDLE_OFFSET    = 16;   // knob centre sits this far BELOW the text line (both handles)
-  const HANDLE_SIDE_SHIFT = 9;   // start knob leans left, end knob leans right — like native handles
   const FIND_MENU_ID     = 'find-replace-menu';
   const FIND_MENU_HIDDEN = 'find-replace-hidden';
 
@@ -306,7 +304,7 @@
         to:   cm.getCursor('to'),
         text: cm.getSelection()
       };
-      renderMenu(codeMirrorActions(cm, range), rectForRange(cm, range), source);
+      renderMenu(codeMirrorActions(cm, range), designMenuRect() || rectForRange(cm, range), source);
     } catch (_e) {
       closeMenu();
     }
@@ -326,8 +324,10 @@
     if (handleStart) return;
     handleStart = document.createElement('div');
     handleStart.className = 'dex-sel-handle dex-sel-handle-start';
+    handleStart.innerHTML = '<i class="dex-sh-l"></i><i class="dex-sh-d"></i>';
     handleEnd = document.createElement('div');
     handleEnd.className = 'dex-sel-handle dex-sel-handle-end';
+    handleEnd.innerHTML = '<i class="dex-sh-l"></i><i class="dex-sh-d"></i>';
     document.body.appendChild(handleStart);
     document.body.appendChild(handleEnd);
 
@@ -361,24 +361,115 @@
     return false;
   }
 
+  // ─── Design-mode surface (md Design: <textarea> / contenteditable blocks) ───
+  // In Design mode the CodeMirror instance is hidden, so its coordinates are meaningless. The open
+  // block's own selection drives the handles and the menu instead.
+  const PAD = 18;                       // extra hit area above/below the line (px)
+  const designOn = () => { const m = window.dexMdexec; return !!(m && m.design && m.design.hasActive && m.design.hasActive()); };
+
+  function designTarget() {
+    if (!designOn()) return null;
+    const ae = document.activeElement;
+    if (ae && ae.tagName === 'TEXTAREA' && ae.classList.contains('mdb-ta') && ae.selectionStart !== ae.selectionEnd) return { kind: 'ta', el: ae };
+    const sel = window.getSelection && window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed) {
+      const n = sel.anchorNode, host = n && (n.nodeType === 1 ? n : n.parentElement);
+      const el = host && host.closest && host.closest('.mdb-rich, .mdb-cell');
+      if (el) return { kind: 'rich', el, sel };
+    }
+    return null;
+  }
+
+  function taMirror(ta) {
+    const cs = getComputedStyle(ta), r = ta.getBoundingClientRect(), m = document.createElement('div');
+    ['fontFamily','fontSize','fontWeight','fontStyle','letterSpacing','textTransform','textIndent','lineHeight','paddingTop','paddingRight','paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth','boxSizing','tabSize','wordSpacing','wordBreak'].forEach((k) => { m.style[k] = cs[k]; });
+    m.style.cssText += ';position:fixed;visibility:hidden;pointer-events:none;white-space:pre-wrap;overflow-wrap:break-word;overflow:hidden;height:auto;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;';
+    m.textContent = ta.value + '\u200b';
+    document.body.appendChild(m);
+    const node = m.firstChild, len = ta.value.length, st = ta.scrollTop;
+    const at = (i) => {
+      i = Math.max(0, Math.min(i, len));
+      const rg = document.createRange();
+      rg.setStart(node, i); rg.setEnd(node, i);
+      let rc = rg.getClientRects()[0];
+      if (!rc || !rc.height) {
+        const j = i < len ? i : i - 1; rg.setStart(node, Math.max(0, j)); rg.setEnd(node, Math.max(0, j) + 1);
+        rc = rg.getClientRects()[0] || rg.getBoundingClientRect();
+        const x = i < len ? rc.left : rc.right;
+        return { left: x, right: x, top: rc.top - st, bottom: rc.bottom - st };
+      }
+      return { left: rc.left, right: rc.right, top: rc.top - st, bottom: rc.bottom - st };
+    };
+    return { at, len, destroy() { m.remove(); } };
+  }
+
+  function taIndexAt(mir, x, y) {
+    let lo = 0, hi = mir.len;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (mir.at(mid).bottom <= y) lo = mid + 1; else hi = mid; }
+    const top = mir.at(lo).top;
+    let s = lo, e = lo, n = 0;
+    while (s > 0 && n++ < 600 && Math.abs(mir.at(s - 1).top - top) < 3) s--;
+    n = 0;
+    while (e < mir.len && n++ < 600 && Math.abs(mir.at(e + 1).top - top) < 3) e++;
+    let a = s, b = e;
+    while (a < b) { const mid = (a + b) >> 1; if (mir.at(mid).left < x) a = mid + 1; else b = mid; }
+    if (a > s && Math.abs(mir.at(a - 1).left - x) < Math.abs(mir.at(a).left - x)) a--;
+    return a;
+  }
+
+  function designRects(t) {
+    if (t.kind === 'ta') {
+      const mir = taMirror(t.el);
+      try {
+        const a = mir.at(t.el.selectionStart), b = mir.at(t.el.selectionEnd);
+        return { a: { left: a.left, top: a.top, bottom: a.bottom }, b: { right: b.left, top: b.top, bottom: b.bottom } };
+      } finally { mir.destroy(); }
+    }
+    const rects = Array.from(t.sel.getRangeAt(0).getClientRects()).filter((r) => r.width > 0 || r.height > 0);
+    if (!rects.length) return null;
+    const f = rects[0], l = rects[rects.length - 1];
+    return { a: { left: f.left, top: f.top, bottom: f.bottom }, b: { right: l.right, top: l.top, bottom: l.bottom } };
+  }
+
+  function designMenuRect() {
+    const t = designTarget(); if (!t) return null;
+    const r = designRects(t); if (!r) return null;
+    const sameLine = Math.abs(r.a.top - r.b.top) < 3;
+    const er = t.el.getBoundingClientRect();
+    return { left: sameLine ? (r.a.left + r.b.right) / 2 : er.left + er.width / 2, top: r.a.top, bottom: r.b.bottom };
+  }
+
+  function placeHandle(el, x, top, bottom, isStart) {
+    const h = Math.max(14, bottom - top);
+    el.style.left = x + 'px';
+    el.style.top = (top - PAD) + 'px';
+    el.style.height = (h + PAD * 2) + 'px';
+    el.style.setProperty('--lh', h + 'px');
+    el._cx = x; el._cy = (top + bottom) / 2;
+    el.style.display = 'block';
+  }
+
   function positionHandles() {
-    const cm = getCm();
-    if (!cm || !cm.somethingSelected()) { hideHandles(); return; }
+    const dt = designTarget();
+    let A, B;
+    if (dt) {
+      const r = designRects(dt);
+      if (!r) { hideHandles(); return; }
+      A = r.a; B = r.b;
+    } else if (designOn()) {
+      hideHandles(); return;
+    } else {
+      const cm = getCm();
+      if (!cm || !cm.somethingSelected()) { hideHandles(); return; }
+      const a = cm.charCoords(cm.getCursor('from'), 'window');
+      const b = cm.charCoords(cm.getCursor('to'),   'window');
+      A = { left: a.left, top: a.top, bottom: a.bottom };
+      B = { right: b.right, top: b.top, bottom: b.bottom };
+    }
     if (findMenuOpen() || overlayPanelOpen()) { hideHandles(); return; }
     ensureHandles();
-
-    const a = cm.charCoords(cm.getCursor('from'), 'window');
-    const b = cm.charCoords(cm.getCursor('to'),   'window');
-
-    // Both knobs hang BELOW the text, start under the selection start and end
-    // under the selection end (the "smooth" native-style layout).
-    handleStart.style.left = (a.left  - HANDLE_SIDE_SHIFT) + 'px';
-    handleStart.style.top  = (a.bottom + HANDLE_OFFSET)    + 'px';
-    handleStart.style.display = 'block';
-
-    handleEnd.style.left = (b.right + HANDLE_SIDE_SHIFT) + 'px';
-    handleEnd.style.top  = (b.bottom + HANDLE_OFFSET)    + 'px';
-    handleEnd.style.display = 'block';
+    placeHandle(handleStart, A.left,  A.top, A.bottom, true);
+    placeHandle(handleEnd,   B.right, B.top, B.bottom, false);
   }
 
   function scheduleHandles() {
@@ -389,6 +480,8 @@
     });
   }
 
+  document.addEventListener('selectionchange', () => { if (designOn() && !window.__dexSelHandleDragging) scheduleHandles(); });
+  window.addEventListener('scroll', () => { if (handleStart && handleStart.style.display === 'block') scheduleHandles(); }, true);
   window.dexHideSelectionHandles     = hideHandles;
   window.dexScheduleSelectionHandles = scheduleHandles;
   window.dexPositionSelectionHandles = positionHandles;
@@ -413,16 +506,28 @@
   // ─── Handle drag ──────────────────────────────────────────────────────────
   let dragging = null, dragPointerId = null, dragFixedPoint = null, dragGrabX = 0, dragGrabY = 0;
 
+  let dragDesign = null;
+
   function beginHandleDrag(which, pointerId, e, el) {
     const cm = getCm();
-    if (!cm || !cm.somethingSelected()) return;
+    const dt = designTarget();
+    if (!dt && (designOn() || !cm || !cm.somethingSelected())) return;
     dragging       = which;
     dragPointerId  = pointerId;
-    dragFixedPoint = (which === 'from') ? cm.getCursor('to') : cm.getCursor('from');
-    // where inside the knob the finger landed, so the selection doesn't jump on first move
-    const r = el.getBoundingClientRect();
-    dragGrabX = e.clientX - (r.left + r.width  / 2);
-    dragGrabY = e.clientY - (r.top  + r.height / 2);
+    dragDesign     = null;
+    if (dt) {
+      if (dt.kind === 'ta') {
+        dragDesign = { kind: 'ta', el: dt.el, fixed: which === 'from' ? dt.el.selectionEnd : dt.el.selectionStart, mir: taMirror(dt.el) };
+      } else {
+        const r = dt.sel.getRangeAt(0);
+        dragDesign = { kind: 'rich', el: dt.el, fixed: which === 'from' ? { n: r.endContainer, o: r.endOffset } : { n: r.startContainer, o: r.startOffset } };
+      }
+    } else {
+      dragFixedPoint = (which === 'from') ? cm.getCursor('to') : cm.getCursor('from');
+    }
+    // finger offset from the line's centre, so the selection doesn't jump on first move
+    dragGrabX = e.clientX - (el._cx || 0);
+    dragGrabY = e.clientY - (el._cy || 0);
     window.__dexSelHandleDragging = true;
     if (isMenuOpen()) closeMenu();
   }
@@ -430,14 +535,25 @@
   function onHandleDragMove(e) {
     if (!dragging || e.pointerId !== dragPointerId) return;
     e.preventDefault();
+    const x = e.clientX - dragGrabX;
+    const y = e.clientY - dragGrabY;
+    if (dragDesign) {
+      const d = dragDesign;
+      if (d.kind === 'ta') {
+        const i = taIndexAt(d.mir, x, y);
+        d.el.setSelectionRange(Math.min(d.fixed, i), Math.max(d.fixed, i));
+        d.el.dispatchEvent(new Event('select'));
+      } else {
+        let n = null, o = 0;
+        if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); if (r) { n = r.startContainer; o = r.startOffset; } }
+        else if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); if (p) { n = p.offsetNode; o = p.offset; } }
+        if (n && d.el.contains(n)) { try { window.getSelection().setBaseAndExtent(d.fixed.n, d.fixed.o, n, o); } catch (_e) {} }
+      }
+      positionHandles();
+      return;
+    }
     const cm = getCm();
     if (!cm) return;
-    const side = dragging === 'from' ? -HANDLE_SIDE_SHIFT : HANDLE_SIDE_SHIFT;
-    const knobX = e.clientX - dragGrabX;
-    const knobY = e.clientY - dragGrabY;
-    // knob → the text point it belongs to (undo the side shift, climb above the knob offset to mid-line)
-    const x = knobX - side;
-    const y = knobY - HANDLE_OFFSET - cm.defaultTextHeight() / 2;
     const pos = cm.coordsChar({ left: x, top: y }, 'window');
     cm.setSelection(dragFixedPoint, pos);
     positionHandles();
@@ -446,6 +562,8 @@
   function endHandleDrag(e) {
     if (!dragging || e.pointerId !== dragPointerId) return;
     dragging = null; dragPointerId = null; dragFixedPoint = null;
+    if (dragDesign && dragDesign.mir) dragDesign.mir.destroy();
+    dragDesign = null;
     window.__dexSelHandleDragging = false;
     if (typeof window.dexOpenMenuForSelection === 'function') {
       window.dexOpenMenuForSelection('selhandle');

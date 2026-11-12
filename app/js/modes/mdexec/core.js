@@ -234,6 +234,9 @@ function boot() {
     selfWrite: (fn) => { const prev = selfWrite; selfWrite = true; try { fn(); } finally { selfWrite = prev; } },
     afterEdit: () => {
       const note = activeNote; if (!note) return;
+      // LEAK GUARD: the shared editor may already hold a *different* note (switching notes swaps its text
+      // before this pane's sync() runs). Never copy the editor's text into a note that is not the open one.
+      if (typeof currentNote === "undefined" || note !== currentNote) return;
       const v = source();
       lastSrc = v;
       if (note.content !== v) { note.content = v; note.lastEdited = new Date().toISOString(); note._dirty = true; }

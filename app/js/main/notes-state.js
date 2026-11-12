@@ -124,6 +124,14 @@ function parseTimestamp(isoString) {
 }
 
 function openNote(n) {
+  // Design mode keeps one block open. Commit it into the CURRENT note while the editor still holds that
+  // note's text, before the editor is swapped to the next note (otherwise the next note's text can be
+  // written into this one).
+  try {
+    if (currentNote && String(currentNote.id) !== String(n) && window.dexMdexec && window.dexMdexec.design) window.dexMdexec.design.commit();
+  } catch (err) {}
+  // Copy any keystrokes still waiting in the 100 ms input debounce into the note we are leaving.
+  try { if (currentNote && String(currentNote.id) !== String(n)) { updateNoteOnInput(); if (window.dexSnapshots) window.dexSnapshots.snap(currentNote, 'switch', true); } } catch (err) {}
   flushSaveNotes();
   if (window.debounceTimer) clearTimeout(window.debounceTimer);
   if (window.updateTimeout) cancelAnimationFrame(window.updateTimeout);
@@ -264,19 +272,70 @@ function migrateNotesToCrypto() {
   localStorage.setItem("dexIdScheme", "crypto");
 }
 
+let _notesStamp = null;          // token of the last write this tab saw/made (detects writes from other tabs)
+let _notesLoadFailed = false;    // stored notes were unreadable: never overwrite them with an empty list
+let _saveFailAt = 0;
+
+function _newStamp() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
 async function loadNotes() {
+  let saved = null;
+  try { saved = localStorage.getItem('notes'); } catch (e) {}
+  try { _notesStamp = localStorage.getItem('dexNotesStamp'); } catch (e) {}
   try {
-    const saved = localStorage.getItem('notes');
     let n = saved ? JSON.parse(saved) : [];
-    if (!Array.isArray(n)) n = [];
+    if (!Array.isArray(n)) throw new Error('notes is not an array');
     return n;
   } catch (e) {
+    // Do NOT fall back to [] silently: the next save would wipe the stored data.
+    _notesLoadFailed = true;
+    try { if (saved) localStorage.setItem('notes_unreadable_copy', saved); } catch (e2) {}
+    setTimeout(() => { try { showNotification('Stored notes could not be read. Saving is disabled so nothing is overwritten.', 'error'); } catch (e3) {} }, 1500);
     return [];
+  }
+}
+
+/** Another tab saved since we last did: pull in its newer notes instead of overwriting them with our stale copy. */
+function _mergeOtherTabs() {
+  let cur = null;
+  try { cur = localStorage.getItem('dexNotesStamp'); } catch (e) {}
+  if (!cur || cur === _notesStamp) return;
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem('notes') || '[]'); } catch (e) { return; }
+  if (!Array.isArray(stored)) return;
+  const mine = new Map(notes.map(x => [String(x.id), x]));
+  for (const o of stored) {
+    if (!o || o.id == null) continue;
+    const m = mine.get(String(o.id));
+    if (!m) { notes.push(o); continue; }                      // created in another tab
+    if (m.content === o.content) continue;
+    const newer = parseTimestamp(o.lastEdited) > parseTimestamp(m.lastEdited);
+    if (!newer) continue;
+    if (window.dexSnapshots) window.dexSnapshots.snap(o, 'other-tab', true);   // keep the other tab's text no matter what
+    if (currentNote && String(currentNote.id) === String(m.id)) continue;     // the open note wins; other text is in snapshots
+    Object.assign(m, o);
   }
 }
 
 function saveNotes() {
   if (!Array.isArray(notes)) return;
+  if (_notesLoadFailed) return;                               // protect unreadable stored data
   _savePending = false; _saveFirstAt = 0; clearTimeout(_saveTimer); _saveTimer = null;
-  localStorage.setItem("notes", JSON.stringify(notes));
+  try {
+    _mergeOtherTabs();
+    if (window.dexSnapshots && currentNote) window.dexSnapshots.snap(currentNote, 'autosave', false);
+    localStorage.setItem("notes", JSON.stringify(notes));
+    _notesStamp = _newStamp();
+    try { localStorage.setItem("dexNotesStamp", _notesStamp); } catch (e) {}
+  } catch (err) {
+    // Storage full or blocked. Previously this threw inside a timer and the edit was silently lost.
+    _savePending = true;
+    if (window.dexSnapshots && currentNote) window.dexSnapshots.snap(currentNote, 'save-failed', true);
+    const now = Date.now();
+    if (now - _saveFailAt > 15000) {
+      _saveFailAt = now;
+      try { showNotification('Could not save (browser storage full?). A safety copy was kept in Sidebar 2 > Document > Recover Versions.', 'error'); } catch (e2) {}
+    }
+    _saveTimer = setTimeout(saveNotes, 5000);
+  }
 }
