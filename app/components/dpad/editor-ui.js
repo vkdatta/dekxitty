@@ -461,10 +461,14 @@
     } else {
       const cm = getCm();
       if (!cm || !cm.somethingSelected()) { hideHandles(); return; }
-      const a = cm.charCoords(cm.getCursor('from'), 'window');
-      const b = cm.charCoords(cm.getCursor('to'),   'window');
+      // cursorCoords = the exact edge position. (charCoords is the box of the character AFTER the edge,
+      // which put the end handle one character too far right.) 'before' keeps the end handle at the end of
+      // a wrapped row instead of jumping to the start of the next one.
+      const f = cm.getCursor('from'), t = cm.getCursor('to');
+      const a = cm.cursorCoords({ line: f.line, ch: f.ch, sticky: 'after' },  'window');
+      const b = cm.cursorCoords({ line: t.line, ch: t.ch, sticky: 'before' }, 'window');
       A = { left: a.left, top: a.top, bottom: a.bottom };
-      B = { right: b.right, top: b.top, bottom: b.bottom };
+      B = { right: b.left, top: b.top, bottom: b.bottom };
     }
     if (findMenuOpen() || overlayPanelOpen()) { hideHandles(); return; }
     ensureHandles();
