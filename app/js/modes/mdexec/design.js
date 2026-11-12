@@ -320,6 +320,7 @@ export function createDesigner(env) {
   }
 
   function onTaInput() {
+    try { if (window.dexClearVirtualSel) window.dexClearVirtualSel(); } catch (x) {}
     if (!active || !active.ta) return;
     const b = blocks[active.i], ta = active.ta, nt = ta.value;
     minimalReplace(b.start, active.text, nt, active.origin || "+input");
@@ -336,7 +337,16 @@ export function createDesigner(env) {
     if (!active) return;
     const b = blocks[active.i]; if (!b) return;
     let s, e;
-    if (active.ta) { s = active.ta.selectionStart; e = active.ta.selectionEnd; }
+    const vs = window.dexVirtualSel && window.dexVirtualSel();     // selection kept by the handle layer (the real one is collapsed)
+    if (active.ta && vs && vs.kind === "ta" && vs.el === active.ta) { s = vs.s; e = vs.e; }
+    else if (active.ta) { s = active.ta.selectionStart; e = active.ta.selectionEnd; }
+    else if (active.rich && vs && vs.kind === "rich" && active.rich.contains(vs.range.commonAncestorContainer)) {
+      const sel = window.getSelection(), keep = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+      sel.removeAllRanges(); sel.addRange(vs.range.cloneRange());
+      const r = richSel();
+      sel.removeAllRanges(); if (keep) sel.addRange(keep);
+      if (!r) return; s = r.s; e = r.e;
+    }
     else if (active.rich) { const r = richSel(); if (!r) return; s = r.s; e = r.e; }
     else { s = 0; e = b.end - b.start; }
     try { pane.classList.toggle("mdx-sel", s !== e); } catch (x) {}   // hide the browser's own caret while our selection UI is showing
@@ -577,6 +587,7 @@ export function createDesigner(env) {
   /* ----- typing ----- */
 
   function onRichInput(e) {
+    try { if (window.dexClearVirtualSel) window.dexClearVirtualSel(); } catch (x) {}
     if (!active || !active.rich) return;
     const host = active.rich;
     active.mapDirty = true;
@@ -1229,6 +1240,7 @@ export function createDesigner(env) {
   }
 
   function run(name) {
+    try { if (window.dexRestoreVirtualSel) window.dexRestoreVirtualSel(); } catch (x) {}   // block tools act on the real selection
     if (!on) { notify("Switch this file to Design (bottom bar) to edit blocks"); return; }
     if (name.startsWith("ins:")) return insertKind(name.slice(4));
     switch (name) {
@@ -1416,5 +1428,5 @@ export function createDesigner(env) {
     else if (active.tbl && document.activeElement && document.activeElement.closest && document.activeElement.closest(".mdb-cell")) schedSel();
   }
 
-  return { enter, exit, isOn: () => on, renderAll, onExternalChange, run, openFx: openFxPicker, hasActive: () => !!active, commit: () => { if (on) commitActive(); } };
+  return { enter, exit, isOn: () => on, renderAll, onExternalChange, run, openFx: openFxPicker, hasActive: () => !!active, mirror: () => mirrorSel(), commit: () => { if (on) commitActive(); } };
 }

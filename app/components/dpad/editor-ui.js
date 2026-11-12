@@ -349,6 +349,7 @@
     if (_handleRafId !== null) { cancelAnimationFrame(_handleRafId); _handleRafId = null; }
     if (handleStart) handleStart.style.display = 'none';
     if (handleEnd)   handleEnd.style.display   = 'none';
+    hidePaint();
   }
 
   // Handles are fixed on <body> (z-index 9990) so they would float above the
@@ -367,17 +368,102 @@
   const PAD = 18;                       // extra hit area above/below the line (px)
   const designOn = () => { const m = window.dexMdexec; return !!(m && m.design && m.design.hasActive && m.design.hasActive()); };
 
-  function designTarget() {
-    if (!designOn()) return null;
+  // ── Virtual selection ─────────────────────────────────────────────────────
+  // Touch selections made inside a design block would make the browser show ITS OWN handles and its
+  // Cut/Copy bar on top of ours. So the moment a touch selection appears we remember it, collapse the real
+  // one (the browser then has no selection UI to show) and draw the highlight + handles ourselves. The
+  // real selection is handed back right before anything edits it (typing, cut/copy/paste, toolbar).
+  let V = null;                         // { kind:'ta', el, s, e } | { kind:'rich', el, range }
+  let lastTouchAt = 0, lastKeyAt = 0, vBusy = false, paintEl = null;
+  const BLOCK_SEL = '.mdb-ta, .mdb-rich, .mdb-cell';
+  const blockOf = (n) => { const h = n && (n.nodeType === 1 ? n : n.parentElement); return h && h.closest ? h.closest(BLOCK_SEL) : null; };
+
+  function curV() {
+    if (!V) return null;
+    try {
+      if (!V.el.isConnected) { V = null; return null; }
+      if (V.kind === 'ta') { if (V.e > V.el.value.length || V.s > V.e) { V = null; return null; } }
+      else if (!V.range.commonAncestorContainer.isConnected) { V = null; return null; }
+    } catch (_e) { V = null; return null; }
+    return V;
+  }
+
+  function hidePaint() { if (paintEl) paintEl.innerHTML = ''; }
+  function paintRects(rects) {
+    if (!paintEl) {
+      paintEl = document.createElement('div');
+      paintEl.id = 'dexVSel';
+      paintEl.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;z-index:9980;pointer-events:none';
+      document.body.appendChild(paintEl);
+    }
+    paintEl.innerHTML = '';
+    rects.forEach((r) => {
+      if (!(r.width > 0)) return;
+      const d = document.createElement('div');
+      d.style.cssText = 'position:fixed;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;background:rgba(112,112,112,.55)';
+      paintEl.appendChild(d);
+    });
+  }
+
+  function restoreV() {
+    const v = curV(); if (!v) return false;
+    vBusy = true;
+    try {
+      if (v.kind === 'ta') { v.el.focus({ preventScroll: true }); v.el.setSelectionRange(v.s, v.e); }
+      else { v.el.focus({ preventScroll: true }); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(v.range); }
+    } catch (_e) {}
+    V = null; hidePaint(); vBusy = false;
+    return true;
+  }
+
+  function realTarget() {
     const ae = document.activeElement;
-    if (ae && ae.tagName === 'TEXTAREA' && ae.classList.contains('mdb-ta') && ae.selectionStart !== ae.selectionEnd) return { kind: 'ta', el: ae };
+    if (ae && ae.tagName === 'TEXTAREA' && ae.classList.contains('mdb-ta') && ae.selectionStart !== ae.selectionEnd) return { kind: 'ta', el: ae, s: ae.selectionStart, e: ae.selectionEnd };
     const sel = window.getSelection && window.getSelection();
     if (sel && sel.rangeCount && !sel.isCollapsed) {
-      const n = sel.anchorNode, host = n && (n.nodeType === 1 ? n : n.parentElement);
-      const el = host && host.closest && host.closest('.mdb-rich, .mdb-cell');
-      if (el) return { kind: 'rich', el, sel };
+      const el = blockOf(sel.anchorNode);
+      if (el) return { kind: 'rich', el, range: sel.getRangeAt(0).cloneRange() };
     }
     return null;
+  }
+
+  function virtualize() {
+    const t = realTarget(); if (!t) return false;
+    vBusy = true;
+    try {
+      if (t.kind === 'ta') { V = { kind: 'ta', el: t.el, s: t.s, e: t.e }; t.el.setSelectionRange(t.e, t.e); }
+      else { V = { kind: 'rich', el: t.el, range: t.range }; window.getSelection().collapseToEnd(); }
+    } catch (_e) { V = null; }
+    vBusy = false;
+    return !!V;
+  }
+
+  window.dexVirtualSel = curV;
+  window.dexRestoreVirtualSel = restoreV;
+  window.dexClearVirtualSel = () => { V = null; hidePaint(); };
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') lastTouchAt = Date.now();
+    if (V && e.target.closest && (e.target.closest(BLOCK_SEL) || e.target.closest('.mdx-body')) && !e.target.closest('.dex-sel-handle')) { V = null; hidePaint(); scheduleHandles(); }
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    lastKeyAt = Date.now();
+    if (!V || ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].indexOf(e.key) >= 0) return;
+    restoreV();
+  }, true);
+  ['beforeinput', 'cut', 'copy', 'paste'].forEach((ev) => document.addEventListener(ev, () => { if (V) restoreV(); }, true));
+  document.addEventListener('selectionchange', () => {
+    if (vBusy || !designOn()) return;
+    const now = Date.now();
+    if (!window.__dexSelHandleDragging && now - lastKeyAt > 400 && now - lastTouchAt < 4000 && !curV()) virtualize();
+    scheduleHandles();
+  });
+
+  function designTarget() {
+    if (!designOn()) return null;
+    const v = curV();
+    if (v) return v.kind === 'ta' ? { kind: 'ta', el: v.el, s: v.s, e: v.e, virtual: true } : { kind: 'rich', el: v.el, range: v.range, virtual: true };
+    return realTarget();
   }
 
   function taMirror(ta) {
@@ -400,7 +486,11 @@
       }
       return { left: rc.left, right: rc.right, top: rc.top - st, bottom: rc.bottom - st };
     };
-    return { at, len, destroy() { m.remove(); } };
+    const rects = (a, b) => {
+      const rg = document.createRange(); rg.setStart(node, Math.min(a, len)); rg.setEnd(node, Math.min(b, len));
+      return Array.from(rg.getClientRects()).map((r) => ({ left: r.left, top: r.top - st, width: r.width, height: r.height }));
+    };
+    return { at, rects, len, destroy() { m.remove(); } };
   }
 
   function taIndexAt(mir, x, y) {
@@ -421,14 +511,15 @@
     if (t.kind === 'ta') {
       const mir = taMirror(t.el);
       try {
-        const a = mir.at(t.el.selectionStart), b = mir.at(t.el.selectionEnd);
-        return { a: { left: a.left, top: a.top, bottom: a.bottom }, b: { right: b.left, top: b.top, bottom: b.bottom } };
+        const a = mir.at(t.s), b = mir.at(t.e);
+        return { a: { left: a.left, top: a.top, bottom: a.bottom }, b: { right: b.left, top: b.top, bottom: b.bottom }, paint: t.virtual ? mir.rects(t.s, t.e) : null };
       } finally { mir.destroy(); }
     }
-    const rects = Array.from(t.sel.getRangeAt(0).getClientRects()).filter((r) => r.width > 0 || r.height > 0);
+    const all = Array.from(t.range.getClientRects());
+    const rects = all.filter((r) => r.width > 0 || r.height > 0);
     if (!rects.length) return null;
     const f = rects[0], l = rects[rects.length - 1];
-    return { a: { left: f.left, top: f.top, bottom: f.bottom }, b: { right: l.right, top: l.top, bottom: l.bottom } };
+    return { a: { left: f.left, top: f.top, bottom: f.bottom }, b: { right: l.right, top: l.top, bottom: l.bottom }, paint: t.virtual ? all.map((r) => ({ left: r.left, top: r.top, width: r.width, height: r.height })) : null };
   }
 
   function designMenuRect() {
@@ -456,6 +547,7 @@
       const r = designRects(dt);
       if (!r) { hideHandles(); return; }
       A = r.a; B = r.b;
+      if (r.paint) paintRects(r.paint); else hidePaint();
     } else if (designOn()) {
       hideHandles(); return;
     } else {
@@ -484,7 +576,6 @@
     });
   }
 
-  document.addEventListener('selectionchange', () => { if (designOn() && !window.__dexSelHandleDragging) scheduleHandles(); });
   window.addEventListener('scroll', () => { if (handleStart && handleStart.style.display === 'block') scheduleHandles(); }, true);
   window.dexHideSelectionHandles     = hideHandles;
   window.dexScheduleSelectionHandles = scheduleHandles;
@@ -519,21 +610,28 @@
     dragging       = which;
     dragPointerId  = pointerId;
     dragDesign     = null;
+    lastTouchAt    = Date.now();
     if (dt) {
       if (dt.kind === 'ta') {
-        dragDesign = { kind: 'ta', el: dt.el, fixed: which === 'from' ? dt.el.selectionEnd : dt.el.selectionStart, mir: taMirror(dt.el) };
+        dragDesign = { kind: 'ta', el: dt.el, virtual: !!dt.virtual, fixed: which === 'from' ? dt.e : dt.s, mir: taMirror(dt.el) };
       } else {
-        const r = dt.sel.getRangeAt(0);
-        dragDesign = { kind: 'rich', el: dt.el, fixed: which === 'from' ? { n: r.endContainer, o: r.endOffset } : { n: r.startContainer, o: r.startOffset } };
+        const r = dt.range;
+        dragDesign = { kind: 'rich', el: dt.el, virtual: !!dt.virtual, fixed: which === 'from' ? { n: r.endContainer, o: r.endOffset } : { n: r.startContainer, o: r.startOffset } };
       }
     } else {
       dragFixedPoint = (which === 'from') ? cm.getCursor('to') : cm.getCursor('from');
     }
-    // finger offset from the line's centre, so the selection doesn't jump on first move
     dragGrabX = e.clientX - (el._cx || 0);
     dragGrabY = e.clientY - (el._cy || 0);
     window.__dexSelHandleDragging = true;
     if (isMenuOpen()) closeMenu();
+  }
+
+  function pointToDom(x, y) {
+    let n = null, o = 0;
+    if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); if (r) { n = r.startContainer; o = r.startOffset; } }
+    else if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); if (p) { n = p.offsetNode; o = p.offset; } }
+    return n ? { n, o } : null;
   }
 
   function onHandleDragMove(e) {
@@ -544,15 +642,22 @@
     if (dragDesign) {
       const d = dragDesign;
       if (d.kind === 'ta') {
-        const i = taIndexAt(d.mir, x, y);
-        d.el.setSelectionRange(Math.min(d.fixed, i), Math.max(d.fixed, i));
-        d.el.dispatchEvent(new Event('select'));
+        const i = taIndexAt(d.mir, x, y), a = Math.min(d.fixed, i), b = Math.max(d.fixed, i);
+        if (d.virtual) { const v = curV(); if (v) { v.s = a; v.e = b; } }
+        else { d.el.setSelectionRange(a, b); }
       } else {
-        let n = null, o = 0;
-        if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); if (r) { n = r.startContainer; o = r.startOffset; } }
-        else if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); if (p) { n = p.offsetNode; o = p.offset; } }
-        if (n && d.el.contains(n)) { try { window.getSelection().setBaseAndExtent(d.fixed.n, d.fixed.o, n, o); } catch (_e) {} }
+        const pt = pointToDom(x, y);
+        if (pt && d.el.contains(pt.n)) {
+          const r = document.createRange();
+          try {
+            r.setStart(d.fixed.n, d.fixed.o); r.collapse(true);
+            if (r.comparePoint(pt.n, pt.o) < 0) r.setStart(pt.n, pt.o); else r.setEnd(pt.n, pt.o);
+            if (d.virtual) { const v = curV(); if (v) v.range = r; }
+            else { const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+          } catch (_e) {}
+        }
       }
+      try { window.dexMdexec.design.mirror(); } catch (_e) {}
       positionHandles();
       return;
     }
@@ -811,6 +916,7 @@
   // ─── Suppress native UI ───────────────────────────────────────────────────
   function suppressBrowserContextMenu() {
     document.addEventListener('contextmenu', (e) => {
+      if (e.target.closest && e.target.closest(BLOCK_SEL)) { e.preventDefault(); return; }
       if (isFormField(e.target) && !isDedicatedSurface(e.target)) return;
       e.preventDefault();
     });
