@@ -471,7 +471,7 @@
     const prismEnabled = localStorage.getItem('prismEnabled') === '1';
     document.body.classList.toggle('prism-off', !prismEnabled);
 
-    const appThemeInit = localStorage.getItem('appTheme') === 'light' ? 'light' : 'dark';
+    const appThemeInit = localStorage.getItem('appTheme') === 'dark' ? 'dark' : 'light';
     document.body.dataset.theme = appThemeInit;
 
     window.addEventListener('dexSettingsChanged', (e) => {
@@ -504,7 +504,7 @@
         }
       }
       if (k === 'appTheme') {
-        const next = e.detail.value === 'light' ? 'light' : 'dark';
+        const next = e.detail.value === 'dark' ? 'dark' : 'light';
         document.body.dataset.theme = next;
         const cmExplicit = localStorage.getItem('cmTheme');
         if (!cmExplicit && window.dexEditor && typeof window.dexEditor.setTheme === 'function') {

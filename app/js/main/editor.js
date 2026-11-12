@@ -50,7 +50,7 @@
     function pickInitialCmTheme() {
       const explicit = normalizeCmTheme(localStorage.getItem('cmTheme'));
       if (explicit) return explicit;
-      return localStorage.getItem('appTheme') === 'light' ? DEFAULT_CM_LIGHT : DEFAULT_CM_DARK;
+      return localStorage.getItem('appTheme') === 'dark' ? DEFAULT_CM_DARK : DEFAULT_CM_LIGHT;
     }
     const initialTheme = pickInitialCmTheme();
     applyCmToneAttr(initialTheme);

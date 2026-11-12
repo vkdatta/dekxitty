@@ -120,7 +120,7 @@ export function createSettingsManager() {
     }
   }
 
-  applyTheme(lsRead(LS.THEME) === 'light' ? 'light' : 'dark');
+  applyTheme(lsRead(LS.THEME) === 'dark' ? 'dark' : 'light');
 
   // Single source of truth for "does the explicit CM theme still match the
   // active tone, and if not, reset it to the tone's default" — used by both
@@ -141,7 +141,7 @@ export function createSettingsManager() {
     if (!e || !e.detail) return;
     const k = e.detail.key;
     if (k === LS.THEME) {
-      const next = e.detail.value === 'light' ? 'light' : 'dark';
+      const next = e.detail.value === 'dark' ? 'dark' : 'light';
       applyTheme(next);
       ensureCmThemeMatchesTone(next);
       paint();
@@ -322,7 +322,8 @@ export function createSettingsManager() {
   window.addEventListener('hashchange', onRouteChange);
 
   function currentAppTheme() {
-    return lsRead(LS.THEME) === 'light' ? 'light' : 'dark';
+    // Light is the default: an absent key means light; only 'dark' is stored.
+    return lsRead(LS.THEME) === 'dark' ? 'dark' : 'light';
   }
 
   function currentCmTheme() {
@@ -471,8 +472,7 @@ export function createSettingsManager() {
     } else if (key === 'THEME') {
       const cur = currentAppTheme();
       const next = cur === 'light' ? 'dark' : 'light';
-      if (next === 'dark') lsWrite(LS.THEME, null);
-      else lsWrite(LS.THEME, 'light');
+      lsWrite(LS.THEME, next === 'dark' ? 'dark' : null);
       applyTheme(next);
       ensureCmThemeMatchesTone(next);
       fire('dexSettingsChanged', { key: LS.THEME, value: next });

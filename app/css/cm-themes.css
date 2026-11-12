@@ -5,19 +5,18 @@
    (dracula, eclipse, ...) so nothing is fetched from the cdnjs theme folder.
 
    HOW IT WORKS
-   1. Each theme is a block of 18 colour variables on .cm-s-<id> (Part 1).
+   1. Each theme is a block of 16 colour variables on .cm-s-<id> (Part 1).
    2. Part 2 maps those variables to EVERY CodeMirror class once, for all themes.
       A theme therefore cannot forget to colour something: if a variable
       exists, every class that uses it is coloured.
 
    TO ADD A THEME
-   - Add a Part 1 block (copy one, change the id and the 18 values).
+   - Add a Part 1 block (copy one, change the id and the 16 values).
    - Nothing else in this file: Part 2 applies to any element whose class
      contains "cm-s-" (CodeMirror puts cm-s-<theme> on the editor).
    - Register the id in editor.js (DARK/LIGHT lists) and settings.js.
 
    VARIABLE -> WHAT IT COLOURS
-   --cm-bg       editor background          --cm-gutter  line-number gutter
    --cm-fg       plain text, variables      --cm-comment comments, quotes, rules
    --cm-keyword  keywords, headings, links  --cm-atom    true/null, escapes
    --cm-number   numbers, warnings          --cm-fn      function/def names, links
@@ -37,8 +36,6 @@
 .cm-s-mint-night,
 .CodeMirror-hints.mint-night {
   color-scheme: dark;
-  --cm-bg: #0f1312;
-  --cm-gutter: #161b19;
   --cm-fg: #dde6e1;
   --cm-comment: #6f8279;
   --cm-keyword: #7fe3b5;
@@ -61,8 +58,6 @@
 .cm-s-cream-ink,
 .CodeMirror-hints.cream-ink {
   color-scheme: dark;
-  --cm-bg: #0e0e0e;
-  --cm-gutter: #1b1b1b;
   --cm-fg: #ecdfc3;
   --cm-comment: #82796a;
   --cm-keyword: #b4ddcb;
@@ -85,8 +80,6 @@
 .cm-s-deep-teal,
 .CodeMirror-hints.deep-teal {
   color-scheme: dark;
-  --cm-bg: #0b1a1b;
-  --cm-gutter: #112224;
   --cm-fg: #d6e6e4;
   --cm-comment: #668789;
   --cm-keyword: #5fe0c4;
@@ -109,8 +102,6 @@
 .cm-s-midnight-indigo,
 .CodeMirror-hints.midnight-indigo {
   color-scheme: dark;
-  --cm-bg: #10121f;
-  --cm-gutter: #161a2b;
   --cm-fg: #dbe0f2;
   --cm-comment: #7079a3;
   --cm-keyword: #b79cff;
@@ -133,8 +124,6 @@
 .cm-s-ember-moss,
 .CodeMirror-hints.ember-moss {
   color-scheme: dark;
-  --cm-bg: #15130f;
-  --cm-gutter: #1d1a15;
   --cm-fg: #e6dfce;
   --cm-comment: #80796a;
   --cm-keyword: #e8b659;
@@ -157,8 +146,6 @@
 .cm-s-deep-ocean,
 .CodeMirror-hints.deep-ocean {
   color-scheme: dark;
-  --cm-bg: #07172b;
-  --cm-gutter: #0d2238;
   --cm-fg: #d3e4f2;
   --cm-comment: #5f819c;
   --cm-keyword: #4dd0e1;
@@ -181,8 +168,6 @@
 .cm-s-peacock-lagoon,
 .CodeMirror-hints.peacock-lagoon {
   color-scheme: dark;
-  --cm-bg: #082229;
-  --cm-gutter: #0e2c35;
   --cm-fg: #d4ebea;
   --cm-comment: #5f8b92;
   --cm-keyword: #38e0c0;
@@ -206,8 +191,6 @@
 .cm-s-mint-paper,
 .CodeMirror-hints.mint-paper {
   color-scheme: light;
-  --cm-bg: #f4fffb;
-  --cm-gutter: #e4fef5;
   --cm-fg: #1f2d28;
   --cm-comment: #6a827b;
   --cm-keyword: #0a7a55;
@@ -230,8 +213,6 @@
 .cm-s-sea-glass,
 .CodeMirror-hints.sea-glass {
   color-scheme: light;
-  --cm-bg: #eefaf6;
-  --cm-gutter: #dff5ee;
   --cm-fg: #1b2b2c;
   --cm-comment: #657f82;
   --cm-keyword: #0b7d73;
@@ -254,8 +235,6 @@
 .cm-s-pistachio,
 .CodeMirror-hints.pistachio {
   color-scheme: light;
-  --cm-bg: #f7fbee;
-  --cm-gutter: #ebf3da;
   --cm-fg: #27301f;
   --cm-comment: #76825f;
   --cm-keyword: #4a7a0e;
@@ -278,8 +257,6 @@
 .cm-s-frost-lilac,
 .CodeMirror-hints.frost-lilac {
   color-scheme: light;
-  --cm-bg: #f3fbfa;
-  --cm-gutter: #e3f4f2;
   --cm-fg: #232a33;
   --cm-comment: #6f7c8b;
   --cm-keyword: #6a42c9;
@@ -302,8 +279,6 @@
 .cm-s-linen-mint,
 .CodeMirror-hints.linen-mint {
   color-scheme: light;
-  --cm-bg: #f8fcf7;
-  --cm-gutter: #eef6ec;
   --cm-fg: #2a2a24;
   --cm-comment: #7d7e72;
   --cm-keyword: #b4472b;
@@ -326,8 +301,6 @@
 .cm-s-sea-breeze,
 .CodeMirror-hints.sea-breeze {
   color-scheme: light;
-  --cm-bg: #f1faff;
-  --cm-gutter: #e2f2fb;
   --cm-fg: #14303d;
   --cm-comment: #5a7a8a;
   --cm-keyword: #00717f;
@@ -350,8 +323,6 @@
 .cm-s-turquoise-shore,
 .CodeMirror-hints.turquoise-shore {
   color-scheme: light;
-  --cm-bg: #effcf8;
-  --cm-gutter: #dcf6ef;
   --cm-fg: #12302d;
   --cm-comment: #57797a;
   --cm-keyword: #0a6f8f;
@@ -376,23 +347,14 @@
 
 /* ---- Derived colours (computed from each theme's own palette) ---- */
 [class*="cm-s-"] {
-  --cm-linenum: color-mix(in srgb, var(--cm-fg) 55%, var(--cm-gutter))
+  --cm-linenum: color-mix(in srgb, var(--cm-fg) 55%, var(--c-panel))
 }
 
-/* ---- Editor surface ---- */
+/* ---- Editor surface ----
+   Themes colour TEXT only. The editor and gutter backgrounds come from the
+   site palette (see main.css), so they never change with the theme. */
 [class*="cm-s-"].CodeMirror {
-  background: var(--cm-bg);
   color: var(--cm-fg)
-}
-
-[class*="cm-s-"] .CodeMirror-gutters {
-  background: var(--cm-gutter);
-  border-right: 0
-}
-
-[class*="cm-s-"] .CodeMirror-gutter-filler,
-[class*="cm-s-"] .CodeMirror-scrollbar-filler {
-  background-color: var(--cm-bg)
 }
 
 [class*="cm-s-"] .CodeMirror-linenumber {
@@ -405,10 +367,6 @@
 
 [class*="cm-s-"] .CodeMirror-guttermarker-subtle {
   color: var(--cm-comment)
-}
-
-[class*="cm-s-"] .CodeMirror-activeline-gutter {
-  background: color-mix(in srgb, var(--cm-fg) 6%, transparent)
 }
 
 [class*="cm-s-"] .CodeMirror-activeline-gutter .CodeMirror-linenumber {
@@ -688,17 +646,17 @@
 /* ---- Popups (completion hints, dialogs) ---- */
 .CodeMirror-hints,
 .CodeMirror-hints .CodeMirror-hint {
-  background: color-mix(in srgb, var(--cm-fg) 8%, var(--cm-bg));
+  background: color-mix(in srgb, var(--cm-fg) 8%, var(--c-black));
   color: var(--cm-fg);
   border-color: color-mix(in srgb, var(--cm-fg) 16%, transparent)
 }
 
 .CodeMirror-hints li.CodeMirror-hint-active {
-  background: color-mix(in srgb, var(--cm-keyword) 34%, var(--cm-bg));
+  background: color-mix(in srgb, var(--cm-keyword) 34%, var(--c-black));
   color: var(--cm-fg)
 }
 
 [class*="cm-s-"] .CodeMirror-dialog {
-  background: color-mix(in srgb, var(--cm-fg) 8%, var(--cm-bg));
+  background: color-mix(in srgb, var(--cm-fg) 8%, var(--c-black));
   color: var(--cm-fg)
 }

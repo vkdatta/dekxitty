@@ -56,12 +56,9 @@
   --removed-text: var(--c-danger);
   --added-bg: color-mix(in srgb, var(--c-green) 14%, transparent);
   --added-text: var(--c-green);
-  --editor-bg-dark: var(--c-black);
-  --editor-gutter-dark: var(--c-panel);
-  --editor-gutter-border-dark: transparent;
-  --editor-bg-light: var(--c-text-dim);
-  --editor-gutter-light: var(--c-white);
-  --editor-gutter-border-light: color-mix(in srgb, var(--c-black) 08%, transparent);
+  /* Editor = same surface as the page (--primary); gutter = a different surface. Follows the app theme. */
+  --editor-bg: var(--c-black);
+  --editor-gutter: var(--c-panel);
   --c-accent-green-vold-1: var(--c-green);
   --c-accent-green-vold-2: var(--c-green);
   --diff-topbar-height: 70px;
@@ -97,8 +94,5 @@ html[data-theme="light"] {
   --c-accent-green-vold-2: var(--c-green);
   --selection-color: color-mix(in srgb, var(--c-accent) 20%, transparent);
   --shadow: 0 1px 0 var(--c-panel-3);
-  --editor-bg-light: var(--c-black);
-  --editor-gutter-light: var(--c-panel);
-  --editor-gutter-border-light: var(--c-border);
   color: var(--color);
 }
