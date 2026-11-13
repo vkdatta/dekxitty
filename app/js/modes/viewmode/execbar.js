@@ -18,6 +18,8 @@
     const note = (typeof currentNote !== "undefined" && currentNote) || null;
     const show = !!note && paneUp() && window.dexView.isExec(note) && !window.dexView.exclusiveActive();
     document.body.classList.toggle("execbar-on", show);
+    const s1 = $("sidebar1"), s2 = $("secondary-sidebar");
+    document.body.classList.toggle("execbar-panel", !!((s2 && s2.classList.contains("open")) || (s1 && s1.classList.contains("open"))));
     if (!show) { document.body.classList.remove("execbar-typing"); return; }
     const design = window.dexView.editing(note);
     bar.querySelectorAll(".diff-topbar-button").forEach((b) => b.classList.toggle("active", (b.dataset.target === "design") === design));
