@@ -8,3 +8,5 @@ body.execbar-on.execbar-typing .diff-bottombar.exec-bottombar { display: none; }
    sidebar1 (z 10) and sidebar2 (z 51). Keep it above the editor but below every sidebar. */
 .diff-bottombar.exec-bottombar { z-index: 9; }
 body.mode-filemanager .diff-bottombar.exec-bottombar { display: none !important; }
+body:has(#secondary-sidebar.open) .diff-bottombar.exec-bottombar,
+body:has(#sidebar1.open) .diff-bottombar.exec-bottombar { display: none !important; }

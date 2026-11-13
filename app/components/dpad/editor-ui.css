@@ -3,8 +3,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Selection highlight ─────────────────────────────────────────────────── */
-/* Dark theme keeps the grey highlight; light theme uses the soft accent tint
-   (--selection-color) and keeps the text colour so syntax colours stay readable. */
+/* Background only: text keeps its own colour (syntax colours, bold, links) instead of turning white.
+   Dark = grey, light = soft tint of the accent. #dexVSel is our own painted selection (Design / Read). */
 .CodeMirror-selected,
 .CodeMirror-focused .CodeMirror-selected,
 .CodeMirror .CodeMirror-selectedtext,
@@ -13,14 +13,12 @@
 .CodeMirror-line > span > span ::selection,
 ::selection {
   background: #707070 !important;
-  color: #fff !important;
-}
-html[data-theme="light"] .CodeMirror-selected,
-html[data-theme="light"] .CodeMirror-focused .CodeMirror-selected,
-html[data-theme="light"] .CodeMirror .CodeMirror-selectedtext {
-  background: color-mix(in srgb, var(--c-accent) 22%, transparent) !important;
   color: inherit !important;
 }
+#dexVSel > div { background: rgba(112,112,112,.55); }
+html[data-theme="light"] .CodeMirror-selected,
+html[data-theme="light"] .CodeMirror-focused .CodeMirror-selected,
+html[data-theme="light"] .CodeMirror .CodeMirror-selectedtext,
 html[data-theme="light"] .CodeMirror-line ::selection,
 html[data-theme="light"] .CodeMirror-line > span ::selection,
 html[data-theme="light"] .CodeMirror-line > span > span ::selection,
@@ -28,6 +26,9 @@ html[data-theme="light"] ::selection {
   background: color-mix(in srgb, var(--c-accent) 22%, transparent) !important;
   color: inherit !important;
 }
+html[data-theme="light"] #dexVSel > div { background: color-mix(in srgb, var(--c-accent) 22%, transparent); }
+/* Read view: no browser callout / lens chip on long-press */
+#mdexecPane .mdx-body { -webkit-touch-callout: none; }
 
 /* ── Native toolbar menu — icon-only horizontal pill ─────────────────────── */
 #dexNativeMenu {

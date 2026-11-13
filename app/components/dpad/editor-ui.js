@@ -390,7 +390,32 @@
   }
 
   // ─── Public open API ──────────────────────────────────────────────────────
+  function readActions() {
+    return [
+      {
+        label: 'Copy', icon: 'copy',
+        run: async () => {
+          const v = curV(); const text = v ? v.range.toString() : String(window.getSelection() || '');
+          notify((await clipboardWrite(text)) ? 'Copied' : 'Copy failed');
+          V = null; hidePaint(); hideHandles();
+        }
+      },
+      {
+        label: 'Select All', icon: 'selectAll',
+        run: () => {
+          const body = document.querySelector('#mdexecPane .mdx-body'); if (!body) return;
+          const rg = document.createRange(); rg.selectNodeContents(body);
+          vBusy = true; try { window.getSelection().removeAllRanges(); } catch (_e) {} vBusy = false;
+          V = { kind: 'rich', el: body, range: rg };
+          scheduleHandles();
+          scheduleMenu('generic', () => ({ actions: readActions(), rect: designMenuRect() }));
+        }
+      }
+    ];
+  }
+
   window.dexOpenMenuForSelection = function (source) {
+    if (readOn() && curV()) { clearPendingFor('generic'); renderMenu(readActions(), designMenuRect(), 'generic'); return; }
     const cm = getCm();
     if (!cm) { notify('Editor not ready'); return; }
 
@@ -472,6 +497,11 @@
   // block's own selection drives the handles and the menu instead.
   const PAD = 18;                       // extra hit area above/below the line (px)
   const designOn = () => { const m = window.dexMdexec; return !!(m && m.design && m.design.hasActive && m.design.hasActive()); };
+  // Markdown Read view: static rendered HTML (#mdexecPane .mdx-body) with no editable blocks. Touch
+  // selections there get the same treatment as Design blocks, so the browser's own handles / floating
+  // bar / "search with Google" chip never show and ours do.
+  const readOn = () => document.body.classList.contains('mdexec-active') && !designOn() && !!document.querySelector('#mdexecPane .mdx-body');
+  const readBodyOf = (n) => { const h = n && (n.nodeType === 1 ? n : n.parentElement); return h && h.closest ? h.closest('#mdexecPane .mdx-body') : null; };
 
   // ── Virtual selection ─────────────────────────────────────────────────────
   // Touch selections made inside a design block would make the browser show ITS OWN handles and its
@@ -505,7 +535,7 @@
     rects.forEach((r) => {
       if (!(r.width > 0)) return;
       const d = document.createElement('div');
-      d.style.cssText = 'position:fixed;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;background:rgba(112,112,112,.55)';
+      d.style.cssText = 'position:fixed;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;';
       paintEl.appendChild(d);
     });
   }
@@ -528,6 +558,10 @@
     if (sel && sel.rangeCount && !sel.isCollapsed) {
       const el = blockOf(sel.anchorNode);
       if (el) return { kind: 'rich', el, range: sel.getRangeAt(0).cloneRange() };
+      if (readOn()) {
+        const rb = readBodyOf(sel.anchorNode);
+        if (rb && rb.contains(sel.focusNode)) return { kind: 'rich', el: rb, range: sel.getRangeAt(0).cloneRange() };
+      }
     }
     return null;
   }
@@ -558,15 +592,21 @@
   }, true);
   ['beforeinput', 'cut', 'copy', 'paste'].forEach((ev) => document.addEventListener(ev, () => { if (V) restoreV(); }, true));
   document.addEventListener('selectionchange', () => {
-    if (vBusy || !designOn()) return;
+    const inRead = readOn();
+    if (vBusy || !(designOn() || inRead)) return;
     const now = Date.now();
-    if (!window.__dexSelHandleDragging && now - lastKeyAt > 400 && now - lastTouchAt < 4000 && !curV()) virtualize();
+    let fresh = false;
+    if (!window.__dexSelHandleDragging && now - lastKeyAt > 400 && now - lastTouchAt < 4000 && !curV()) fresh = virtualize();
     scheduleHandles();
+    if (inRead && fresh) scheduleMenu('generic', () => {
+      const v = curV(); if (!v) return null;
+      return { actions: readActions(), rect: designMenuRect() };
+    });
     if (isMenuOpen() && !FOREIGN_SOURCES[activeMenuSource] && !window.__dexSelHandleDragging && !sameDesign(designSnap(), menuDesign)) closeMenu();
   });
 
   function designTarget() {
-    if (!designOn()) return null;
+    if (!designOn() && !readOn()) return null;
     const v = curV();
     if (v) return v.kind === 'ta' ? { kind: 'ta', el: v.el, s: v.s, e: v.e, virtual: true } : { kind: 'rich', el: v.el, range: v.range, virtual: true };
     return realTarget();
@@ -654,7 +694,7 @@
       if (!r) { hideHandles(); return; }
       A = r.a; B = r.b;
       if (r.paint) paintRects(r.paint); else hidePaint();
-    } else if (designOn()) {
+    } else if (designOn() || readOn()) {
       hideHandles(); return;
     } else {
       const cm = getCm();
@@ -712,7 +752,7 @@
   function beginHandleDrag(which, pointerId, e, el) {
     const cm = getCm();
     const dt = designTarget();
-    if (!dt && (designOn() || !cm || !cm.somethingSelected())) return;
+    if (!dt && (designOn() || readOn() || !cm || !cm.somethingSelected())) return;
     dragging       = which;
     dragPointerId  = pointerId;
     dragDesign     = null;
@@ -989,6 +1029,7 @@
 
   function hookGenericText() {
     document.addEventListener('selectionchange', () => {
+      if (readOn() && (curV() || vBusy)) return;   // virtual selection: its own menu is managed above
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) { closeMenu('generic'); return; }
 
