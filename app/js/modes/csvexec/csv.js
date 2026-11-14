@@ -68,3 +68,42 @@ export function toClipboardText(rows) {
     return /[\t\n\r"]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }).join("\t")).join("\n");
 }
+
+/** Total width (px) a copied table gets in Docs / Word; columns share it equally (2 cols → 225px, 3 → 150px). */
+export const CLIPBOARD_TABLE_WIDTH = 450;
+
+const escHtml = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * HTML for the system clipboard (text/html). Inline styles only — Google Docs and Word ignore stylesheets.
+ *  - every cell has a solid 1px border, so the table is bordered natively once pasted
+ *  - fixed layout, 450px total split equally between the copied columns
+ *  - no row height set + wrapping enabled, so rows auto-size to wrapped text
+ * `fmts` (optional, same shape as rows) carries bold / italic / align / colour / background.
+ */
+export function toClipboardHtml(rows, fmts) {
+  const nCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  if (!rows.length || !nCols) return "";
+  const colW = Math.floor(CLIPBOARD_TABLE_WIDTH / nCols);
+  const tblW = colW * nCols;
+  const border = "border:1px solid #000000;";
+  const cols = Array.from({ length: nCols }, () => `<col width="${colW}" style="width:${colW}px">`).join("");
+  const body = rows.map((r, i) => {
+    let tds = "";
+    for (let j = 0; j < nCols; j++) {
+      const f = (fmts && fmts[i] && fmts[i][j]) || {};
+      let st = `${border}width:${colW}px;padding:4px 6px;vertical-align:top;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;`;
+      const al = { l: "left", c: "center", r: "right" }[f.al];
+      if (al) st += `text-align:${al};`;
+      if (f.tc) st += `color:${f.tc};`;
+      if (f.bg) st += `background-color:${f.bg};`;
+      if (f.b) st += "font-weight:bold;";
+      if (f.i) st += "font-style:italic;";
+      const txt = escHtml(j < r.length ? r[j] : "").replace(/\r\n|\r|\n/g, "<br>");
+      tds += `<td width="${colW}" style="${st}">${txt}</td>`;
+    }
+    return `<tr>${tds}</tr>`;
+  }).join("");
+  return `<table border="1" cellspacing="0" cellpadding="4" width="${tblW}" style="border-collapse:collapse;border:1px solid #000000;table-layout:fixed;width:${tblW}px;">`
+    + `<colgroup>${cols}</colgroup><tbody>${body}</tbody></table>`;
+}

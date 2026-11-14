@@ -12,8 +12,8 @@
  *
  * Virtualised: only visible cells are in the DOM; rows/columns have individual sizes.
  */
-import { Sheet, ROWS, COLS, DEF_COLW, DEF_ROWH, keyOf, colName, colIndex, addr, parseAddr, isFormula, shiftFormula, fillCells, autoFillLastRow } from "./engine.js";
-import { recogniseStored, serializeGrid, serialize, recogniseClipboard, toClipboardText } from "./csv.js";
+import { Sheet, FILTER_OPS, ROWS, COLS, DEF_COLW, DEF_ROWH, keyOf, colName, colIndex, addr, parseAddr, isFormula, shiftFormula, fillCells, autoFillLastRow } from "./engine.js";
+import { recogniseStored, serializeGrid, serialize, recogniseClipboard, toClipboardText, toClipboardHtml } from "./csv.js";
 import { FUNCTION_LIST, CATEGORIES, importCache, exportCache, clearCache, onCacheChange } from "./functions.js";
 
 const BASE_HEADH = 28, BASE_RHW = 52, MINW = 24, MINH = 18, LH = 18, PADX = 8, MAXW = 800;
@@ -48,7 +48,7 @@ export function createGrid(host, hooks) {
   const pointers = new Map(); let pinch = null, zoomTipT = null;
 
   const sizeC = (c) => (sheet.hidC.has(c) ? 0 : sheet.colW[c] * zoom);
-  const sizeR = (r) => (sheet.hidR.has(r) ? 0 : sheet.rowH[r] * zoom);
+  const sizeR = (r) => (sheet.rowHid.has(r) ? 0 : sheet.rowH[r] * zoom);
   function rebuildCols() { colX[0] = 0; for (let c = 0; c < COLS; c++) colX[c + 1] = colX[c] + sizeC(c); }
   function rebuildRows() { rowY[0] = 0; for (let r = 0; r < ROWS; r++) rowY[r + 1] = rowY[r] + sizeR(r); }
   function rebuildGeom() { rebuildCols(); rebuildRows(); }
@@ -83,6 +83,7 @@ export function createGrid(host, hooks) {
         <span class="cx-sep"></span>
         <button type="button" class="cx-btn" data-a="filldown" title="Fill down (Ctrl+D)">Fill ↓</button>
         <button type="button" class="cx-btn" data-a="find" title="Find & replace (Ctrl+F)">Find</button>
+        <button type="button" class="cx-btn" data-a="filter" title="Create / remove a filter (Ctrl+Shift+L)">Filter</button>
         <span class="cx-sep"></span>
         <button type="button" class="cx-btn" data-a="zout" title="Zoom out (Ctrl −)">−</button>
         <button type="button" class="cx-btn cx-zlbl" data-a="zlbl" title="Zoom — tap to type a % or reset">100%</button>
@@ -225,6 +226,12 @@ export function createGrid(host, hooks) {
       const al = fm.al || (txt !== "" && !sheet.isError(r, c) && isNumLike(txt) ? "r" : "");
       if (al) st += `text-align:${al === "c" ? "center" : al === "r" ? "right" : "left"};`;
     } else if (txt !== "" && isNumLike(txt) && !sheet.isError(r, c)) st += "text-align:right;";
+    const fl = sheet.filter;
+    if (fl && r === fl.r1 && c >= fl.c1 && c <= fl.c2) {                       // filter header: tint + ▾ button
+      const cr = fl.crit && fl.crit[c], on = cr && ((cr.ex && cr.ex.length) || (cr.cond && cr.cond.op));
+      cls += " cx-flh"; st += `padding-right:${Math.round(22 * zoom)}px;`;
+      return `<div class="${cls}" style="${st}">${txt === "" ? "" : esc(txt)}<span class="cx-fb${on ? " on" : ""}">${on ? "⏷" : "▾"}</span></div>`;
+    }
     return `<div class="${cls}" style="${st}">${txt === "" ? "" : esc(txt)}</div>`;
   }
   function render() {
@@ -252,7 +259,7 @@ export function createGrid(host, hooks) {
     for (const r of rowsList) {
       const h = sizeR(r); if (h <= 0) continue;
       const sel = r >= s.r1 && r <= s.r2, whole = sel && isWholeRows(s);
-      heads += headCell("cx-rh" + (sel ? " cx-hl" : "") + (whole ? " cx-hw" : "") + (r < fr ? " cx-hz" : ""), `top:${Y(r)}px;width:${RHW}px;height:${h}px`, r + 1);
+      heads += headCell("cx-rh" + (sel ? " cx-hl" : "") + (whole ? " cx-hw" : "") + (r < fr ? " cx-hz" : "") + (sheet.fltR.size && sheet.filter && r > sheet.filter.r1 && r <= sheet.filter.r2 ? " cx-rfl" : ""), `top:${Y(r)}px;width:${RHW}px;height:${h}px`, r + 1);
     }
     heads += `<div class="cx-corner" style="width:${RHW}px;height:${HEADH}px"></div>`;
     elHeads.innerHTML = heads;
@@ -293,6 +300,7 @@ export function createGrid(host, hooks) {
     if (statusEl.textContent !== s) statusEl.textContent = s;
     statusEl.classList.toggle("cx-busy", sheet.running);
     const zt = Math.round(zoom * 100) + "%"; if (zlbl.textContent !== zt) zlbl.textContent = zt;
+    const fb = host.querySelector('[data-a="filter"]'); if (fb) fb.classList.toggle("on", !!sheet.filter);
     const fm = sheet.getFmt(cur.r, cur.c) || {};
     host.querySelectorAll('[data-a="bold"],[data-a="italic"],[data-a="wrap"],[data-a="al-l"],[data-a="al-c"],[data-a="al-r"]').forEach((b) => {
       const k = b.dataset.a; b.classList.toggle("on", k === "bold" ? !!fm.b : k === "italic" ? !!fm.i : k === "wrap" ? !!fm.wr : k === "al-l" ? fm.al === "l" : k === "al-c" ? fm.al === "c" : fm.al === "r");
@@ -313,7 +321,7 @@ export function createGrid(host, hooks) {
     sheet.colW.forEach((v, i) => { if (v !== DEF_COLW) w[i] = v; });
     sheet.rowH.forEach((v, i) => { if (v !== DEF_ROWH) h[i] = v; });
     sheet.fmt.forEach((v, k) => { fmt[k] = v; });
-    return { w, h, hr: [...sheet.hidR], hc: [...sheet.hidC], fz: { ...sheet.freeze }, fmt, z: Math.round(zoom * 1000) / 1000, cache: exportCache() };
+    return { w, h, hr: [...sheet.hidR], hc: [...sheet.hidC], fz: { ...sheet.freeze }, fmt, z: Math.round(zoom * 1000) / 1000, cache: exportCache(), flt: sheet.filter || undefined };
   }
   function applyMeta(m) {
     sheet.resetLayout(); zoom = 1;
@@ -324,9 +332,17 @@ export function createGrid(host, hooks) {
       if (m.h) for (const k in m.h) { const i = +k; if (i >= 0 && i < ROWS) sheet.rowH[i] = Math.max(MINH, ok(m.h[k], DEF_ROWH)); }
       (m.hr || []).forEach((i) => { if (i >= 0 && i < ROWS) sheet.hidR.add(i); });
       (m.hc || []).forEach((i) => { if (i >= 0 && i < COLS) sheet.hidC.add(i); });
+      if (m.flt && typeof m.flt === "object") {
+        const f = m.flt, n = (v, hi) => (Number.isInteger(v) && v >= 0 && v < hi ? v : -1);
+        if (n(f.r1, ROWS) >= 0 && n(f.r2, ROWS) > n(f.r1, ROWS) && n(f.c1, COLS) >= 0 && n(f.c2, COLS) >= n(f.c1, COLS)) {
+          const crit = {}; for (const k in f.crit || {}) { const cr = f.crit[k]; if (cr && +k >= f.c1 && +k <= f.c2) crit[+k] = { ex: Array.isArray(cr.ex) ? cr.ex.map(String) : [], cond: cr.cond && cr.cond.op ? { op: String(cr.cond.op), a: String(cr.cond.a == null ? "" : cr.cond.a), b: String(cr.cond.b == null ? "" : cr.cond.b) } : null }; }
+          sheet.filter = { r1: f.r1, r2: f.r2, c1: f.c1, c2: f.c2, crit };
+        }
+      }
       if (m.fz) sheet.freeze = { r: clamp(m.fz.r | 0, 0, 50), c: clamp(m.fz.c | 0, 0, 20) };
       if (m.fmt) for (const k in m.fmt) { const n = +k; if (n >= 0 && n < ROWS * COLS && m.fmt[k] && typeof m.fmt[k] === "object") sheet.fmt.set(n, m.fmt[k]); }
     }
+    sheet.computeFilter(); refilterPending = !!sheet.filter;
     setZoomVars(); rebuildGeom();
   }
   function flush() {
@@ -338,7 +354,10 @@ export function createGrid(host, hooks) {
   function scheduleMeta() { metaDirty = true; clearTimeout(metaT); metaT = setTimeout(emitMeta, 700); }
   onCacheChange(scheduleMeta);
   let recalcPending = false;
-  function scheduleRecalc() { recalcPending = true; clearTimeout(recalcT); recalcT = setTimeout(() => { recalcPending = false; sheet.recalc(); requestRender(); }, 30); }
+  let refilterPending = false;      // re-evaluate the filter once formula values are known (load / structural change / undo)
+  function refilter() { if (!sheet.filter && !sheet.fltR.size) return; sheet.computeFilter(); rebuildGeom(); updateSizes(); requestRender(); }
+  function afterRecalc() { if (refilterPending && !sheet.running && !recalcPending) { refilterPending = false; refilter(); } requestRender(); }
+  function scheduleRecalc() { recalcPending = true; clearTimeout(recalcT); recalcT = setTimeout(() => { recalcPending = false; Promise.resolve(sheet.recalc()).then(afterRecalc, () => {}); requestRender(); }, 30); }
   sheet.onUpdate = () => requestRender();
   function changed(metaToo) { schedulePersist(); scheduleRecalc(); if (metaToo) scheduleMeta(); requestRender(); }
 
@@ -370,15 +389,21 @@ export function createGrid(host, hooks) {
   function structural(fn, layoutOnly) {
     if (roBlocked()) return false;
     if (ed) commitEdit(null);
-    if (sheet.running || recalcPending) { notify("Wait for the calculation to finish"); return false; }
+    if (!layoutOnly && (sheet.running || recalcPending)) { notify("Wait for the calculation to finish"); return false; }
     const before = sheet.snapshot();
     const err = fn();
     if (typeof err === "string" && err) { sheet.restore(before); rebuildGeom(); notify(err); return false; }
-    rebuildGeom(); updateSizes();
+    sheet.computeFilter(); if (sheet.filter && !layoutOnly) refilterPending = true;
+    rebuildGeom(); updateSizes(); keepCursorVisible();
     pushUndo({ t: "s", before, after: sheet.snapshot(), cur: { ...cur }, ext: { ...ext } });
     if (layoutOnly) { schedulePersist(); scheduleMeta(); requestRender(); } else { sheet.values.clear(); changed(true); }
     syncBar();
     return true;
+  }
+  function keepCursorVisible() {      // the cursor row got filtered away → hop to the nearest visible row
+    if (!sheet.rowHid.has(cur.r)) return;
+    let r = stepVisible(cur.r, -1, sheet.rowHid, ROWS); if (sheet.rowHid.has(r)) r = stepVisible(cur.r, 1, sheet.rowHid, ROWS);
+    cur = { r, c: cur.c }; ext = { ...cur };
   }
   function applyEntry(e, dir) {
     if (e.t === "s") { sheet.restore(dir < 0 ? e.before : e.after); rebuildGeom(); updateSizes(); }
@@ -392,14 +417,14 @@ export function createGrid(host, hooks) {
     if (ed) cancelEdit();
     const e = undoStack.pop(); if (!e) { notify("Nothing to undo"); return; }
     applyEntry(e, -1); redoStack.push(e); cur = { ...e.cur }; ext = { ...e.ext };
-    sheet.values.clear(); changed(true); selChanged();
+    sheet.values.clear(); refilterPending = !!sheet.filter; changed(true); selChanged();
   }
   function redo() {
     if (roBlocked()) return;
     if (ed) cancelEdit();
     const e = redoStack.pop(); if (!e) { notify("Nothing to redo"); return; }
     applyEntry(e, 1); undoStack.push(e);
-    sheet.values.clear(); changed(true); selChanged();
+    sheet.values.clear(); refilterPending = !!sheet.filter; changed(true); selChanged();
   }
 
   /* ═════════════════════════════ editing ═════════════════════════════ */
@@ -411,7 +436,7 @@ export function createGrid(host, hooks) {
   function startEdit(initial, mode, origin, fresh) {
     if (ed) return;
     if (roBlocked()) { if (origin === "bar") { try { fxIn.blur(); } catch (e) {} } return; }
-    if (sheet.hidR.has(cur.r) || sheet.hidC.has(cur.c)) return;
+    if (sheet.rowHid.has(cur.r) || sheet.hidC.has(cur.c)) return;
     closePill();
     const raw = sheet.get(cur.r, cur.c);
     ed = { r: cur.r, c: cur.c, mode: mode || "edit", origin: origin || "cell", ref: null, orig: raw, fresh: !!fresh, touched: false };
@@ -548,7 +573,7 @@ export function createGrid(host, hooks) {
   function moveCur(dr, dc, extend) {
     const base = extend ? ext : cur;
     let r = base.r, c = base.c;
-    if (dr) { const s = Math.sign(dr); for (let i = 0; i < Math.abs(dr); i++) r = stepVisible(r, s, sheet.hidR, ROWS); }
+    if (dr) { const s = Math.sign(dr); for (let i = 0; i < Math.abs(dr); i++) r = stepVisible(r, s, sheet.rowHid, ROWS); }
     if (dc) { const s = Math.sign(dc); for (let i = 0; i < Math.abs(dc); i++) c = stepVisible(c, s, sheet.hidC, COLS); }
     if (extend) ext = { r, c }; else { cur = { r, c }; ext = { ...cur }; }
     selChanged();
@@ -571,19 +596,23 @@ export function createGrid(host, hooks) {
   }
 
   /* ═════════════════════════════ clipboard ═════════════════════════════ */
+  let lastSkipped = false;      // copy skipped rows hidden by the filter (like Excel / Sheets)
   function selectionBlock(valuesOnly) {
     const s = rect(); let r2 = s.r2, c2 = s.c2;
     if (isWholeCols(s) || isWholeRows(s) || (s.r1 === 0 && s.c1 === 0 && s.r2 === ROWS - 1 && s.c2 === COLS - 1)) {   // whole rows/cols: trim to the used area
       const u = usedRange(); if (isWholeCols(s)) r2 = Math.max(0, u.maxR); if (isWholeRows(s)) c2 = Math.max(0, u.maxC);
     }
-    const rows = [], fmts = [];
-    for (let r = s.r1; r <= r2; r++) { const row = [], fr2 = []; for (let c = s.c1; c <= c2; c++) { row.push(valuesOnly ? sheet.valueText(r, c) : sheet.get(r, c)); fr2.push(sheet.getFmt(r, c) || null); } rows.push(row); fmts.push(fr2); }
+    const rows = [], fmts = []; lastSkipped = false;
+    for (let r = s.r1; r <= r2; r++) { if (sheet.fltR.has(r)) { lastSkipped = true; continue; } const row = [], fr2 = []; for (let c = s.c1; c <= c2; c++) { row.push(valuesOnly ? sheet.valueText(r, c) : sheet.get(r, c)); fr2.push(sheet.getFmt(r, c) || null); } rows.push(row); fmts.push(fr2); }
     return { rows, fmts, rect: { r1: s.r1, c1: s.c1, r2, c2 } };
   }
+  let lastHtml = "";      // bordered, fixed-width HTML table for the last copy (Docs / Word)
   function doCopy(cut) {
     const vals = selectionBlock(true), raws = selectionBlock(false);
     const tsv = toClipboardText(vals.rows);
+    lastHtml = toClipboardHtml(vals.rows, raws.fmts);
     clip = { tsv, raws: raws.rows, fmts: raws.fmts, rect: raws.rect, noShift: !!cut };
+    if (lastSkipped) clip = null;       // non-contiguous copy → paste as plain values
     if (cut) clearSelection(true);
     return tsv;
   }
@@ -620,8 +649,8 @@ export function createGrid(host, hooks) {
   }
   const inMyInput = (t) => t === editor || t === fxIn || t === nameBox || t === fq || t === fr;
   const mine = () => active && !overlayOpen() && (root.contains(document.activeElement) || document.activeElement === document.body);
-  document.addEventListener("copy", (e) => { if (!mine() || inMyInput(e.target) || ed) return; e.clipboardData.setData("text/plain", doCopy(false)); e.preventDefault(); });
-  document.addEventListener("cut", (e) => { if (!mine() || inMyInput(e.target) || ed) return; e.clipboardData.setData("text/plain", doCopy(true)); e.preventDefault(); });
+  document.addEventListener("copy", (e) => { if (!mine() || inMyInput(e.target) || ed) return; { const t = doCopy(false); e.clipboardData.setData("text/plain", t); if (lastHtml) e.clipboardData.setData("text/html", lastHtml); } e.preventDefault(); });
+  document.addEventListener("cut", (e) => { if (!mine() || inMyInput(e.target) || ed) return; { const t = doCopy(true); e.clipboardData.setData("text/plain", t); if (lastHtml) e.clipboardData.setData("text/html", lastHtml); } e.preventDefault(); });
   document.addEventListener("paste", (e) => { if (!mine() || inMyInput(e.target) || ed) return; e.preventDefault(); pasteText(e.clipboardData.getData("text/plain"), pasteMode); pasteMode = "all"; });
   let pasteMode = "all";
   async function pasteFromClipboard(mode) {
@@ -630,11 +659,14 @@ export function createGrid(host, hooks) {
   }
   async function copyToSystem(cut) {
     const t = doCopy(cut);
-    try { await navigator.clipboard.writeText(t); notify(cut ? "Cut" : "Copied"); } catch (x) { notify(cut ? "Cut (paste inside this sheet)" : "Copied (paste inside this sheet)"); }
+    try {
+      if (lastHtml && window.ClipboardItem) await navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([t], { type: "text/plain" }), "text/html": new Blob([lastHtml], { type: "text/html" }) })]);
+      else await navigator.clipboard.writeText(t);
+      notify(cut ? "Cut" : "Copied"); } catch (x) { notify(cut ? "Cut (paste inside this sheet)" : "Copied (paste inside this sheet)"); }
   }
 
   /* ═════════════════════════════ clear / fill / format ═════════════════════════════ */
-  function cellsOf(s) { const l = []; for (let r = s.r1; r <= s.r2; r++) for (let c = s.c1; c <= s.c2; c++) l.push({ r, c }); return l; }
+  function cellsOf(s) { const l = []; for (let r = s.r1; r <= s.r2; r++) if (!sheet.fltR.has(r)) for (let c = s.c1; c <= s.c2; c++) l.push({ r, c }); return l; }
   function limited(s) {      // whole-row/col/sheet selections only touch the used area for formatting loops
     const u = usedRange(); const q = { ...s };
     if (isWholeCols(s)) q.r2 = Math.max(0, Math.min(ROWS - 1, Math.max(u.maxR, 0)));
@@ -767,6 +799,8 @@ export function createGrid(host, hooks) {
     }, true);
   }
   function sortSel(dir) {
+    const fl = sheet.filter, sel = rect();
+    if (fl && cur.c >= fl.c1 && cur.c <= fl.c2 && ((sel.r1 === sel.r2 && sel.c1 === sel.c2) || (isWholeCols(sel) && !isWholeRows(sel)))) { sortFilterCol(cur.c, dir); return; }
     const s = rect(), u = usedRange();
     if (u.maxR < 0) { notify("Nothing to sort"); return; }
     let r1, r2, c1, c2, key = cur.c;
@@ -782,6 +816,98 @@ export function createGrid(host, hooks) {
       cur = { r: src.r1 + dr, c: src.c1 + dc }; ext = { r: src.r2 + dr, c: src.c2 + dc }; selChanged(false);
       notify(copy ? "Copied" : "Moved");
     }
+  }
+
+  /* ═════════════════════════════ filter ═════════════════════════════ */
+  function filterBtnHit(h) {
+    const f = sheet.filter; if (!f || h.r !== f.r1 || h.c < f.c1 || h.c > f.c2) return false;
+    const right = X(h.c) + sizeC(h.c); return h.x <= right && h.x >= right - Math.max(20, 24 * zoom);
+  }
+  function currentRegion(r, c) {      // Excel's "current region": grow the box while the next row / column touching it has data
+    let r1 = r, r2 = r, c1 = c, c2 = c, grew = true;
+    const rowHas = (rr) => { for (let cc = c1; cc <= c2; cc++) if (sheet.get(rr, cc) !== "") return true; return false; };
+    const colHas = (cc) => { for (let rr = r1; rr <= r2; rr++) if (sheet.get(rr, cc) !== "") return true; return false; };
+    while (grew) {
+      grew = false;
+      if (r1 > 0 && rowHas(r1 - 1)) { r1--; grew = true; }
+      if (r2 < ROWS - 1 && rowHas(r2 + 1)) { r2++; grew = true; }
+      if (c1 > 0 && colHas(c1 - 1)) { c1--; grew = true; }
+      if (c2 < COLS - 1 && colHas(c2 + 1)) { c2++; grew = true; }
+    }
+    return { r1, r2, c1, c2 };
+  }
+  function filterSummary() { const f = sheet.filter; if (!f) return "Filter removed"; const total = f.r2 - f.r1; return `Showing ${total - sheet.fltR.size} of ${total} rows`; }
+  function toggleFilter() {
+    if (sheet.filter) { if (structural(() => { sheet.filter = null; }, true)) notify("Filter removed"); return; }
+    const s = rect(), u = usedRange();
+    if (u.maxR < 0) { notify("Nothing to filter"); return; }
+    let r1, r2, c1, c2;
+    if (s.r1 === s.r2 && s.c1 === s.c2) ({ r1, r2, c1, c2 } = currentRegion(cur.r, cur.c));
+    else { r1 = s.r1; c1 = isWholeRows(s) ? 0 : s.c1; c2 = Math.min(isWholeRows(s) ? u.maxC : s.c2, u.maxC); r2 = Math.min(s.r2, u.maxR); }
+    if (r2 <= r1 || c2 < c1) { notify("Click inside your data (header row + at least one data row), or select the range to filter"); return; }
+    if (structural(() => { sheet.filter = { r1, r2, c1, c2, crit: {} }; }, true)) notify(`Filter on ${addr(r1, c1)}:${addr(r2, c2)} — tap ▾ in the header row`);
+  }
+  function clearFilterCriteria() {
+    if (!sheet.filter) return;
+    if (structural(() => { sheet.filter = { ...sheet.filter, crit: {} }; }, true)) notify(filterSummary());
+  }
+  function sortFilterCol(c, dir) {
+    const f = sheet.filter; if (!f) return;
+    if (f.r2 - f.r1 < 2) { notify("Need at least 2 data rows to sort"); return; }
+    if (structural(() => { sheet.sortRows(f.r1 + 1, f.r2, f.c1, f.c2, c, dir); })) notify(`Sorted ${f.r2 - f.r1} rows by column ${colName(c)} ${dir > 0 ? "A→Z" : "Z→A"}`);
+  }
+  function setColCriteria(c, ex, cond) {
+    const has = (ex && ex.length) || (cond && cond.op);
+    if (structural(() => {
+      const nf = JSON.parse(JSON.stringify(sheet.filter)); nf.crit = nf.crit || {};
+      if (has) nf.crit[c] = { ex: ex || [], cond: cond || null }; else delete nf.crit[c];
+      sheet.filter = nf;
+    }, true)) notify(filterSummary());
+  }
+  const FLT_MAXVALS = 500;
+  function openFilterMenu(c) {
+    const f = sheet.filter; if (!f || c < f.c1 || c > f.c2) return;
+    if (ed) commitEdit(null);
+    const cr = (f.crit && f.crit[c]) || {}, exSet = new Set(cr.ex || []), cond = cr.cond || { op: "", a: "", b: "" };
+    const cnt = new Map();
+    for (let r = f.r1 + 1; r <= f.r2; r++) { const t = sheet.valueText(r, c); cnt.set(t, (cnt.get(t) || 0) + 1); }
+    const isN = (x) => x.trim() !== "" && isFinite(Number(x));
+    const vals = [...cnt.keys()].sort((a, b) => {
+      if (a === "" || b === "") return a === "" ? 1 : -1;
+      const an = isN(a), bn = isN(b); if (an && bn) return Number(a) - Number(b); if (an !== bn) return an ? -1 : 1;
+      const x = a.toLowerCase(), y = b.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0;
+    });
+    const shown = vals.slice(0, FLT_MAXVALS);
+    const wrap = document.createElement("div"); wrap.className = "cx-flt";
+    const head = sheet.valueText(f.r1, c);
+    wrap.innerHTML = `
+      <div class="cx-fsort"><button type="button" data-s="1">Sort A → Z</button><button type="button" data-s="-1">Sort Z → A</button></div>
+      <div class="cx-fl">Filter by condition</div>
+      <select class="cx-fop"><option value="">None</option>${FILTER_OPS.map(([k, l]) => `<option value="${k}"${cond.op === k ? " selected" : ""}>${l}</option>`).join("")}</select>
+      <div class="cx-fin"><input class="cx-fa" placeholder="Value" value="${esc(cond.a || "").replace(/"/g, "&quot;")}" autocomplete="off" spellcheck="false"><input class="cx-fb2" placeholder="and" value="${esc(cond.b || "").replace(/"/g, "&quot;")}" autocomplete="off" spellcheck="false"></div>
+      <div class="cx-fl">Filter by values</div>
+      <input class="cx-fs" placeholder="Search values" autocomplete="off" spellcheck="false">
+      <div class="cx-fall"><button type="button" data-v="all">Select all</button><button type="button" data-v="none">Clear</button><span class="cx-fcnt"></span></div>
+      <div class="cx-flist">${shown.map((v, i) => `<label class="cx-fv" data-t="${esc(v.toLowerCase()).replace(/"/g, "&quot;")}"><input type="checkbox" data-i="${i}"${exSet.has(v) ? "" : " checked"}><span>${v === "" ? "<i>(Blanks)</i>" : esc(v)}</span><em>${cnt.get(v)}</em></label>`).join("")}</div>
+      ${vals.length > FLT_MAXVALS ? `<div class="cx-fl">Showing the first ${FLT_MAXVALS} of ${vals.length} values — use a condition for the rest.</div>` : ""}`;
+    const op = wrap.querySelector(".cx-fop"), ia = wrap.querySelector(".cx-fa"), ib = wrap.querySelector(".cx-fb2"), q = wrap.querySelector(".cx-fs");
+    const boxes = [...wrap.querySelectorAll('.cx-fv input')], rows = [...wrap.querySelectorAll(".cx-fv")], cntEl = wrap.querySelector(".cx-fcnt");
+    const syncOp = () => { const o = op.value; ia.style.display = o && o !== "empty" && o !== "nonempty" ? "" : "none"; ib.style.display = o === "between" || o === "nbetween" ? "" : "none"; };
+    const syncCnt = () => { cntEl.textContent = `${boxes.filter((b) => b.checked).length} / ${boxes.length}`; };
+    op.addEventListener("change", syncOp); syncOp(); syncCnt();
+    wrap.addEventListener("change", (e) => { if (e.target.matches('.cx-fv input')) syncCnt(); });
+    q.addEventListener("input", () => { const t = q.value.trim().toLowerCase(); rows.forEach((r) => { r.style.display = !t || r.dataset.t.includes(t) ? "" : "none"; }); });
+    wrap.addEventListener("click", (e) => {
+      const sb = e.target.closest("[data-s]"); if (sb) { const d = +sb.dataset.s; closeTop(); setTimeout(() => sortFilterCol(c, d), 0); return; }
+      const vb = e.target.closest("[data-v]"); if (vb) { const on = vb.dataset.v === "all"; rows.forEach((r, i) => { if (r.style.display !== "none") boxes[i].checked = on; }); syncCnt(); }
+    });
+    topModal({ title: `Filter — ${colName(c)}${head ? ": " + (head.length > 24 ? head.slice(0, 24) + "…" : head) : ""}`, body: wrap, footer: '<button class="modal-btn">Cancel</button><button class="modal-btn active">OK</button>' }).then((r) => {
+      if (!r || r.action !== "OK") return;
+      const ex = []; shown.forEach((v, i) => { if (!boxes[i].checked) ex.push(v); });
+      const o = op.value, cd = o ? { op: o, a: ia.value, b: ib.value } : null;
+      setColCriteria(c, ex, cd);
+    });
+    setTimeout(() => { try { q.focus(); } catch (x) {} }, 120);
   }
 
   /* ═════════════════════════════ find & replace ═════════════════════════════ */
@@ -952,6 +1078,8 @@ export function createGrid(host, hooks) {
     A.push({ sep: 1 });
     add("Fill down", fillDownSelection, { k: "Ctrl+D" }); add("Fill right", fillRightSelection, { k: "Ctrl+R" });
     add("Sort A → Z", () => sortSel(1)); add("Sort Z → A", () => sortSel(-1));
+    add(sheet.filter ? "Remove filter" : "Create a filter", toggleFilter, { k: "Ctrl+Shift+L" });
+    if (sheet.filter && sheet.fltR.size) add("Show all rows (clear criteria)", clearFilterCriteria);
     A.push({ sep: 1 });
     add("Bold", () => toggleFmt("b"), { k: "Ctrl+B" }); add("Italic", () => toggleFmt("i"), { k: "Ctrl+I" }); add("Wrap text", () => toggleFmt("wr"));
     add("Text colour…", () => openPalette("tc")); add("Fill colour…", () => openPalette("bg"));
@@ -1226,6 +1354,7 @@ export function createGrid(host, hooks) {
     root.focus({ preventScroll: true });
     if ((h.zone === "colhead" || h.zone === "rowhead") && h.edge >= 0) { e.preventDefault(); startResize(e, h); return; }
     if (h.zone === "corner") { e.preventDefault(); selectAll(); return; }
+    if (h.zone === "cell" && filterBtnHit(h)) { e.preventDefault(); startDrag({ type: "fbtn", c: h.c }, e); return; }
     if (h.zone === "colhead" || h.zone === "rowhead") {
       if (touch) { startPending(e, h, false); return; }
       e.preventDefault();
@@ -1254,6 +1383,7 @@ export function createGrid(host, hooks) {
     if (e.target.closest && (e.target.closest(".cx-fh") || e.target.closest(".cx-sh") || e.target.closest(".cx-rg") || e.target.closest(".cx-hh"))) return;
     const h = hit(e.clientX, e.clientY); let c = "";
     if (h.zone === "colhead" && h.edge >= 0) c = "col-resize"; else if (h.zone === "rowhead" && h.edge >= 0) c = "row-resize";
+    else if (h.zone === "cell" && filterBtnHit(h)) c = "pointer";
     else if (h.zone === "cell" && onSelBorder(h.x, h.y, 4)) c = "move"; else if (h.zone === "colhead" || h.zone === "rowhead") c = "pointer";
     if (c !== hoverCursor) { hoverCursor = c; stage.style.cursor = c; }
   }
@@ -1317,6 +1447,7 @@ export function createGrid(host, hooks) {
     try { stage.releasePointerCapture(e.pointerId); } catch (x) {}
     switch (d.type) {
       case "tap": clearTimeout(d.lp); if (cancelled) return; if (d.moved) startInertia(d); else handleTap(d); return;
+      case "fbtn": if (!cancelled) { const c = d.c; setTimeout(() => openFilterMenu(c), 0); } return;
       case "fill": { const t = fillPrev; fillPrev = null; if (t && !cancelled) { const n = applyFill(d.src, t); notify(`Filled ${plural(n, "cell")}`); } else requestRender(); return; }
       case "move": { const mp = movePrev; movePrev = null; if (mp && !cancelled && (d.dr || d.dc)) moveBlock(d.src, d.dr, d.dc, d.copy); else requestRender(); return; }
       case "resize":
@@ -1339,6 +1470,7 @@ export function createGrid(host, hooks) {
       if (e.key === "+" || e.key === "=") { e.preventDefault(); stepZoom(1); return; }
       if (e.key === "-" || e.key === "_") { e.preventDefault(); stepZoom(-1); return; }
       if (e.key === "0") { e.preventDefault(); zoomTo(1); return; }
+      if (e.shiftKey && (e.key === "L" || e.key === "l") && !ed && !inMyInput(e.target)) { e.preventDefault(); toggleFilter(); return; }
     }
     if (ed || inMyInput(e.target) || overlayOpen()) return;
     closePill();
@@ -1409,6 +1541,7 @@ export function createGrid(host, hooks) {
       case "al-l": setAlign("l"); break; case "al-c": setAlign("c"); break; case "al-r": setAlign("r"); break;
       case "tc": case "bg": openPalette(a); break;
       case "filldown": fillDownSelection(); break; case "find": openFind(false); break;
+      case "filter": toggleFilter(); break;
       case "clear": clearSelection(true); break;
       case "zin": stepZoom(1); break; case "zout": stepZoom(-1); break; case "zlbl": openZoomDialog(); break;
       case "menu": showMenuAt(br.right - 240, br.bottom + 4, false); break;

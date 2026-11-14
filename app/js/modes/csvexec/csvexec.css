@@ -205,3 +205,23 @@ body.csvexec-active .text-area-wrapper > .note-textarea { visibility: hidden; po
 
 /* leave room for the Read / Design bar floating at the bottom */
 body.execbar-on #csvexecPane { bottom: calc(var(--diff-topbar-height, 70px) + var(--diff-topbar-gap, 2vh) + 10px); }
+
+/* ── filter ── */
+.cx-flh { background: color-mix(in srgb, var(--c-accent) 14%, var(--c-panel, transparent)); font-weight: 600; }
+.cx-fb { position: absolute; right: calc(3px * var(--cx-z)); top: 50%; transform: translateY(-50%); width: calc(17px * var(--cx-z)); height: calc(17px * var(--cx-z)); line-height: calc(17px * var(--cx-z));
+  text-align: center; font-size: calc(10px * var(--cx-z)); border-radius: 3px; background: var(--c-panel-3); color: var(--color); cursor: pointer; font-weight: 400; }
+.cx-fb.on { background: var(--c-accent); color: var(--primary); }
+.cx-rh.cx-rfl { color: var(--c-accent); }
+.cx-flt { display: flex; flex-direction: column; gap: 8px; min-width: min(360px, 80vw); }
+.cx-flt .cx-fl { font-size: 12px; opacity: .7; margin-top: 4px; }
+.cx-flt .cx-fsort { display: flex; gap: 8px; }
+.cx-flt .cx-fsort button, .cx-flt .cx-fall button { flex: 1; padding: 8px 10px; border: 1px solid var(--c-border); border-radius: 6px; background: var(--c-panel-3); color: var(--color); cursor: pointer; }
+.cx-flt .cx-fall { display: flex; gap: 8px; align-items: center; }
+.cx-flt .cx-fall button { flex: 0 0 auto; padding: 4px 10px; }
+.cx-flt .cx-fcnt { margin-left: auto; font-size: 12px; opacity: .7; }
+.cx-flt select, .cx-flt input[type=text], .cx-flt .cx-fa, .cx-flt .cx-fb2, .cx-flt .cx-fs { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--c-border); border-radius: 6px; background: var(--c-panel-3); color: var(--color); font: inherit; }
+.cx-flt .cx-fin { display: flex; flex-direction: column; gap: 6px; }
+.cx-flt .cx-flist { max-height: 38vh; overflow: auto; border: 1px solid var(--c-border); border-radius: 6px; }
+.cx-flt .cx-fv { display: flex; align-items: center; gap: 10px; padding: 7px 10px; cursor: pointer; }
+.cx-flt .cx-fv span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-flt .cx-fv em { font-style: normal; font-size: 12px; opacity: .6; }

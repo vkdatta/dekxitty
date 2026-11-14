@@ -157,6 +157,41 @@ const spanMap = (a, b, op, at, k) => {
 };
 
 export const DEF_COLW = 120, DEF_ROWH = 30;
+
+/* ───────────────────────────── filter (Excel / Sheets style) ─────────────────────────────
+ * sheet.filter = { r1 (header row), r2, c1, c2, crit: { [col]: { ex: [excluded display values], cond: {op,a,b} | null } } }
+ * Rows that fail are collected in sheet.fltR and drawn with height 0 (derived — never stored). */
+export const FILTER_OPS = [
+  ["contains", "Text contains"], ["ncontains", "Text does not contain"], ["starts", "Text starts with"], ["ends", "Text ends with"],
+  ["eq", "Is equal to"], ["neq", "Is not equal to"],
+  ["gt", "Greater than"], ["gte", "Greater than or equal to"], ["lt", "Less than"], ["lte", "Less than or equal to"],
+  ["between", "Is between"], ["nbetween", "Is not between"], ["empty", "Is empty"], ["nonempty", "Is not empty"]
+];
+export function filterTest(text, ex, cond) {
+  if (ex && ex.has(text)) return false;
+  if (!cond || !cond.op) return true;
+  const t = String(text), tl = t.toLowerCase(), a = String(cond.a == null ? "" : cond.a), b = String(cond.b == null ? "" : cond.b), al = a.toLowerCase();
+  const isN = (x) => x.trim() !== "" && isFinite(Number(x));
+  const cmp = (x, y) => { if (isN(x) && isN(y)) return Number(x) - Number(y); const p = x.toLowerCase(), q = y.toLowerCase(); return p < q ? -1 : p > q ? 1 : 0; };
+  const has = t.trim() !== "";
+  switch (cond.op) {
+    case "contains": return tl.includes(al);
+    case "ncontains": return !tl.includes(al);
+    case "starts": return tl.startsWith(al);
+    case "ends": return tl.endsWith(al);
+    case "eq": return cmp(t, a) === 0;
+    case "neq": return cmp(t, a) !== 0;
+    case "gt": return has && cmp(t, a) > 0;
+    case "gte": return has && cmp(t, a) >= 0;
+    case "lt": return has && cmp(t, a) < 0;
+    case "lte": return has && cmp(t, a) <= 0;
+    case "between": return has && cmp(t, a) >= 0 && cmp(t, b) <= 0;
+    case "nbetween": return !has || cmp(t, a) < 0 || cmp(t, b) > 0;
+    case "empty": return !has;
+    case "nonempty": return has;
+  }
+  return true;
+}
 export const keyOf = (r, c) => r * COLS + c;
 
 /* ───────────────────────────── parser ───────────────────────────── */
@@ -340,17 +375,35 @@ export class Sheet {
     this.colW = new Array(COLS).fill(DEF_COLW);
     this.rowH = new Array(ROWS).fill(DEF_ROWH);
     this.hidR = new Set(); this.hidC = new Set();
+    this.filter = null; this.fltR = new Set();
+    this.rowHid = { has: (r) => this.hidR.has(r) || this.fltR.has(r) };   // hidden by the user OR by the filter
     this.fmt = new Map();                 // key -> {b,i,al,tc,bg,wr}
     this.freeze = { r: 0, c: 0 };
   }
   getFmt(r, c) { return this.fmt.get(r * COLS + c); }
   snapshot() {
-    return { raw: this.raw.map((r) => r.slice()), colW: this.colW.slice(), rowH: this.rowH.slice(), hidR: new Set(this.hidR), hidC: new Set(this.hidC), fmt: new Map(this.fmt), freeze: { ...this.freeze } };
+    return { raw: this.raw.map((r) => r.slice()), colW: this.colW.slice(), rowH: this.rowH.slice(), hidR: new Set(this.hidR), hidC: new Set(this.hidC), fmt: new Map(this.fmt), freeze: { ...this.freeze }, filter: this.filter ? JSON.parse(JSON.stringify(this.filter)) : null };
+  }
+  /** Recompute which rows the filter hides. Formula cells whose value isn't calculated yet are given the benefit of the doubt. */
+  computeFilter() {
+    this.fltR = new Set();
+    const f = this.filter; if (!f) return;
+    const list = [];
+    for (const k in f.crit || {}) { const c = +k, cr = f.crit[k]; if (c >= f.c1 && c <= f.c2 && cr && ((cr.ex && cr.ex.length) || (cr.cond && cr.cond.op))) list.push({ c, ex: new Set(cr.ex || []), cond: cr.cond }); }
+    if (!list.length) return;
+    for (let r = f.r1 + 1; r <= f.r2; r++) {
+      for (const q of list) {
+        const raw = this.raw[r][q.c];
+        if (isFormula(raw) && !this.values.has(Sheet.key(r, q.c))) continue;
+        if (!filterTest(this.valueText(r, q.c), q.ex, q.cond)) { this.fltR.add(r); break; }
+      }
+    }
   }
   restore(sn) {
     this.raw = sn.raw.map((r) => r.slice()); this.colW = sn.colW.slice(); this.rowH = sn.rowH.slice();
     this.hidR = new Set(sn.hidR); this.hidC = new Set(sn.hidC); this.fmt = new Map(sn.fmt); this.freeze = { ...sn.freeze };
-    this.values.clear();
+    this.filter = sn.filter ? JSON.parse(JSON.stringify(sn.filter)) : null;
+    this.values.clear(); this.computeFilter();
   }
   /** Rewrite every formula in the sheet. */
   rewriteAll(fns) {
@@ -403,6 +456,15 @@ export class Sheet {
     return "";
   }
   _shiftSetsFmt(axis, op, at, k) {
+    const fl = this.filter;                                           // keep the filter range glued to its data
+    if (fl) {
+      if (axis === "r") { const sp = spanMap(fl.r1, fl.r2, op, at, k); if (!sp || (op === "del" && at <= fl.r1 && at + k > fl.r1)) this.filter = null; else { fl.r1 = sp[0]; fl.r2 = sp[1]; } }
+      else {
+        const sp = spanMap(fl.c1, fl.c2, op, at, k);
+        if (!sp) this.filter = null;
+        else { const nc = {}; for (const key in fl.crit || {}) { const n = ptMap(+key, op, at, k); if (n >= sp[0] && n <= sp[1]) nc[n] = fl.crit[key]; } fl.c1 = sp[0]; fl.c2 = sp[1]; fl.crit = nc; }
+      }
+    }
     const set = axis === "r" ? this.hidR : this.hidC;
     const ns = new Set(); set.forEach((v) => { const n = ptMap(v, op, at, k); if (n >= 0 && n < (axis === "r" ? ROWS : COLS)) ns.add(n); });
     if (axis === "r") this.hidR = ns; else this.hidC = ns;
