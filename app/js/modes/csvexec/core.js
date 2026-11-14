@@ -8,6 +8,11 @@
  *  • The note's `content` stays a plain CSV string (formulas are cells starting with "="),
  *    so download / sync / zip-export / other sidebar tools keep working on it.
  *  • Column widths and the ENCRYPT/DECRYPT result cache are kept on `note.csvexec`.
+ *  • Bare text (pipe tables, flattened tables, one-cell-per-line …) is laid out by the semantic
+ *    recogniser (recogniser.js). Per-note choices — pattern and delimiter — are kept on
+ *    `note.csvSettings` (Settings → Note); the pattern pro-forma is app-wide (Settings → App).
+ *    `note.csvSrc.raw` keeps the original text once the first grid edit has rewritten the note as
+ *    CSV, so the pattern can still be changed afterwards.
  *  • READ / DESIGN (bottom bar, viewmode/execbar.js): Read is the default and the grid is view-only
  *    (browse, zoom, find, copy). Design unlocks everything — cell edits, formulas, formatting,
  *    insert / delete / sort / fill.
@@ -29,14 +34,20 @@ function boot() {
 
   let activeNote = null;     // the note object the grid is currently bound to
   let selfWrite = false;     // true while WE push text into CodeMirror (so we ignore our own change event)
+  let lastRec = null;        // what the recogniser decided for the active note
+  const cfgFor = (n) => (n && n.csvSettings) || null;
+  const isTransform = (r) => !!r && r.pattern !== "plain" && r.pattern !== "delimited";
 
   const grid = createGrid(pane, {
     notify: (m) => { if (typeof showNotification === "function") showNotification(m); },
     getName: () => (activeNote && activeNote.title) || "sheet",
+    getRecogniser: () => cfgFor(activeNote),
     onChange: (csv) => {
       const note = activeNote;               // always the note the edit belongs to, even mid-switch
       if (!note) return;
-      if (note.content !== csv) { note.content = csv; note.lastEdited = new Date().toISOString(); note._dirty = true; }
+      if (note.content !== csv) {
+        if (!note.csvSrc && note === activeNote && lastRec && lastRec.pattern !== "plain") note.csvSrc = { raw: note.content };   // first edit rewrites the text: keep the original
+        note.content = csv; note.lastEdited = new Date().toISOString(); note._dirty = true; }
       if (typeof scheduleSaveNotes === "function") scheduleSaveNotes(); else if (typeof saveNotes === "function") saveNotes();
       if (typeof scheduleDocInfo === "function" && note === currentNote) scheduleDocInfo(); else if (typeof updateDocumentInfo === "function" && note === currentNote) updateDocumentInfo();
       if (typeof scheduleSidebarRefresh === "function") scheduleSidebarRefresh(); else if (typeof populateNoteList === "function") populateNoteList();
@@ -59,8 +70,9 @@ function boot() {
     activeNote = note;
     document.body.classList.add("csvexec-active");
     grid.setReadOnly(!designing(note));
-    grid.load(note.content || "", note.csvexec || null);
+    lastRec = grid.load(note.content || "", note.csvexec || null, cfgFor(note));
     grid.show();
+    if (isTransform(lastRec) && typeof showNotification === "function") showNotification(`Recognised as ${lastRec.label} — ${lastRec.rows.length} × ${lastRec.rows.reduce((m, r) => Math.max(m, r.length), 0)}`);
   }
   function deactivate() {
     activeNote = null;
@@ -85,8 +97,26 @@ function boot() {
   window.dexEditor.on("change", () => {
     if (selfWrite || !activeNote || activeNote !== currentNote) return;
     const v = window.dexEditor.getValue();
-    if (v !== grid.getCsv()) { activeNote.content = v; grid.load(v, activeNote.csvexec || null); grid.show(); }
+    if (v !== grid.getCsv()) { activeNote.content = v; delete activeNote.csvSrc; lastRec = grid.load(v, activeNote.csvexec || null, cfgFor(activeNote)); grid.show(); }   // edited as raw text: the saved original no longer applies
   });
+
+  /** Re-read the active note with its current settings / pro-forma (they changed). Starts from the original text when the grid already rewrote it. */
+  function reapply() {
+    const note = activeNote;
+    if (!note) return;
+    const edited = !!note.csvSrc && note.csvSrc.raw !== note.content;
+    if (edited && !window.confirm("Re-read the original text with the new setting?\n\nEdits made in the grid since the first transformation will be lost.")) return;
+    const text = note.csvSrc ? note.csvSrc.raw : note.content;
+    if (note.content !== text) { note.content = text; note.lastEdited = new Date().toISOString(); note._dirty = true; }
+    lastRec = grid.load(text || "", note.csvexec || null, cfgFor(note));
+    grid.show();
+    if (note === currentNote) { selfWrite = true; try { window.dexEditor.setValue(text || "", { silent: true }); } catch (e) {} selfWrite = false; }
+    if (typeof saveNotes === "function") saveNotes();
+    if (typeof showNotification === "function") showNotification(`Read as ${lastRec.label}`);
+    window.dispatchEvent(new CustomEvent("dexCsvRecognised", { detail: { note, rec: lastRec } }));
+  }
+  window.addEventListener("dexNoteSettingsChanged", (e) => { const n = e.detail && e.detail.note; if (n && activeNote && String(n.id) === String(activeNote.id)) reapply(); });
+  window.addEventListener("dexProformaChanged", reapply);
 
   // top-bar undo / redo drive the grid while it is showing
   (function wrapUndo() {
@@ -105,6 +135,7 @@ function boot() {
     grid.openPicker();
   };
   window.dexCsvexec = grid;
+  window.dexCsvInfo = () => ({ note: activeNote, rec: lastRec });
 
   window.addEventListener("beforeunload", () => { try { grid.flush(); } catch (e) {} });
   sync();

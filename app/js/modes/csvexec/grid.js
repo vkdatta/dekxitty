@@ -13,7 +13,7 @@
  * Virtualised: only visible cells are in the DOM; rows/columns have individual sizes.
  */
 import { Sheet, ROWS, COLS, DEF_COLW, DEF_ROWH, keyOf, colName, colIndex, addr, parseAddr, isFormula, shiftFormula, fillCells, autoFillLastRow } from "./engine.js";
-import { parseStored, serializeGrid, serialize, parseClipboard, toClipboardText } from "./csv.js";
+import { recogniseStored, serializeGrid, serialize, recogniseClipboard, toClipboardText } from "./csv.js";
 import { FUNCTION_LIST, CATEGORIES, importCache, exportCache, clearCache, onCacheChange } from "./functions.js";
 
 const BASE_HEADH = 28, BASE_RHW = 52, MINW = 24, MINH = 18, LH = 18, PADX = 8, MAXW = 800;
@@ -590,10 +590,10 @@ export function createGrid(host, hooks) {
   function pasteText(text, mode) {
     if (ed) return;
     mode = mode || "all";
-    let rows, fmts = null, internal = false;
+    let rows, fmts = null, internal = false, rec = null;
     const norm = (t) => String(t).replace(/\r\n/g, "\n").replace(/\n$/, "");
     if (clip && mode !== "values" && norm(text) === norm(clip.tsv)) { rows = clip.raws; fmts = clip.fmts; internal = true; }
-    else rows = parseClipboard(text);
+    else { rec = recogniseClipboard(text, hooks.getRecogniser && hooks.getRecogniser()); rows = rec.rows; }
     if (!rows.length) return;
     const s = rect(), r0 = s.r1, c0 = s.c1, h = rows.length, w = rows.reduce((m, r) => Math.max(m, r.length), 0);
     const shift = internal && !clip.noShift;
@@ -614,7 +614,8 @@ export function createGrid(host, hooks) {
     setCells(list, fl);
     cur = { r: r0, c: c0 }; ext = { r: Math.min(r0 + h - 1, ROWS - 1), c: Math.min(c0 + w - 1, COLS - 1) };
     selChanged(false);
-    notify(truncated ? `Pasted — data beyond ${ROWS} rows × ${COLS} columns was dropped` : `Pasted ${h} × ${w}`);
+    const how = rec && rec.pattern !== "plain" && rec.pattern !== "delimited" ? ` (${rec.label})` : "";   // say when the recogniser laid text out
+    notify(truncated ? `Pasted — data beyond ${ROWS} rows × ${COLS} columns was dropped` : `Pasted ${h} × ${w}${how}`);
     if (clip && clip.noShift && internal) clip = null;
   }
   const inMyInput = (t) => t === editor || t === fxIn || t === nameBox || t === fq || t === fr;
@@ -1418,15 +1419,19 @@ export function createGrid(host, hooks) {
   $(".cx-fxbtn").addEventListener("click", () => openPicker());
 
   /* ═════════════════════════════ public API ═════════════════════════════ */
-  function load(text, meta) {
+  /** text → grid. `cfg` = the note's recogniser settings. Returns what the recogniser decided ({ pattern, label, rows, … }). */
+  function load(text, meta, cfg) {
     clearTimeout(persistT); persistT = null;
-    sheet.gen++; sheet.load(parseStored(text)); applyMeta(meta); importCache(meta && meta.cache);
+    text = String(text == null ? "" : text);
+    const rec = text.trim() ? recogniseStored(text, cfg) : { rows: [], pattern: "plain", label: "Plain CSV / TSV", delimiter: ",", confidence: 1, forced: false };
+    sheet.gen++; sheet.load(rec.rows); applyMeta(meta); importCache(meta && meta.cache);
     cur = { r: 0, c: 0 }; ext = { r: 0, c: 0 };
     undoStack = []; redoStack = []; ed = null; clip = null; refRect = null; fillPrev = null; movePrev = null; drag = null; hideSuggest(); closeMenu(); closePill();
     pointers.clear(); pinch = null; resetPlaceholders();
     editor.style.display = "none"; scroller.scrollLeft = 0; scroller.scrollTop = 0;
     updateSizes(); syncBar(); requestRender();
     sheet.recalc().then(requestRender);
+    return rec;
   }
   function show() { active = true; host.style.display = ""; updateSizes(); syncBar(); requestRender(); setTimeout(() => { try { root.focus({ preventScroll: true }); } catch (e) {} }, 0); }
   function hide() { if (ed) commitEdit(null); closeMenu(); closePill(); active = false; }

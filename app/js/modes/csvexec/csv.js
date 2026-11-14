@@ -4,52 +4,30 @@
  * starts with "=" is a formula. Clipboard format (Excel / Sheets) is TSV.
  */
 
-/** Parse delimited text into a 2-D array of strings. Handles quotes, "" escapes, CRLF. */
-export function parseDelimited(text, delim) {
-  const rows = [];
-  let row = [], cell = "", i = 0, inQ = false;
-  const n = text.length;
-  if (n === 0) return [];
-  while (i < n) {
-    const ch = text[i];
-    if (inQ) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') { cell += '"'; i += 2; continue; }
-        inQ = false; i++; continue;
-      }
-      cell += ch; i++; continue;
-    }
-    if (ch === '"' && cell === "") { inQ = true; i++; continue; }
-    if (ch === delim) { row.push(cell); cell = ""; i++; continue; }
-    if (ch === "\r") { i++; continue; }
-    if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; i++; continue; }
-    cell += ch; i++;
-  }
-  // last cell / row (ignore a single trailing newline)
-  if (cell !== "" || row.length > 0) { row.push(cell); rows.push(row); }
-  return rows;
-}
+import { parseDelimited, sniffDelimiter, recognise } from "./recogniser.js";
+export { parseDelimited, sniffDelimiter, recognise };
 
-/** Pick comma vs tab for stored content (a plain tab-separated note still opens correctly). */
-export function sniffDelimiter(text) {
-  const head = text.slice(0, 4000);
-  const tabs = (head.match(/\t/g) || []).length;
-  const commas = (head.match(/,/g) || []).length;
-  return tabs > 0 && tabs >= commas ? "\t" : ",";
+/**
+ * Stored note text → rows. `cfg` is the note's recogniser settings ({ pattern, delimiter });
+ * plain CSV / TSV opens exactly as before, bare-text tables are laid out semantically.
+ * recogniseStored returns the full result ({ rows, pattern, label, … }).
+ */
+export function recogniseStored(text, cfg) {
+  return recognise(String(text == null ? "" : text), cfg);
 }
-
-export function parseStored(text) {
+export function parseStored(text, cfg) {
   text = String(text == null ? "" : text);
   if (!text.trim()) return [];
-  return parseDelimited(text, sniffDelimiter(text));
+  return recogniseStored(text, cfg).rows;
 }
 
-/** Parse clipboard text. Excel / Google Sheets copy as TSV; a single column is just lines. */
-export function parseClipboard(text) {
+/** Clipboard text → full recogniser result. Excel / Google Sheets copy as TSV (the plain fallback); a single line stays one cell. */
+export function recogniseClipboard(text, cfg) {
   text = String(text == null ? "" : text);
-  if (text === "") return [];
-  return parseDelimited(text, "\t");
+  if (text === "") return { rows: [], pattern: "plain", label: "Plain", delimiter: "\t", confidence: 1, forced: false };
+  return recognise(text, Object.assign({}, cfg, { plainDelimiter: "\t" }));
 }
+export function parseClipboard(text, cfg) { return recogniseClipboard(text, cfg).rows; }
 
 function esc(v, delim) {
   if (v === "" || v == null) return "";

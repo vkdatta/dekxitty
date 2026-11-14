@@ -1,3 +1,11 @@
+import { getProforma, saveProforma, resetProforma, validateProforma, listPatterns, recognise, DEFAULT_PROFORMA, describeDelimiter, parseDelimiterInput } from "../../js/modes/csvexec/recogniser.js";
+
+/**
+ * Settings are split in two:
+ *   App  — general, for every note (editor look, theme, the table pattern pro-forma).
+ *   Note — specific to the note that is open (exclusive modes; for a .csv note the
+ *          semantic table recogniser: pattern + delimiter, stored on note.csvSettings).
+ */
 export function createSettingsManager() {
   if (window.settingsInitialized) {
     // Must return the same callable opener as the fresh-init path below,
@@ -164,6 +172,10 @@ export function createSettingsManager() {
     }
   }
   window.addEventListener('dexSettingsChanged', onDexSettingsChanged);
+  // the Note tab follows whichever note is open (only repaint while the panel is on screen)
+  const NOTE_EVENTS = ['dexNoteOpened', 'dexViewModeChanged', 'dexCsvRecognised'];
+  function onNoteEvent() { if (overlay && overlay.style.display !== 'none') paint(); }
+  NOTE_EVENTS.forEach((ev) => window.addEventListener(ev, onNoteEvent));
 
 
   function applyLineNumbersToEditor(on) {
@@ -216,10 +228,11 @@ export function createSettingsManager() {
     </div>
     <div id="settingsbody">
       <div class="settings-tabs">
-        <button class="settings-tab active" data-tab="common" type="button">Common</button>
-        <button class="settings-tab" data-tab="exclusive" type="button">Exclusive</button>
+        <button class="settings-tab active" data-tab="app" type="button">App</button>
+        <button class="settings-tab" data-tab="note" type="button">Note</button>
       </div>
-      <div class="settings-tab-panel active" data-panel="common">
+      <div class="settings-tab-panel active" data-panel="app">
+        <div class="settings-section-hint">General settings — they apply to every note.</div>
         <div class="settings-section">
           <div class="settings-section-title">Syntax</div>
           <div class="settings-item" data-key="CMTHEME" id="cmThemeRow">
@@ -265,23 +278,67 @@ export function createSettingsManager() {
             <div class="settings-toggle" aria-hidden="true"></div>
           </div>
         </div>
-      </div>
-      <div class="settings-tab-panel" data-panel="exclusive">
         <div class="settings-section">
-          <div class="settings-section-hint">Only one exclusive mode can be active.</div>
-          <div class="settings-item" data-key="DIFFUSION">
+          <div class="settings-section-title">Tables</div>
+          <div class="settings-item" data-key="PROFORMA">
             <div class="settings-item-text">
-              <div class="settings-item-label">Enable Diffusion algorithm</div>
-              <div class="settings-item-desc">Adds Raw / Morph / Diff 1 / Diff 2 / Options to a bottom bar. Raw is seeded from the current note; Morph is chosen via the file picker.</div>
+              <div class="settings-item-label">Table pattern pro-forma</div>
+              <div class="settings-item-desc">Every pattern the csv recogniser knows — its engine, regexes, boundary rules and thresholds — as editable JSON. Disable, reorder, tune or add patterns. Applies to all notes.</div>
             </div>
-            <div class="settings-toggle" aria-hidden="true"></div>
+            <div class="settings-row-value" id="proformaCount"></div>
+            <div class="settings-row-chevron">›</div>
           </div>
-          <div class="settings-item" data-key="MERMAID">
-            <div class="settings-item-text">
-              <div class="settings-item-label">Enable Mermaid Flow</div>
-              <div class="settings-item-desc">Adds Code / Flow / Tune to a bottom bar. Code is typed directly or picked from a note via the file picker; Flow renders it live; Tune adjusts diagram colors and font.</div>
+        </div>
+      </div>
+      <div class="settings-tab-panel" data-panel="note">
+        <div class="settings-note-head" id="noteSettingsHead"></div>
+        <div class="settings-section-hint" id="noteSettingsEmpty">Open a note to see its settings.</div>
+        <div id="noteSettingsBody">
+          <div class="settings-section-hint">Specific to this note only.</div>
+          <div class="settings-section" id="noteModesSection">
+            <div class="settings-section-title">Exclusive modes</div>
+            <div class="settings-section-hint">Only one exclusive mode can be active.</div>
+            <div class="settings-item" data-key="DIFFUSION">
+              <div class="settings-item-text">
+                <div class="settings-item-label">Enable Diffusion algorithm</div>
+                <div class="settings-item-desc">Adds Raw / Morph / Diff 1 / Diff 2 / Options to a bottom bar. Raw is seeded from the current note; Morph is chosen via the file picker.</div>
+              </div>
+              <div class="settings-toggle" aria-hidden="true"></div>
             </div>
-            <div class="settings-toggle" aria-hidden="true"></div>
+            <div class="settings-item" data-key="MERMAID">
+              <div class="settings-item-text">
+                <div class="settings-item-label">Enable Mermaid Flow</div>
+                <div class="settings-item-desc">Adds Code / Flow / Tune to a bottom bar. Code is typed directly or picked from a note via the file picker; Flow renders it live; Tune adjusts diagram colors and font.</div>
+              </div>
+              <div class="settings-toggle" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="settings-section" id="noteCsvSection">
+            <div class="settings-section-title">Table recogniser</div>
+            <div class="settings-section-hint">Reads bare text in this .csv note as a table (semantic and structural, no AI). Used in exec view; the note's text is rewritten as CSV when you first edit the grid.</div>
+            <div class="settings-item" data-key="CSVPATTERN">
+              <div class="settings-item-text">
+                <div class="settings-item-label">Recogniser pattern</div>
+                <div class="settings-item-desc">Auto-detect picks the best-fitting pattern. If it guesses wrong, choose the pattern yourself.</div>
+              </div>
+              <div class="settings-row-value" id="csvPatternCurrent">Auto-detect</div>
+              <div class="settings-row-chevron">›</div>
+            </div>
+            <div class="settings-item" data-key="CSVDELIM">
+              <div class="settings-item-text">
+                <div class="settings-item-label">Delimiter</div>
+                <div class="settings-item-desc">Auto, or your own separator (tab, comma, ;, |, ::, …). A delimiter set here is used exactly.</div>
+              </div>
+              <div class="settings-row-value" id="csvDelimCurrent">Auto</div>
+              <div class="settings-row-chevron">›</div>
+            </div>
+            <div class="settings-item settings-item-info" data-key="CSVDETECT">
+              <div class="settings-item-text">
+                <div class="settings-item-label">Read as</div>
+                <div class="settings-item-desc">What the recogniser made of this note's text right now.</div>
+              </div>
+              <div class="settings-row-value" id="csvDetectCurrent">—</div>
+            </div>
           </div>
         </div>
       </div>
@@ -337,7 +394,7 @@ export function createSettingsManager() {
   function paint() {
     overlay.querySelectorAll('.settings-item').forEach(item => {
       const key = item.getAttribute('data-key');
-      if (key === 'CMTHEME') return;
+      if (key === 'CMTHEME' || key === 'PROFORMA' || key.indexOf('CSV') === 0) return;   // value rows, painted below
 
       let on = false;
       if (key === 'THEME') {
@@ -371,6 +428,182 @@ export function createSettingsManager() {
       }
       cur.textContent = themeLabel(displayed);
     }
+    paintNote();
+    paintProforma();
+  }
+
+  /* ───────────────────────── note settings (this note only) ───────────────────────── */
+
+  function noteNow() {
+    try { if (typeof currentNote !== 'undefined' && currentNote) return currentNote; } catch (e) {}
+    return null;
+  }
+  const isCsvNote = (n) => !!n && String(n.extension || '').toLowerCase() === 'csv';
+
+  function patternLabel(id) {
+    if (!id || id === 'auto') return 'Auto-detect';
+    if (id === 'plain') return 'Plain CSV / TSV';
+    const hit = listPatterns(getProforma()).find((p) => p.id === id);
+    return hit ? hit.label : id + ' (not in pro-forma)';
+  }
+
+  /** Change this note's recogniser settings. "auto" + no delimiter is the default, so nothing is stored for it. */
+  function setNoteCsv(patch) {
+    const n = noteNow();
+    if (!n) return;
+    const cur = Object.assign({ pattern: 'auto', delimiter: '' }, n.csvSettings || {}, patch);
+    if (cur.pattern === 'auto' && !cur.delimiter) delete n.csvSettings;
+    else n.csvSettings = { pattern: cur.pattern, delimiter: cur.delimiter };
+    try { if (typeof saveNotes === 'function') saveNotes(); } catch (e) {}
+    fire('dexNoteSettingsChanged', { note: n, key: 'csv', value: n.csvSettings || null });
+    paint();
+  }
+
+  function paintNote() {
+    const n = noteNow();
+    const $ = (id) => overlay.querySelector(id);
+    const head = $('#noteSettingsHead'), empty = $('#noteSettingsEmpty'), body = $('#noteSettingsBody'), csv = $('#noteCsvSection');
+    if (!head || !body) return;
+    head.style.display = n ? '' : 'none';
+    empty.style.display = n ? 'none' : '';
+    body.style.display = n ? '' : 'none';
+    if (!n) return;
+    head.textContent = (n.title || 'untitled') + (n.extension ? '.' + n.extension : '');
+    csv.style.display = isCsvNote(n) ? '' : 'none';
+    if (!isCsvNote(n)) return;
+    const c = n.csvSettings || {};
+    $('#csvPatternCurrent').textContent = patternLabel(c.pattern);
+    $('#csvDelimCurrent').textContent = describeDelimiter(c.delimiter);
+    let rec = null;
+    const info = typeof window.dexCsvInfo === 'function' ? window.dexCsvInfo() : null;
+    if (info && info.note && String(info.note.id) === String(n.id)) rec = info.rec;
+    if (!rec) { try { rec = recognise(n.csvSrc ? n.csvSrc.raw : (n.content || ''), n.csvSettings || null); } catch (e) {} }
+    $('#csvDetectCurrent').textContent = rec
+      ? `${rec.label}${rec.forced ? ' (your choice)' : ''} · ${rec.rows.length} × ${rec.rows.reduce((m, r) => Math.max(m, r.length), 0)}`
+      : '—';
+  }
+
+  function paintProforma() {
+    const el = overlay.querySelector('#proformaCount');
+    if (!el) return;
+    const pf = getProforma();
+    el.textContent = `${pf.patterns.filter((p) => p.enabled !== false).length} patterns`;
+  }
+
+  /** Show a modal above the settings overlay (which steps aside while it is open). */
+  async function modalOver(options, onOpen) {
+    if (typeof window.showModal !== 'function') { console.warn('[settings] showModal not available'); return null; }
+    const prevDisplay = overlay.style.display;
+    overlay.style.display = 'none';
+    try {
+      const p = window.showModal(options);
+      if (onOpen) onOpen();
+      return await p;
+    } finally {
+      if (overlay.style.display === 'none') overlay.style.display = prevDisplay;
+    }
+  }
+  const escHtml = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const footerButtons = (defs) => {
+    const f = document.createElement('div');
+    f.style.display = 'contents';
+    defs.forEach((d) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = d.label;
+      b.setAttribute('onclick', 'void 0');            // keeps the modal's own default handler off this button
+      b.addEventListener('click', d.fn);
+      f.appendChild(b);
+    });
+    return f;
+  };
+
+  async function openPatternModal() {
+    const n = noteNow();
+    if (!isCsvNote(n)) return;
+    const cur = (n.csvSettings && n.csvSettings.pattern) || 'auto';
+    const items = [{ id: 'auto', label: 'Auto-detect', description: 'Picks the best-fitting pattern from the pro-forma.' }]
+      .concat(listPatterns(getProforma()))
+      .concat([{ id: 'plain', label: 'Plain CSV / TSV', description: 'No transformation — read the text as ordinary separated values.' }]);
+    const body = items.map((it) =>
+      `<button class="theme-pick pick-item${it.id === cur ? ' theme-pick-active' : ''}" data-pattern="${escHtml(it.id)}"><span class="pick-label">${escHtml(it.label)}</span><span class="pick-desc">${escHtml(it.description || '')}</span></button>`).join('');
+    const onPick = (e) => {
+      const btn = e.target.closest('.pick-item');
+      if (!btn) return;
+      e.stopPropagation();
+      if (typeof window.closeModal === 'function') window.closeModal({ action: 'submit', pattern: btn.getAttribute('data-pattern') });
+    };
+    document.addEventListener('click', onPick, true);
+    let r = null;
+    try {
+      r = await modalOver({
+        header: `<div class="modal-title">Recogniser pattern</div>`,
+        body: `<div id="theme-picker-container">${body}</div>`,
+        footer: `<button id="pattern-picker-cancel">Cancel</button>`,
+        html: true
+      });
+    } finally { document.removeEventListener('click', onPick, true); }
+    if (!r || r.action !== 'submit' || !r.pattern) return;
+    setNoteCsv({ pattern: r.pattern });
+  }
+
+  async function openDelimiterModal() {
+    const n = noteNow();
+    if (!isCsvNote(n)) return;
+    const cur = (n.csvSettings && n.csvSettings.delimiter) || '';
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="pf-hint">Leave empty for Auto. Type a name (tab, comma, semicolon, pipe, space, colon), an escape like \\t, or any text such as :: or ->.</div>
+      <div class="csv-delim-chips">
+        ${['Auto', 'Tab', 'Comma', 'Semicolon', 'Pipe', 'Space'].map((c) => `<button type="button" class="csv-delim-chip">${c}</button>`).join('')}
+      </div>
+      <input type="text" class="modal-input" id="csvDelimInput" placeholder="Auto" autocomplete="off" spellcheck="false" data-skip-validation>`;
+    const input = wrap.querySelector('#csvDelimInput');
+    input.value = cur === '\t' ? 'Tab' : cur;
+    wrap.querySelectorAll('.csv-delim-chip').forEach((chip) => chip.addEventListener('click', () => { input.value = chip.textContent === 'Auto' ? '' : chip.textContent; input.focus(); }));
+    const save = () => { if (typeof window.closeModal === 'function') window.closeModal({ action: 'submit', delimiter: parseDelimiterInput(input.value) }); };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+    const r = await modalOver({
+      header: `<div class="modal-title">Delimiter</div>`,
+      body: wrap,
+      footer: footerButtons([{ label: 'Cancel', fn: () => window.closeModal && window.closeModal(null) }, { label: 'Save', fn: save }]),
+    }, () => setTimeout(() => input.focus(), 30));
+    if (!r || r.action !== 'submit') return;
+    setNoteCsv({ delimiter: r.delimiter });
+  }
+
+  /* ───────────────────────── app settings: the pro-forma ───────────────────────── */
+
+  async function openProformaModal() {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="pf-hint">One entry per pattern, tried by score (ties: top first). <b>engine</b> = algorithm (pipe, delimited, regex, runs, glued, vertical); <b>params</b> = its rules. Set <code>"enabled": false</code> to switch a pattern off, reorder entries to change priority, or add your own (e.g. engine <code>delimited</code> with another delimiter, or engine <code>regex</code> with your own splitRegex). <b>common</b> holds the number rule, empty-cell markers and thresholds.</div>
+      <textarea class="pf-textarea" id="pfText" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+      <div class="pf-error" id="pfError"></div>`;
+    const ta = wrap.querySelector('#pfText'), err = wrap.querySelector('#pfError');
+    ta.value = JSON.stringify(getProforma(), null, 2);
+    const save = () => {
+      let pf;
+      try { pf = JSON.parse(ta.value); } catch (e) { err.textContent = 'Not valid JSON: ' + e.message; return; }
+      const v = validateProforma(pf);
+      if (!v.ok) { err.textContent = v.error; return; }
+      const w = saveProforma(pf);
+      if (!w.ok) { err.textContent = w.error; return; }
+      if (typeof window.closeModal === 'function') window.closeModal({ action: 'submit' });
+    };
+    const r = await modalOver({
+      header: `<div class="modal-title">Table pattern pro-forma</div>`,
+      body: wrap,
+      footer: footerButtons([
+        { label: 'Cancel', fn: () => window.closeModal && window.closeModal(null) },
+        { label: 'Reset to default', fn: () => { ta.value = JSON.stringify(DEFAULT_PROFORMA, null, 2); err.textContent = 'Default restored — press Save to apply.'; } },
+        { label: 'Save', fn: save }
+      ]),
+    });
+    if (!r || r.action !== 'submit') return;
+    // saving the untouched default means "no custom pro-forma": drop the stored copy so future default improvements apply
+    if (JSON.stringify(getProforma()) === JSON.stringify(DEFAULT_PROFORMA)) resetProforma();
+    fire('dexProformaChanged', {});
+    paint();
   }
 
   function makeThemePickerHtml(current, tone) {
@@ -450,6 +683,10 @@ export function createSettingsManager() {
       openThemeModal();
       return;
     }
+    if (key === 'CSVPATTERN') { openPatternModal(); return; }
+    if (key === 'CSVDELIM') { openDelimiterModal(); return; }
+    if (key === 'PROFORMA') { openProformaModal(); return; }
+    if (key === 'CSVDETECT') return;
 
     if (key === 'DIFFUSION' || key === 'MERMAID') {
       if (typeof window.showNoteApp !== 'function') {
@@ -506,6 +743,7 @@ export function createSettingsManager() {
   function destroy() {
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     window.removeEventListener('dexSettingsChanged', onDexSettingsChanged);
+    NOTE_EVENTS.forEach((ev) => window.removeEventListener(ev, onNoteEvent));
     window.removeEventListener('dexEditorReady', restoreAllSettingsToEditor);
     document.removeEventListener('keydown', onKeydown);
     window.removeEventListener('popstate', onRouteChange);
