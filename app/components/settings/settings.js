@@ -1,3 +1,4 @@
+import { DOCS_COPIER_OPTIONS, getPrefs as getDcPrefs, setPref as setDcPref, childVisible as dcChildVisible, cleanWidth as dcCleanWidth } from "../sidebar2/functions/5transformer/prefs.js";
 import { getProforma, saveProforma, resetProforma, validateProforma, listPatterns, recognise, DEFAULT_PROFORMA, describeDelimiter, parseDelimiterInput } from "../../js/modes/csvexec/recogniser.js";
 
 /**
@@ -289,6 +290,11 @@ export function createSettingsManager() {
             <div class="settings-row-chevron">›</div>
           </div>
         </div>
+        <div class="settings-section" id="dcSection">
+          <div class="settings-section-title">Docs copier</div>
+          <div class="settings-section-hint">What the Transformer › document copier keeps when it copies a note for Google Docs. Turn an option off to drop that formatting.</div>
+          ${dcSectionHtml()}
+        </div>
       </div>
       <div class="settings-tab-panel" data-panel="note">
         <div class="settings-note-head" id="noteSettingsHead"></div>
@@ -394,7 +400,7 @@ export function createSettingsManager() {
   function paint() {
     overlay.querySelectorAll('.settings-item').forEach(item => {
       const key = item.getAttribute('data-key');
-      if (key === 'CMTHEME' || key === 'PROFORMA' || key.indexOf('CSV') === 0) return;   // value rows, painted below
+      if (key === 'CMTHEME' || key === 'PROFORMA' || key.indexOf('CSV') === 0 || key.indexOf('DC:') === 0) return;   // value rows, painted below
 
       let on = false;
       if (key === 'THEME') {
@@ -430,6 +436,7 @@ export function createSettingsManager() {
     }
     paintNote();
     paintProforma();
+    paintDocsCopier();
   }
 
   /* ───────────────────────── note settings (this note only) ───────────────────────── */
@@ -674,11 +681,78 @@ export function createSettingsManager() {
     paint();
   }
 
+  /* ───────────────────────── Docs copier (Transformer › document copier) ───────────────────────── */
+
+  function dcSectionHtml() {
+    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const row = (o, sub, parentKey) => {
+      const base = `<div class="settings-item${sub ? ' settings-item-sub' : ''}" data-key="DC:${o.key}"${sub ? ` data-dc-parent="${parentKey}"` : ''}>
+            <div class="settings-item-text">
+              <div class="settings-item-label">${esc(o.label)}</div>
+              <div class="settings-item-desc">${esc(o.desc || '')}</div>
+            </div>`;
+      return o.type === 'number'
+        ? base + `<div class="settings-row-value" id="dcv_${o.key}"></div><div class="settings-row-chevron">›</div></div>`
+        : base + `<div class="settings-toggle" aria-hidden="true"></div></div>`;
+    };
+    return DOCS_COPIER_OPTIONS.map((o) => row(o, false) + (o.children || []).map((c) => row(c, true, o.key)).join('')).join('');
+  }
+
+  function paintDocsCopier() {
+    const prefs = getDcPrefs();
+    DOCS_COPIER_OPTIONS.forEach((o) => {
+      const parentEl = overlay.querySelector(`[data-key="DC:${o.key}"]`);
+      if (parentEl) parentEl.classList.toggle('on', !!prefs[o.key]);
+      (o.children || []).forEach((c) => {
+        const el = overlay.querySelector(`[data-key="DC:${c.key}"]`);
+        if (!el) return;
+        el.style.display = dcChildVisible(c, prefs, o.key) ? '' : 'none';
+        if (c.type === 'number') {
+          const v = overlay.querySelector('#dcv_' + c.key);
+          if (v) v.textContent = prefs[c.key] + (c.unit ? ' ' + c.unit : '');
+        } else {
+          el.classList.toggle('on', !!prefs[c.key]);
+        }
+      });
+    });
+  }
+
+  function onDocsCopierClick(key) {
+    const spec = DOCS_COPIER_OPTIONS.flatMap((o) => [o, ...(o.children || [])]).find((o) => o.key === key);
+    if (!spec) return;
+    if (spec.type === 'number') { openDcNumberModal(spec); return; }
+    setDcPref(key, !getDcPrefs()[key]);
+    paint();
+  }
+
+  async function openDcNumberModal(spec) {
+    const cur = getDcPrefs()[spec.key];
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="pf-hint">${escHtml(spec.desc || '')} Allowed: ${spec.min}–${spec.max} ${escHtml(spec.unit || '')}.</div>
+      <input type="number" class="modal-input" id="dcNumInput" min="${spec.min}" max="${spec.max}" step="1" value="${cur}" data-skip-validation>`;
+    const input = wrap.querySelector('#dcNumInput');
+    const apply = (v) => { if (typeof window.closeModal === 'function') window.closeModal({ action: 'submit', value: v }); };
+    const r = await modalOver({
+      header: `<div class="modal-title">${escHtml(spec.label)}</div>`,
+      body: wrap,
+      footer: footerButtons([
+        { label: 'Cancel', fn: () => window.closeModal && window.closeModal() },
+        { label: 'Reset to ' + spec.def, fn: () => apply(spec.def) },
+        { label: 'Save', fn: () => apply(input.value) }
+      ])
+    }, () => setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 60));
+    if (!r || r.action !== 'submit') return;
+    setDcPref(spec.key, dcCleanWidth(r.value));
+    paint();
+  }
+
   function onOverlayClick(e) {
     const item = e.target.closest('.settings-item');
     if (!item) return;
     const key = item.getAttribute('data-key');
 
+    if (key && key.indexOf('DC:') === 0) { onDocsCopierClick(key.slice(3)); return; }
     if (key === 'CMTHEME') {
       openThemeModal();
       return;

@@ -204,6 +204,7 @@ FunctionRegistry.registerLevel1({ id: 'formatting',  name: 'Formatting',  icon: 
 FunctionRegistry.registerLevel1({ id: 'operations',  name: 'Operations',  icon: 'discover_tune'     });
 FunctionRegistry.registerLevel1({ id: 'code',        name: 'Code',        icon: 'code'              });
 FunctionRegistry.registerLevel1({ id: 'document',    name: 'Document',    icon: 'description'       });
+FunctionRegistry.registerLevel1({ id: 'transformer', name: 'Transformer', icon: 'swap_horiz'        });
 // Markdown block tools — act on the open block while a .md file is in exec › Design (see mdexec/design.js)
 FunctionRegistry.registerLevel1({ id: 'markdown',    name: 'Markdown',    icon: 'title'             });
 
@@ -273,6 +274,9 @@ FunctionRegistry.registerMany([
 { function: 'foldAll',                   icon: 'unfold_less',   name: 'Fold All',                    under: ['document'], onclick: 'foldAll()' },
 { function: 'unfoldAll',                 icon: 'unfold_more',   name: 'Unfold All',                  under: ['document'], onclick: 'unfoldAll()' },
 { function: 'removeContentInsideFolds',  icon: 'compress',      name: 'Remove Folded Contents',      under: ['document'], onclick: 'removeContentInsideFolds()' },
+
+  // ── Transformer ──────────────────────────────────────────────────────────
+  { function: 'openDocsCopier',        icon: 'paste',                 name: 'Intelligent document copier for google docs', under: ['transformer'], batch: 'exclude', onclick: 'openDocsCopier()' },
 
   // ── Markdown (Design mode) ────────────────────────────────────────────────
   // Block type

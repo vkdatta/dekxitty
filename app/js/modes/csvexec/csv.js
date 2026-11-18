@@ -81,10 +81,11 @@ const escHtml = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace
  *  - no row height set + wrapping enabled, so rows auto-size to wrapped text
  * `fmts` (optional, same shape as rows) carries bold / italic / align / colour / background.
  */
-export function toClipboardHtml(rows, fmts) {
+export function toClipboardHtml(rows, fmts, totalWidth) {
   const nCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
   if (!rows.length || !nCols) return "";
-  const colW = Math.floor(CLIPBOARD_TABLE_WIDTH / nCols);
+  const total = totalWidth > 0 ? totalWidth : CLIPBOARD_TABLE_WIDTH;   // optional override (Docs copier setting); default 450
+  const colW = Math.max(1, Math.floor(total / nCols));
   const tblW = colW * nCols;
   const border = "border:1px solid #000000;";
   const cols = Array.from({ length: nCols }, () => `<col width="${colW}" style="width:${colW}px">`).join("");

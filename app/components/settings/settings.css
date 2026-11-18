@@ -301,3 +301,10 @@
 .pf-textarea:focus { outline: none; border-color: var(--c-accent); }
 .pf-error { min-height: 16px; margin-top: 6px; font-size: 12px; color: var(--c-text-dim); }
 .theme-pick-active .pick-desc { color: inherit; opacity: .75; }
+
+/* Docs copier — sub-options sit under their parent toggle */
+.settings-item-sub {
+  margin-left: 18px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(127, 127, 127, 0.35);
+}

@@ -123,6 +123,7 @@
   loadModule(APP + "components/sidebar2/functions/2operations/core.js");
   loadModule(APP + "components/sidebar2/functions/3code/core.js");
   loadModule(APP + "components/sidebar2/functions/4document/core.js");
+  loadModule(APP + "components/sidebar2/functions/5transformer/core.js");
 
 
   // Bootstrap
