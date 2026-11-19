@@ -1,4 +1,4 @@
-import { DOCS_COPIER_OPTIONS, getPrefs as getDcPrefs, setPref as setDcPref, childVisible as dcChildVisible, cleanWidth as dcCleanWidth } from "../sidebar2/functions/5transformer/prefs.js";
+import { DOCS_COPIER_OPTIONS, DOCS_COPIER_GROUPS, getPrefs as getDcPrefs, setPref as setDcPref, childVisible as dcChildVisible, cleanWidth as dcCleanWidth } from "../sidebar2/functions/5transformer/prefs.js";
 import { getProforma, saveProforma, resetProforma, validateProforma, listPatterns, recognise, DEFAULT_PROFORMA, describeDelimiter, parseDelimiterInput } from "../../js/modes/csvexec/recogniser.js";
 
 /**
@@ -291,9 +291,19 @@ export function createSettingsManager() {
           </div>
         </div>
         <div class="settings-section" id="dcSection">
-          <div class="settings-section-title">Docs copier</div>
-          <div class="settings-section-hint">What the Transformer › document copier keeps when it copies a note for Google Docs. Turn an option off to drop that formatting.</div>
-          ${dcSectionHtml()}
+          <details class="dc-fold dc-fold-outer">
+            <summary>
+              <span class="dc-fold-text">
+                <span class="dc-fold-title">Docs copier</span>
+                <span class="dc-fold-hint">What the Transformer › document copier keeps when it copies a note for Google Docs.</span>
+              </span>
+              <span class="dc-fold-count" id="dcCountAll"></span>
+              <span class="dc-fold-chevron" aria-hidden="true">›</span>
+            </summary>
+            <div class="dc-fold-body">
+              ${dcSectionHtml()}
+            </div>
+          </details>
         </div>
       </div>
       <div class="settings-tab-panel" data-panel="note">
@@ -695,7 +705,20 @@ export function createSettingsManager() {
         ? base + `<div class="settings-row-value" id="dcv_${o.key}"></div><div class="settings-row-chevron">›</div></div>`
         : base + `<div class="settings-toggle" aria-hidden="true"></div></div>`;
     };
-    return DOCS_COPIER_OPTIONS.map((o) => row(o, false) + (o.children || []).map((c) => row(c, true, o.key)).join('')).join('');
+    return DOCS_COPIER_GROUPS.map((g) => `
+      <details class="dc-fold dc-fold-inner" data-dc-group="${g.key}">
+        <summary>
+          <span class="dc-fold-text">
+            <span class="dc-fold-title">${esc(g.label)}</span>
+            <span class="dc-fold-hint">${esc(g.hint)}</span>
+          </span>
+          <span class="dc-fold-count" id="dcCount_${g.key}"></span>
+          <span class="dc-fold-chevron" aria-hidden="true">›</span>
+        </summary>
+        <div class="dc-fold-body">
+          ${DOCS_COPIER_OPTIONS.filter((o) => o.group === g.key).map((o) => row(o, false) + (o.children || []).map((c) => row(c, true, o.key)).join('')).join('')}
+        </div>
+      </details>`).join('');
   }
 
   function paintDocsCopier() {
@@ -715,6 +738,18 @@ export function createSettingsManager() {
         }
       });
     });
+
+    // Small "4 of 5 on" summaries so a closed sub-section still tells you its state.
+    let totalOn = 0, total = 0;
+    DOCS_COPIER_GROUPS.forEach((g) => {
+      const opts = DOCS_COPIER_OPTIONS.filter((o) => o.group === g.key);
+      const on = opts.filter((o) => prefs[o.key]).length;
+      totalOn += on; total += opts.length;
+      const el = overlay.querySelector('#dcCount_' + g.key);
+      if (el) el.textContent = on + ' of ' + opts.length + ' on';
+    });
+    const all = overlay.querySelector('#dcCountAll');
+    if (all) all.textContent = totalOn + ' of ' + total + ' on';
   }
 
   function onDocsCopierClick(key) {

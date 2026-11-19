@@ -308,3 +308,31 @@
   padding-left: 12px;
   border-left: 2px solid rgba(127, 127, 127, 0.35);
 }
+
+/* Docs copier — folded so it doesn't swell the main settings page */
+.dc-fold { margin: 0; }
+.dc-fold > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--c-panel-2);
+  border: 1px solid var(--c-panel-3);
+  border-radius: 10px;
+  transition: background .15s ease, border-color .15s ease;
+}
+.dc-fold > summary::-webkit-details-marker { display: none; }
+.dc-fold > summary:hover { background: var(--c-panel-3); border-color: var(--c-border); }
+.dc-fold-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dc-fold-title { font-size: 14px; color: var(--c-white); }
+.dc-fold-hint { font-size: 12px; color: var(--c-text-faint); line-height: 1.4; }
+.dc-fold-count { font-size: 12px; color: var(--c-accent); white-space: nowrap; }
+.dc-fold-chevron {
+  color: var(--c-text-faint); font-size: 20px; line-height: 1;
+  transition: transform .15s ease;
+}
+.dc-fold[open] > summary > .dc-fold-chevron { transform: rotate(90deg); }
+.dc-fold-body { padding: 10px 0 0 12px; border-left: 2px solid rgba(127, 127, 127, 0.25); margin: 8px 0 4px 8px; }
+.dc-fold-inner { margin-bottom: 8px; }
+.dc-fold-inner > summary { padding: 11px 14px; }
+.dc-fold-inner > summary .dc-fold-title { font-size: 13px; }
+.dc-fold-inner .dc-fold-body { padding-top: 8px; }

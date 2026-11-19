@@ -95,6 +95,187 @@ function flattenList(doc, list, typed, depth, out) {
   });
 }
 
+/* ───────────────────────── plain-text tables → pipe tables ───────────────────────── */
+
+const isBlank = (l) => l == null || !l.trim();
+const LIST_MARK = /^\s*([-*+]|\d+[.)])\s/;
+const PIPE_SEP = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+
+/** Split a line into cells. Tabs win; otherwise two or more spaces separate columns. */
+function splitCells(line, mode) {
+  const raw = line.replace(/\s+$/, "");
+  if (mode === "tab") return raw.split("\t").map((c) => c.trim());
+  return raw.trim().split(/\s{2,}/).map((c) => c.trim());
+}
+
+const toPipeRow = (cells, n) => {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push((cells[i] || "").replace(/\|/g, "\\|"));
+  return "| " + out.join(" | ") + " |";
+};
+
+/**
+ * Markdown's own table syntax needs pipes. AI answers and copied sheets often arrive as
+ * tab-separated (or column-aligned) rows instead, sometimes with a blank line after the
+ * header. Rewrite those as pipe tables so marked sees one table, and drop the stray gap.
+ * Fenced code is left alone.
+ */
+export function normalizeTextTables(md) {
+  const lines = String(md).split("\n");
+  const out = [];
+  let inFence = false;
+  let i = 0;
+
+  const startOk = (line, mode) => {
+    if (isBlank(line) || /^\s*(\|)/.test(line) || /^\s*(#{1,6}\s|>)/.test(line)) return null;
+    if (/^\s*[-*+]\s/.test(line)) return null;                       // bullet lists are never tables
+    if (mode === "space" && (LIST_MARK.test(line) || /^\s*[-*_=]{3,}\s*$/.test(line))) return null;
+    const cells = splitCells(line, mode);
+    const filled = cells.filter(Boolean).length;
+    return cells.length >= 2 && filled >= 2 ? cells : null;
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (/^\s*(```|~~~)/.test(line)) { inFence = !inFence; out.push(line); i++; continue; }
+    if (inFence) { out.push(line); i++; continue; }
+
+    // Pipe table whose separator row is separated from the header by blank lines.
+    if (line.includes("|") && i + 1 < lines.length && isBlank(lines[i + 1])) {
+      let j = i + 1;
+      while (j < lines.length && isBlank(lines[j])) j++;
+      if (j < lines.length && lines[j].includes("|") && PIPE_SEP.test(lines[j])) {
+        out.push(line); i = j; continue;      // skip the blank lines, separator is pushed next round
+      }
+    }
+
+    const mode = line.includes("\t") ? "tab" : "space";
+    const head = startOk(line, mode);
+    if (head) {
+      const n = head.length;
+      const rows = [head];
+      let j = i + 1;
+      while (j < lines.length) {
+        let k = j;
+        // A gap is only tolerated directly after the header row.
+        if (rows.length === 1) while (k < lines.length && isBlank(lines[k])) k++;
+        const l = lines[k];
+        if (l == null || isBlank(l)) break;
+        if (mode === "tab") {
+          if (!l.includes("\t") || /^\s+([-*+]|\d+[.)])\s/.test(l)) break;
+          const c = splitCells(l, mode);
+          if (c.length > n) break;
+          rows.push(c);
+        } else {
+          if (LIST_MARK.test(l) || /^\s*[|#>]/.test(l)) break;
+          const c = splitCells(l, mode);
+          if (c.length !== n || c.some((x) => x.length > 60)) break;
+          rows.push(c);
+        }
+        j = k + 1;
+      }
+      const minRows = mode === "tab" ? 2 : 3;
+      if (rows.length >= minRows) {
+        if (out.length && !isBlank(out[out.length - 1])) out.push("");
+        out.push(toPipeRow(rows[0], n));
+        out.push("| " + Array(n).fill("---").join(" | ") + " |");
+        rows.slice(1).forEach((r) => out.push(toPipeRow(r, n)));
+        if (!isBlank(lines[j]) && j < lines.length) out.push("");
+        i = j;
+        continue;
+      }
+    }
+    out.push(line);
+    i++;
+  }
+  return out.join("\n");
+}
+
+/* ───────────────────────── blocks of capital letters → sentence case ───────────────────────── */
+
+const hasLetter = (t) => /\p{L}/u.test(t);
+const isCapsWord = (t) => hasLetter(t) && !/\p{Ll}/u.test(t);
+const upFirst = (t) => t.replace(/\p{L}/u, (ch) => ch.toUpperCase());
+
+/**
+ * A "block" is 3 or more capital-letter words in a row (numbers and dashes between them
+ * don't break it). HELLO is not a block; HELLO THIS IS A GOOD DAY is. A block becomes
+ * lowercase, with the first letter of every sentence capitalised — but only when the block
+ * actually starts a sentence (`atStart` says whether the text begins one).
+ */
+export function sentenceCaseCapsBlocks(text, atStart = true) {
+  const toks = [];
+  String(text).replace(/\S+/g, (t, idx) => { toks.push({ t, idx }); return t; });
+  if (toks.length < 3) return text;
+
+  const repl = new Map();
+  let run = [];
+  let count = 0;
+
+  const close = () => {
+    while (run.length && !hasLetter(toks[run[run.length - 1]].t)) run.pop();   // trailing numbers stay out
+    if (count >= 3 && run.length) {
+      const first = run[0];
+      const prev = first > 0 ? toks[first - 1].t : null;
+      let cap = prev == null ? atStart : /[.!?]["')\]]*$/.test(prev);
+      run.forEach((ti) => {
+        let w = toks[ti].t.toLowerCase();
+        w = w.replace(/(^|[^\p{L}])i(?=$|[^\p{L}])/gu, "$1I");              // keep a lone "I"
+        if (cap && hasLetter(w)) { w = upFirst(w); cap = false; }
+        if (/[.!?]["')\]]*$/.test(toks[ti].t)) cap = true;
+        repl.set(ti, w);
+      });
+    }
+    run = []; count = 0;
+  };
+
+  toks.forEach((tok, ti) => {
+    if (isCapsWord(tok.t)) { run.push(ti); count++; }
+    else if (!hasLetter(tok.t) && run.length) run.push(ti);
+    else close();
+  });
+  close();
+
+  if (!repl.size) return text;
+  let out = "", pos = 0;
+  toks.forEach((tok, ti) => {
+    if (!repl.has(ti)) return;
+    out += text.slice(pos, tok.idx) + repl.get(ti);
+    pos = tok.idx + tok.t.length;
+  });
+  return out + text.slice(pos);
+}
+
+const BLOCK_TAGS = /^(P|LI|TD|TH|H[1-6]|BLOCKQUOTE|DIV|PRE|BODY)$/;
+
+/** Does this text node begin a new sentence-level block (paragraph, cell, list item…)? */
+function startsBlock(node) {
+  let n = node;
+  while (n) {
+    let prev = n.previousSibling;
+    while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
+    if (prev) return prev.nodeType === 1 && prev.tagName === "BR";
+    n = n.parentNode;
+    if (n && n.nodeType === 1 && BLOCK_TAGS.test(n.tagName)) return true;
+  }
+  return true;
+}
+
+function fixCapsBlocks(doc, root) {
+  const walker = doc.createTreeWalker(root, 4 /* SHOW_TEXT */);
+  const nodes = [];
+  while (walker.nextNode()) {
+    const n = walker.currentNode;
+    if (n.parentElement && n.parentElement.closest("code,pre")) continue;
+    nodes.push(n);
+  }
+  nodes.forEach((n) => {
+    const next = sentenceCaseCapsBlocks(n.nodeValue, startsBlock(n));
+    if (next !== n.nodeValue) n.nodeValue = next;
+  });
+}
+
 /* ───────────────────────── Markdown → Docs-friendly HTML ───────────────────────── */
 
 /**
@@ -105,8 +286,11 @@ export function markdownToDocsHtml(md, prefs = {}) {
   const p = Object.assign({}, DOCS_COPIER_DEFAULTS, prefs);
   if (!window.marked) throw new Error("Markdown engine (marked) is not loaded yet");
 
+  // Tab-separated / column-aligned tables become pipe tables first (also closes header gaps).
+  const source = normalizeTextTables(String(md).replace(/\r\n?/g, "\n"));
+
   // breaks:true — AI answers rely on single line breaks; keep them.
-  let html = window.marked.parse(String(md).replace(/\r\n?/g, "\n"), { gfm: true, breaks: true });
+  let html = window.marked.parse(source, { gfm: true, breaks: true });
   if (window.DOMPurify) html = window.DOMPurify.sanitize(html);
 
   const doc = new DOMParser().parseFromString(`<body><div id="dc-root">${html}</div></body>`, "text/html");
@@ -160,6 +344,12 @@ export function markdownToDocsHtml(md, prefs = {}) {
       pre.replaceWith(para);
     });
   }
+
+  // Horizontal lines (---) the user doesn't want.
+  if (!p.rules) root.querySelectorAll("hr").forEach((h) => h.remove());
+
+  // Blocks of capital letters → sentence case (code is never touched).
+  if (!p.capsBlock) fixCapsBlocks(doc, root);
 
   // Anchor ids are only noise once pasted.
   root.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
