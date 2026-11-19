@@ -100,6 +100,14 @@ function flattenList(doc, list, typed, depth, out) {
 const isBlank = (l) => l == null || !l.trim();
 const LIST_MARK = /^\s*([-*+]|\d+[.)])\s/;
 const PIPE_SEP = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+const SEP_CELL = /^:?[-=_─━—–]{2,}:?$/;                  // "---", "----", ":--:", "====" …
+const RULE_TEXT = /^\s*([-*_=─━—–]\s*){3,}$/;           // a line made only of rule characters
+
+/** Row made only of separator cells (e.g. "----  ---  -----" or "---<tab>---"): not data. */
+const isSepRow = (cells) => {
+  const f = cells.filter(Boolean);
+  return f.length > 0 && f.every((c) => SEP_CELL.test(c));
+};
 
 /** Split a line into cells. Tabs win; otherwise two or more spaces separate columns. */
 function splitCells(line, mode) {
@@ -107,6 +115,12 @@ function splitCells(line, mode) {
   if (mode === "tab") return raw.split("\t").map((c) => c.trim());
   return raw.trim().split(/\s{2,}/).map((c) => c.trim());
 }
+
+/** Cells of a pipe row, without the outer pipes. */
+const pipeCells = (line) =>
+  line.trim().replace(/^\|/, "").replace(/\|$/, "").replace(/\\\|/g, "\u0001").split("|").map((c) => c.trim());
+
+const trimEnd = (cells) => { const c = cells.slice(); while (c.length && !c[c.length - 1]) c.pop(); return c; };
 
 const toPipeRow = (cells, n) => {
   const out = [];
@@ -116,12 +130,14 @@ const toPipeRow = (cells, n) => {
 
 /**
  * Markdown's own table syntax needs pipes. AI answers and copied sheets often arrive as
- * tab-separated (or column-aligned) rows instead, sometimes with a blank line after the
- * header. Rewrite those as pipe tables so marked sees one table, and drop the stray gap.
+ * tab-separated (or column-aligned) rows instead. Rewrite those as pipe tables so marked
+ * sees one table. Tolerated on the way: blank lines between rows, rows with fewer or more
+ * cells than the header, and dashed separator rows (which are dropped, never shown as "---"
+ * cells). A pipe table whose separator row has the wrong number of columns is repaired.
  * Fenced code is left alone.
  */
 export function normalizeTextTables(md) {
-  const lines = String(md).split("\n");
+  const lines = String(md).split("\n").map((l) => l.replace(/\r$/, ""));
   const out = [];
   let inFence = false;
   let i = 0;
@@ -129,9 +145,10 @@ export function normalizeTextTables(md) {
   const startOk = (line, mode) => {
     if (isBlank(line) || /^\s*(\|)/.test(line) || /^\s*(#{1,6}\s|>)/.test(line)) return null;
     if (/^\s*[-*+]\s/.test(line)) return null;                       // bullet lists are never tables
-    if (mode === "space" && (LIST_MARK.test(line) || /^\s*[-*_=]{3,}\s*$/.test(line))) return null;
+    if (mode === "space" && (LIST_MARK.test(line) || RULE_TEXT.test(line))) return null;
     const cells = splitCells(line, mode);
     const filled = cells.filter(Boolean).length;
+    if (isSepRow(cells)) return null;
     return cells.length >= 2 && filled >= 2 ? cells : null;
   };
 
@@ -141,47 +158,54 @@ export function normalizeTextTables(md) {
     if (/^\s*(```|~~~)/.test(line)) { inFence = !inFence; out.push(line); i++; continue; }
     if (inFence) { out.push(line); i++; continue; }
 
-    // Pipe table whose separator row is separated from the header by blank lines.
-    if (line.includes("|") && i + 1 < lines.length && isBlank(lines[i + 1])) {
+    // Pipe table: header, then the separator row (possibly after blank lines, possibly with
+    // a different number of columns than the header — marked would then print it as text).
+    if (line.includes("|") && !RULE_TEXT.test(line)) {
       let j = i + 1;
       while (j < lines.length && isBlank(lines[j])) j++;
       if (j < lines.length && lines[j].includes("|") && PIPE_SEP.test(lines[j])) {
-        out.push(line); i = j; continue;      // skip the blank lines, separator is pushed next round
+        const h = pipeCells(line), s = pipeCells(lines[j]);
+        out.push(line);
+        out.push("| " + h.map((_, c) => s[c] || "---").join(" | ") + " |");
+        i = j + 1;
+        continue;
       }
     }
 
     const mode = line.includes("\t") ? "tab" : "space";
     const head = startOk(line, mode);
     if (head) {
-      const n = head.length;
       const rows = [head];
       let j = i + 1;
       while (j < lines.length) {
         let k = j;
-        // A gap is only tolerated directly after the header row.
-        if (rows.length === 1) while (k < lines.length && isBlank(lines[k])) k++;
+        while (k < lines.length && isBlank(lines[k])) k++;
+        const gap = k - j;
+        // After the header any gap is fine; later, a single blank line between rows is fine.
+        if (gap && rows.length > 1 && gap > 1) break;
         const l = lines[k];
         if (l == null || isBlank(l)) break;
         if (mode === "tab") {
           if (!l.includes("\t") || /^\s+([-*+]|\d+[.)])\s/.test(l)) break;
-          const c = splitCells(l, mode);
-          if (c.length > n) break;
-          rows.push(c);
+          rows.push(splitCells(l, mode));
         } else {
-          if (LIST_MARK.test(l) || /^\s*[|#>]/.test(l)) break;
+          if (gap || LIST_MARK.test(l) || /^\s*[|#>]/.test(l)) break;
           const c = splitCells(l, mode);
-          if (c.length !== n || c.some((x) => x.length > 60)) break;
+          if (isSepRow(c)) { rows.push(c); j = k + 1; continue; }
+          if (c.length !== head.length || c.some((x) => x.length > 60)) break;
           rows.push(c);
         }
         j = k + 1;
       }
+      const data = rows.filter((r) => !isSepRow(r));
       const minRows = mode === "tab" ? 2 : 3;
-      if (rows.length >= minRows) {
+      if (data.length >= minRows) {
+        const n = data.reduce((m, r) => Math.max(m, trimEnd(r).length), 0);
         if (out.length && !isBlank(out[out.length - 1])) out.push("");
-        out.push(toPipeRow(rows[0], n));
+        out.push(toPipeRow(data[0], n));
         out.push("| " + Array(n).fill("---").join(" | ") + " |");
-        rows.slice(1).forEach((r) => out.push(toPipeRow(r, n)));
-        if (!isBlank(lines[j]) && j < lines.length) out.push("");
+        data.slice(1).forEach((r) => out.push(toPipeRow(r, n)));
+        if (j < lines.length && !isBlank(lines[j])) out.push("");
         i = j;
         continue;
       }
@@ -345,8 +369,18 @@ export function markdownToDocsHtml(md, prefs = {}) {
     });
   }
 
-  // Horizontal lines (---) the user doesn't want.
-  if (!p.rules) root.querySelectorAll("hr").forEach((h) => h.remove());
+  // Horizontal lines (---) the user doesn't want. Also sweeps up any that survived as literal
+  // text (a paragraph of only dashes, or a table row of only "---" cells), so none is left behind.
+  if (!p.rules) {
+    root.querySelectorAll("hr").forEach((h) => h.remove());
+    root.querySelectorAll("p").forEach((el) => {
+      if (!el.querySelector("img") && RULE_TEXT.test(el.textContent)) el.remove();
+    });
+    root.querySelectorAll("tr").forEach((tr) => {
+      const t = Array.from(tr.children).map((c) => c.textContent.trim()).filter(Boolean);
+      if (t.length && t.every((x) => SEP_CELL.test(x))) tr.remove();
+    });
+  }
 
   // Blocks of capital letters → sentence case (code is never touched).
   if (!p.capsBlock) fixCapsBlocks(doc, root);
