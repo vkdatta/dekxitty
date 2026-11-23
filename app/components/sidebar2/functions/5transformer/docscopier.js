@@ -60,10 +60,10 @@ function tightenCells(doc, table, p) {
     const spacing = p.tableSpacing ? `line-height:${p.tableLineHeight};` : "";
     const blocks = Array.from(td.children).filter((c) => /^(P|DIV)$/.test(c.tagName));
     if (blocks.length && blocks.length === td.children.length && Array.from(td.childNodes).every((n) => n.nodeType === 1)) {
-      blocks.forEach((b) => { b.style.margin = "0"; b.style.padding = "0"; if (spacing) b.style.lineHeight = String(p.tableLineHeight); });
+      blocks.forEach((b) => { b.style.margin = "0"; b.style.padding = "0"; b.style.border = "none"; b.style.background = "transparent"; if (spacing) b.style.lineHeight = String(p.tableLineHeight); });
     } else {
       const para = doc.createElement("p");
-      para.setAttribute("style", `margin:0;padding:0;${spacing}`);
+      para.setAttribute("style", `margin:0;padding:0;border:none;background:transparent;${spacing}`);
       while (td.firstChild) para.appendChild(td.firstChild);
       td.appendChild(para);
     }
