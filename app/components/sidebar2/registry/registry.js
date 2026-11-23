@@ -276,7 +276,7 @@ FunctionRegistry.registerMany([
 { function: 'removeContentInsideFolds',  icon: 'compress',      name: 'Remove Folded Contents',      under: ['document'], onclick: 'removeContentInsideFolds()' },
 
   // ── Transformer ──────────────────────────────────────────────────────────
-  { function: 'openDocsCopier',        icon: 'paste',                 name: 'Intelligent document copier for google docs', under: ['transformer'], batch: 'exclude', onclick: 'openDocsCopier()' },
+  { function: 'openDocsCopier',        icon: 'paste',                 name: 'Docscopier', under: ['transformer'], batch: 'exclude', onclick: 'openDocsCopier()' },
 
   // ── Markdown (Design mode) ────────────────────────────────────────────────
   // Block type

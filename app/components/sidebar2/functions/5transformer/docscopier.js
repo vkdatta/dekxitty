@@ -1,5 +1,5 @@
 /**
- * Transformer › Intelligent document copier for Google Docs
+ * Transformer › Docscopier (copy for Google Docs)
  * ─────────────────────────────────────────────────────────────────────────────
  * AI chat answers (Markdown) often lose their layout when pasted straight into
  * Google Docs. Paste the text into a note, run this function, confirm, and a
@@ -300,6 +300,143 @@ function fixCapsBlocks(doc, root) {
   });
 }
 
+/* ───────────────────────── LaTeX → plain text ───────────────────────── */
+
+// Commands that just wrap text: keep the content, drop the command.
+const LX_WRAP = new Set(["text","textbf","textit","textrm","textsf","texttt","textnormal","textsc","textsl","mbox","hbox",
+  "mathbf","mathrm","mathit","mathsf","mathtt","mathcal","mathbb","mathfrak","boldsymbol","bm","operatorname","emph","underline","overline","vec","hat","bar","tilde","displaystyle","textstyle"]);
+const LX_SYM = {
+  times: "x", cdot: "·", div: "÷", pm: "±", mp: "∓", leq: "≤", le: "≤", geq: "≥", ge: "≥", neq: "≠", ne: "≠",
+  approx: "≈", equiv: "≡", sim: "~", propto: "∝", infty: "∞", rightarrow: "→", to: "→", leftarrow: "←", Rightarrow: "⇒",
+  Leftarrow: "⇐", leftrightarrow: "↔", Leftrightarrow: "⇔", implies: "⇒", degree: "°", circ: "°", ldots: "...", dots: "...",
+  cdots: "...", therefore: "∴", because: "∵", sum: "Σ", prod: "Π", int: "∫", partial: "∂", nabla: "∇", in: "∈", notin: "∉",
+  subset: "⊂", cup: "∪", cap: "∩", forall: "∀", exists: "∃", ast: "*", star: "*", bullet: "•", quad: " ", qquad: " ",
+  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", varepsilon: "ε", zeta: "ζ", eta: "η", theta: "θ", iota: "ι",
+  kappa: "κ", lambda: "λ", mu: "μ", nu: "ν", xi: "ξ", pi: "π", rho: "ρ", sigma: "σ", tau: "τ", phi: "φ", varphi: "φ",
+  chi: "χ", psi: "ψ", omega: "ω", Gamma: "Γ", Delta: "Δ", Theta: "Θ", Lambda: "Λ", Xi: "Ξ", Pi: "Π", Sigma: "Σ",
+  Phi: "Φ", Psi: "Ψ", Omega: "Ω",
+  sin: "sin", cos: "cos", tan: "tan", log: "log", ln: "ln", exp: "exp", min: "min", max: "max", lim: "lim"
+};
+const LX_DROP = new Set(["left","right","big","Big","bigg","Bigg","limits","nolimits"]);
+const LX_KNOWN = new Set([...LX_WRAP, ...LX_DROP, ...Object.keys(LX_SYM), "frac","dfrac","tfrac","sqrt","binom","begin","end"]);
+const SUP = { "0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","+":"⁺","-":"⁻","n":"ⁿ" };
+const SUB = { "0":"₀","1":"₁","2":"₂","3":"₃","4":"₄","5":"₅","6":"₆","7":"₇","8":"₈","9":"₉","+":"₊","-":"₋" };
+
+/** Read a {...} group starting at s[i] === "{". Returns the inner text and the index after the "}". */
+function lxGroup(s, i) {
+  let depth = 0, j = i;
+  for (; j < s.length; j++) {
+    if (s[j] === "\\") { j++; continue; }
+    if (s[j] === "{") depth++;
+    else if (s[j] === "}" && --depth === 0) return { inner: s.slice(i + 1, j), end: j + 1 };
+  }
+  return null;
+}
+const lxSkipWs = (s, i) => { while (s[i] === " ") i++; return i; };
+
+function lxConvert(s, math) {
+  let out = "", i = 0;
+  const script = (map, mark) => {           // ^ or _ : digits become real super/subscripts
+    let arg, end;
+    if (s[i + 1] === "{") { const g = lxGroup(s, i + 1); if (!g) return false; arg = lxConvert(g.inner, true); end = g.end; }
+    else if (i + 1 < s.length && /[A-Za-z0-9+-]/.test(s[i + 1])) { arg = s[i + 1]; end = i + 2; }
+    else return false;
+    out += [...arg].every((ch) => map[ch]) ? [...arg].map((ch) => map[ch]).join("") : (arg.length === 1 ? mark + arg : mark + "(" + arg + ")");
+    i = end;
+    return true;
+  };
+  while (i < s.length) {
+    const c = s[i];
+    if (c === "\\") {
+      const m = /^\\([A-Za-z]+)/.exec(s.slice(i, i + 40));
+      if (m) {
+        const name = m[1];
+        let j = i + 1 + name.length;
+        if (LX_WRAP.has(name)) {
+          const k = lxSkipWs(s, j);
+          if (s[k] === "{") { const g = lxGroup(s, k); if (g) { out += lxConvert(g.inner, math); i = g.end; continue; } }
+          i = j; continue;
+        }
+        if (name === "frac" || name === "dfrac" || name === "tfrac" || name === "binom") {
+          const a = s[lxSkipWs(s, j)] === "{" ? lxGroup(s, lxSkipWs(s, j)) : null;
+          const b = a && s[lxSkipWs(s, a.end)] === "{" ? lxGroup(s, lxSkipWs(s, a.end)) : null;
+          if (a && b) {
+            const x = lxConvert(a.inner, true).trim(), y = lxConvert(b.inner, true).trim();
+            const wrap = (t) => (/^[^\s+\-*/x÷±=<>]+$/.test(t) ? t : `(${t})`);   // keep a+b grouped inside a fraction
+            out += name === "binom" ? `C(${x}, ${y})` : `(${wrap(x)}/${wrap(y)})`;
+            i = b.end; continue;
+          }
+        }
+        if (name === "sqrt") {
+          let k = lxSkipWs(s, j), root = "";
+          if (s[k] === "[") { const e = s.indexOf("]", k); if (e > 0) { root = s.slice(k + 1, e); k = lxSkipWs(s, e + 1); } }
+          if (s[k] === "{") {
+            const g = lxGroup(s, k);
+            if (g) { out += (root ? lxConvert(root, true) + "√" : "√") + "(" + lxConvert(g.inner, true) + ")"; i = g.end; continue; }
+          }
+        }
+        if (name === "begin" || name === "end") {           // environments: drop the markers, keep the content
+          const k = lxSkipWs(s, j);
+          const g = s[k] === "{" ? lxGroup(s, k) : null;
+          if (g) { i = g.end; continue; }
+        }
+        if (LX_DROP.has(name)) { i = j; if (s[i] === " ") i++; continue; }
+        if (Object.prototype.hasOwnProperty.call(LX_SYM, name)) { out += LX_SYM[name]; i = j; continue; }
+        out += s[i]; i++; continue;                         // unknown command: leave untouched
+      }
+      const n = s[i + 1];
+      if (n === "\\") { out += " "; i += 2; continue; }
+      if (n && ",;: ".includes(n)) { out += " "; i += 2; continue; }
+      if (n === "!") { i += 2; continue; }
+      if (n && "%$&#_{}".includes(n)) { out += n; i += 2; continue; }
+      out += c; i++; continue;
+    }
+    if (math && c === "^" && script(SUP, "^")) continue;
+    if (math && c === "_" && script(SUB, "_")) continue;
+    if (math && (c === "{" || c === "}")) { i++; continue; }   // grouping braces
+    out += c; i++;
+  }
+  return out;
+}
+
+const hasLatexCmd = (line) => {
+  const re = /\\([A-Za-z]+)/g;
+  let m;
+  while ((m = re.exec(line))) if (LX_KNOWN.has(m[1])) return true;
+  return false;
+};
+
+/**
+ * Turn LaTeX into plain text: \text{₹1,00,00,000} \times \frac{2}{5} → ₹1,00,00,000 x (2/5),
+ * 50,000\text{ sq. ft.} → 50,000 sq. ft. Handles $…$, $$…$$, \(…\), \[…\] and bare commands.
+ * Fenced and inline code are never touched.
+ */
+export function stripLatex(md) {
+  const lines = String(md).split("\n");
+  const chunks = [];            // [{ code, text }]
+  let inFence = false, buf = [];
+  const flush = () => { if (buf.length) chunks.push({ code: false, text: buf.join("\n") }); buf = []; };
+  lines.forEach((l) => {
+    if (/^\s*(```|~~~)/.test(l)) {
+      if (!inFence) { flush(); inFence = true; buf.push(l); }
+      else { buf.push(l); inFence = false; chunks.push({ code: true, text: buf.join("\n") }); buf = []; }
+    } else buf.push(l);
+  });
+  if (inFence) chunks.push({ code: true, text: buf.join("\n") }); else flush();
+
+  return chunks.map((ch) => {
+    if (ch.code) return ch.text;
+    const saved = [];
+    let t = ch.text.replace(/`[^`\n]*`/g, (m) => { saved.push(m); return `\u0002${saved.length - 1}\u0003`; });
+    t = t.replace(/\$\$([\s\S]+?)\$\$/g, (_, x) => lxConvert(x.trim(), true))
+         .replace(/\\\[([\s\S]+?)\\\]/g, (_, x) => lxConvert(x.trim(), true))
+         .replace(/\\\(([\s\S]+?)\\\)/g, (_, x) => lxConvert(x.trim(), true))
+         .replace(/(?<![\\$\d])\$(?!\s)([^$\n]*?[^\s$])\$(?!\d)/g, (m, x) => (/[\\^_{}]/.test(x) ? lxConvert(x, true) : m));
+    t = t.split("\n").map((l) => (l.includes("\\") ? lxConvert(l, hasLatexCmd(l)) : l)).join("\n");
+    return t.replace(/\u0002(\d+)\u0003/g, (_, n) => saved[+n]);
+  }).join("\n");
+}
+
 /* ───────────────────────── Markdown → Docs-friendly HTML ───────────────────────── */
 
 /**
@@ -311,7 +448,9 @@ export function markdownToDocsHtml(md, prefs = {}) {
   if (!window.marked) throw new Error("Markdown engine (marked) is not loaded yet");
 
   // Tab-separated / column-aligned tables become pipe tables first (also closes header gaps).
-  const source = normalizeTextTables(String(md).replace(/\r\n?/g, "\n"));
+  let raw = String(md).replace(/\r\n?/g, "\n");
+  if (!p.latex) raw = stripLatex(raw);        // LaTeX → plain text unless the user wants it kept
+  const source = normalizeTextTables(raw);
 
   // breaks:true — AI answers rely on single line breaks; keep them.
   let html = window.marked.parse(source, { gfm: true, breaks: true });

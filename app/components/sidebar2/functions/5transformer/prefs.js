@@ -55,12 +55,14 @@ export const DOCS_COPIER_OPTIONS = [
   { key: "underlines", group: "text", label: "Retain underlines",    def: true, desc: "Keep underlined text. Markdown has no underline of its own, so this only affects text written as <u>…</u>." },
   { key: "strike",     group: "text", label: "Retain strikethrough", def: true, desc: "Keep ~~struck-out~~ text." },
   { key: "capsBlock",  group: "text", label: "Retain block of capital letters", def: false,
-    desc: "A block is 3 or more capital-letter words in a row. Off (default) turns it into normal sentence case: HELLO THIS IS A GOOD DAY → Hello this is a good day. One or two capital words, like HELLO or GST, are never touched." },
+    desc: "Off (default) turns long ALL-CAPS passages into normal sentence case: HELLO THIS IS A GOOD DAY → Hello this is a good day. One or two capital words, like HELLO or GST, are never touched." },
 
   /* ── Links and code ── */
   { key: "links",      group: "code", label: "Retain hyperlinks",   def: true, desc: "Keep links clickable. Off keeps just the link text." },
   { key: "code",       group: "code", label: "Retain inline code",  def: true, desc: "Keep `code` in a monospace font." },
-  { key: "codeBlocks", group: "code", label: "Retain code blocks",  def: true, desc: "Keep fenced code blocks in a monospace font." }
+  { key: "codeBlocks", group: "code", label: "Retain code blocks",  def: true, desc: "Keep fenced code blocks in a monospace font." },
+  { key: "latex",      group: "code", label: "Retain LaTeX",        def: false,
+    desc: "Off (default) turns LaTeX into plain text: \\text{₹1,00,000} \\times \\frac{2}{5} → ₹1,00,000 x (2/5). On leaves the LaTeX exactly as written." }
 ];
 
 export const DOCS_COPIER_STORAGE_KEY = "dexDocsCopierPrefs";
