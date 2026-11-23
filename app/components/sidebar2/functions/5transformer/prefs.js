@@ -42,7 +42,11 @@ export const DOCS_COPIER_OPTIONS = [
       { key: "tableHeader", label: "Bold, shaded header row", def: true, showWhen: "on",
         desc: "Make the first row bold with a light grey background." },
       { key: "tableBorders", label: "Table borders", def: true, showWhen: "on",
-        desc: "Draw a thin border around every cell." }
+        desc: "Draw a thin border around every cell." },
+      { key: "tableSpacing", label: "Set table line spacing", def: false, showWhen: "on",
+        desc: "Off (default) keeps your document's own line spacing inside tables. On forces the spacing below." },
+      { key: "tableLineHeight", type: "number", label: "Table line spacing", def: 1.15, min: 1, max: 3, step: 0.05, decimals: 2, unit: "×", showWhen: "on", requires: "tableSpacing",
+        desc: "Line spacing inside table cells (1.15 is the Docs default). Only used when \"Set table line spacing\" is on." }
     ]
   },
   { key: "blockquotes", group: "structure", label: "Retain quotes", def: true, desc: "Keep > quoted text indented." },
@@ -71,13 +75,18 @@ const flat = () => DOCS_COPIER_OPTIONS.flatMap((o) => [o, ...(o.children || [])]
 
 export const DOCS_COPIER_DEFAULTS = Object.freeze(Object.fromEntries(flat().map((o) => [o.key, o.def])));
 
-/** Clamp a width to its allowed range; anything unusable falls back to the default. */
-export function cleanWidth(v) {
-  const spec = flat().find((o) => o.key === "tableWidth");
-  const n = Math.round(Number(v));
+/** Clamp a number option to its allowed range; anything unusable falls back to the default. */
+export function cleanNumber(key, v) {
+  const spec = flat().find((o) => o.key === key);
+  let n = Number(v);
   if (!Number.isFinite(n)) return spec.def;
+  const d = spec.decimals || 0;
+  n = d ? Number(n.toFixed(d)) : Math.round(n);
   return Math.min(spec.max, Math.max(spec.min, n));
 }
+
+/** Kept for existing callers: clamp a table width. */
+export const cleanWidth = (v) => cleanNumber("tableWidth", v);
 
 export function getPrefs() {
   let saved = {};
@@ -85,7 +94,7 @@ export function getPrefs() {
   const out = {};
   flat().forEach((o) => {
     const v = saved[o.key];
-    if (o.type === "number") out[o.key] = v == null ? o.def : cleanWidth(v);
+    if (o.type === "number") out[o.key] = v == null ? o.def : cleanNumber(o.key, v);
     else out[o.key] = typeof v === "boolean" ? v : o.def;
   });
   return out;
@@ -96,12 +105,13 @@ export function setPref(key, value) {
   if (!spec) return getPrefs();
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(DOCS_COPIER_STORAGE_KEY) || "{}") || {}; } catch (e) { saved = {}; }
-  saved[key] = spec.type === "number" ? cleanWidth(value) : !!value;
+  saved[key] = spec.type === "number" ? cleanNumber(key, value) : !!value;
   try { localStorage.setItem(DOCS_COPIER_STORAGE_KEY, JSON.stringify(saved)); } catch (e) {}
   return getPrefs();
 }
 
 /** Is a sub-option currently relevant, given its parent's state? */
 export function childVisible(child, prefs, parentKey) {
+  if (child.requires && !prefs[child.requires]) return false;
   return child.showWhen === "off" ? !prefs[parentKey] : !!prefs[parentKey];
 }

@@ -44,6 +44,32 @@ function readTable(table, headerStyle) {
   return { rows, fmts, cells };
 }
 
+/**
+ * Why some tables paste "fat": a bare cell (<td>text</td>) becomes a Docs paragraph that
+ * inherits the spacing of wherever the cursor is — a doc with 1.5 line spacing or space after
+ * paragraphs turns one line into three. Cells with a trailing <br> or an empty <p> are fat
+ * for the same reason. So: strip trailing breaks / empty blocks, and give every cell exactly one
+ * paragraph with zero margins. Line-height is NOT set unless the user turned it on, so the
+ * document's own line spacing is respected.
+ */
+function tightenCells(doc, table, p) {
+  table.querySelectorAll("td,th").forEach((td) => {
+    td.querySelectorAll("p").forEach((x) => { if (!x.textContent.trim() && !x.querySelector("img")) x.remove(); });
+    while (td.lastChild && ((td.lastChild.nodeType === 1 && td.lastChild.tagName === "BR") || (td.lastChild.nodeType === 3 && !td.lastChild.textContent.trim()))) td.lastChild.remove();
+    while (td.firstChild && ((td.firstChild.nodeType === 1 && td.firstChild.tagName === "BR") || (td.firstChild.nodeType === 3 && !td.firstChild.textContent.trim()))) td.firstChild.remove();
+    const spacing = p.tableSpacing ? `line-height:${p.tableLineHeight};` : "";
+    const blocks = Array.from(td.children).filter((c) => /^(P|DIV)$/.test(c.tagName));
+    if (blocks.length && blocks.length === td.children.length && Array.from(td.childNodes).every((n) => n.nodeType === 1)) {
+      blocks.forEach((b) => { b.style.margin = "0"; b.style.padding = "0"; if (spacing) b.style.lineHeight = String(p.tableLineHeight); });
+    } else {
+      const para = doc.createElement("p");
+      para.setAttribute("style", `margin:0;padding:0;${spacing}`);
+      while (td.firstChild) para.appendChild(td.firstChild);
+      td.appendChild(para);
+    }
+  });
+}
+
 function rebuildTable(doc, table, p) {
   const { rows, fmts, cells } = readTable(table, p.tableHeader);
   if (!rows.length) return;
@@ -67,6 +93,7 @@ function rebuildTable(doc, table, p) {
   });
   const fresh = holder.firstElementChild;
   if (!fresh) return;
+  tightenCells(doc, fresh, p);
   if (!p.tableBorders) {
     fresh.setAttribute("border", "0");
     fresh.style.border = "none";

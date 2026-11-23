@@ -1,4 +1,4 @@
-import { DOCS_COPIER_OPTIONS, DOCS_COPIER_GROUPS, getPrefs as getDcPrefs, setPref as setDcPref, childVisible as dcChildVisible, cleanWidth as dcCleanWidth } from "../sidebar2/functions/5transformer/prefs.js";
+import { DOCS_COPIER_OPTIONS, DOCS_COPIER_GROUPS, getPrefs as getDcPrefs, setPref as setDcPref, childVisible as dcChildVisible, cleanNumber as dcCleanNumber } from "../sidebar2/functions/5transformer/prefs.js";
 import { getProforma, saveProforma, resetProforma, validateProforma, listPatterns, recognise, DEFAULT_PROFORMA, describeDelimiter, parseDelimiterInput } from "../../js/modes/csvexec/recogniser.js";
 
 /**
@@ -765,7 +765,7 @@ export function createSettingsManager() {
     const wrap = document.createElement('div');
     wrap.innerHTML = `
       <div class="pf-hint">${escHtml(spec.desc || '')} Allowed: ${spec.min}–${spec.max} ${escHtml(spec.unit || '')}.</div>
-      <input type="number" class="modal-input" id="dcNumInput" min="${spec.min}" max="${spec.max}" step="1" value="${cur}" data-skip-validation>`;
+      <input type="number" class="modal-input" id="dcNumInput" min="${spec.min}" max="${spec.max}" step="${spec.step || 1}" value="${cur}" data-skip-validation>`;
     const input = wrap.querySelector('#dcNumInput');
     const apply = (v) => { if (typeof window.closeModal === 'function') window.closeModal({ action: 'submit', value: v }); };
     const r = await modalOver({
@@ -778,7 +778,7 @@ export function createSettingsManager() {
       ])
     }, () => setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 60));
     if (!r || r.action !== 'submit') return;
-    setDcPref(spec.key, dcCleanWidth(r.value));
+    setDcPref(spec.key, dcCleanNumber(spec.key, r.value));
     paint();
   }
 
