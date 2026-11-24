@@ -175,10 +175,23 @@ export function compact(code) {
 }
 
 
+export function minifyJsText(src) {
+  return removeComments(src)
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.replace(/[ \t]+/g, " ").replace(/^ | $/g, ""))
+    .filter((l) => l !== "")
+    .join("\n");
+}
+
+export function optimiseJsText(src) {
+  return compact(removeComments(src));
+}
+
 export const optimisejs = (...a) => preserveSelection(async () => {
   if (!currentNote || !noteTextarea) return;
   try {
-    const cleaned = compact(removeComments(noteTextarea.value || ""));
+    const cleaned = optimiseJsText(noteTextarea.value || "");
     noteTextarea.value = cleaned;
     updateNoteMetadata();
     showNotification("Comments removed and code compacted.");
@@ -193,13 +206,7 @@ export const minifyjs = (...a) => preserveSelection(async () => {
   const original = window.showNotification;
   window.showNotification = () => {};
   try {
-    const cleaned = removeComments(noteTextarea.value || "");
-    noteTextarea.value = cleaned
-      .replace(/\r\n?/g, "\n")
-      .split("\n")
-      .map((l) => l.replace(/[ \t]+/g, " ").replace(/^ | $/g, ""))
-      .filter((l) => l !== "")
-      .join("\n");            
+    noteTextarea.value = minifyJsText(noteTextarea.value || "");
   } catch (err) {
     console.error("minifyjs error:", err);
   } finally {

@@ -1,3 +1,5 @@
+import { toUpper, toLower, capitalizeWordsText, capitalizeSentencesText, reverseWordsText, reverseAllText, bulletListText, numberedListText, indentText, outdentText } from "./textops.js";
+
 export const handleFormat = function (t) {
   return preserveSelection(async function () {
     if (!currentNote || !noteTextarea) return;
@@ -86,17 +88,7 @@ export const handleBulletList = function () {
     if (!result || result.action !== "OK") return;
     const formatValue = result.format;
     if (!formatValue) return;
-    const sel = v.slice(s, e),
-      lines = sel.split(/\r?\n/);
-    let formatted;
-    if (formatValue === "2") {
-      formatted =
-        "<ul>\n" +
-        lines.map((t) => "<li>" + t + "</li>").join("\n") +
-        "\n</ul>";
-    } else {
-      formatted = lines.map((t) => "- " + t).join("\n");
-    }
+    const formatted = bulletListText(v.slice(s, e), formatValue);
     noteTextarea.value = v.slice(0, s) + formatted + v.slice(e);
     updateNoteMetadata();
     showNotification("Bullet list applied!");
@@ -128,17 +120,7 @@ export const handleNumberedList = function () {
     if (!result || result.action !== "OK") return;
     const formatValue = result.format;
     if (!formatValue) return;
-    const sel = v.slice(s, e),
-      lines = sel.split(/\r?\n/);
-    let formatted;
-    if (formatValue === "2") {
-      formatted =
-        "<ol>\n" +
-        lines.map((t) => "<li>" + t + "</li>").join("\n") +
-        "\n</ol>";
-    } else {
-      formatted = lines.map((t, i) => i + 1 + ". " + t).join("\n");
-    }
+    const formatted = numberedListText(v.slice(s, e), formatValue);
     noteTextarea.value = v.slice(0, s) + formatted + v.slice(e);
     updateNoteMetadata();
     showNotification("Numbered list applied!");
@@ -256,8 +238,8 @@ export const handleUppercase = function () {
     if (!v) return;
     const f =
       s === e
-        ? v.toUpperCase()
-        : v.slice(0, s) + v.slice(s, e).toUpperCase() + v.slice(e);
+        ? toUpper(v)
+        : v.slice(0, s) + toUpper(v.slice(s, e)) + v.slice(e);
     noteTextarea.value = f;
     updateNoteMetadata();
     showNotification("Converted to uppercase!");
@@ -274,8 +256,8 @@ export const handleLowercase = function () {
     if (!v) return;
     const f =
       s === e
-        ? v.toLowerCase()
-        : v.slice(0, s) + v.slice(s, e).toLowerCase() + v.slice(e);
+        ? toLower(v)
+        : v.slice(0, s) + toLower(v.slice(s, e)) + v.slice(e);
     noteTextarea.value = f;
     updateNoteMetadata();
     showNotification("Converted to lowercase!");
@@ -310,8 +292,7 @@ export const increaseIndentation = function () {
       showNotification("Please select text to indent!");
       return;
     }
-    const t = noteTextarea.value.slice(s, e),
-      i = "\t" + t.replace(/\n/g, "\n\t");
+    const i = indentText(noteTextarea.value.slice(s, e));
     noteTextarea.value =
       noteTextarea.value.slice(0, s) + i + noteTextarea.value.slice(e);
     updateNoteMetadata();
@@ -329,12 +310,7 @@ export const decreaseIndentation = function () {
       showNotification("Please select text to un-indent!");
       return;
     }
-    const t = noteTextarea.value.slice(s, e).split("\n"),
-      i = t
-        .map((e) =>
-          e.startsWith("\t") ? e.slice(1) : e.startsWith(" ") ? e.slice(4) : e
-        )
-        .join("\n");
+    const i = outdentText(noteTextarea.value.slice(s, e));
     noteTextarea.value =
       noteTextarea.value.slice(0, s) + i + noteTextarea.value.slice(e);
     updateNoteMetadata();
@@ -436,11 +412,11 @@ export const reverseText = (...a) => preserveSelection(async () => {
   let s = noteTextarea.selectionStart,
     e = noteTextarea.selectionEnd;
   if (s === e)
-    noteTextarea.value = noteTextarea.value.split("").reverse().join("");
+    noteTextarea.value = reverseAllText(noteTextarea.value);
   else {
     let t = noteTextarea.value,
       n = t.substring(s, e),
-      r = n.split("").reverse().join("");
+      r = reverseAllText(n);
     noteTextarea.value = t.substring(0, s) + r + t.substring(e);
   }
   try {
@@ -457,11 +433,11 @@ export const reverseWords = (...a) => preserveSelection(async () => {
   const s = noteTextarea.selectionStart;
   const e = noteTextarea.selectionEnd;
   if (s === e) {
-    noteTextarea.value = noteTextarea.value.split(/\s+/).reverse().join(" ");
+    noteTextarea.value = reverseWordsText(noteTextarea.value);
   } else {
     const t = noteTextarea.value;
     const n = t.substring(s, e);
-    const r = n.split(/\s+/).reverse().join(" ");
+    const r = reverseWordsText(n);
     noteTextarea.value = t.substring(0, s) + r + t.substring(e);
   }
   updateNoteMetadata();
@@ -473,17 +449,11 @@ export const capitalizeWords = (...a) => preserveSelection(async () => {
   const s = noteTextarea.selectionStart;
   const e = noteTextarea.selectionEnd;
   if (s === e) {
-    noteTextarea.value = noteTextarea.value.replace(
-      /\b\w+/g,
-      (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
-    );
+    noteTextarea.value = capitalizeWordsText(noteTextarea.value);
   } else {
     const t = noteTextarea.value;
     const n = t.substring(s, e);
-    const r = n.replace(
-      /\b\w+/g,
-      (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
-    );
+    const r = capitalizeWordsText(n);
     noteTextarea.value = t.substring(0, s) + r + t.substring(e);
   }
   updateNoteMetadata();
@@ -495,13 +465,11 @@ export const capitalizeSentences = (...a) => preserveSelection(async () => {
   const s = noteTextarea.selectionStart;
   const e = noteTextarea.selectionEnd;
   if (s === e) {
-    noteTextarea.value = noteTextarea.value
-      .toLowerCase()
-      .replace(/(^\s*[a-z])|([.!?]\s*[a-z])/g, (t) => t.toUpperCase());
+    noteTextarea.value = capitalizeSentencesText(noteTextarea.value);
   } else {
     const t = noteTextarea.value;
-    const n = t.substring(s, e).toLowerCase();
-    const r = n.replace(/(^\s*[a-z])|([.!?]\s*[a-z])/g, (t) => t.toUpperCase());
+    const n = t.substring(s, e);
+    const r = capitalizeSentencesText(n);
     noteTextarea.value = t.substring(0, s) + r + t.substring(e);
   }
   updateNoteMetadata();

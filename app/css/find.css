@@ -290,15 +290,16 @@
   word-wrap: break-word;
 }
 
-#chainPaneList,
-#batchActionList {
+#workflowList,
+#batchActionList,
+#workflowFnParams {
   display: flex;
   flex-direction: column;
   gap: 8px;
   max-height: 50vh;
   overflow-y: auto;
 }
-.chain-pane-row {
+.workflow-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -309,9 +310,9 @@
   cursor: pointer;
   transition: background 0.12s ease;
 }
-.chain-pane-row:hover { background: var(--c-panel-3); }
-.chain-pane-info { flex: 1; min-width: 0; }
-.chain-pane-name {
+.workflow-row:hover { background: var(--c-panel-3); }
+.workflow-info { flex: 1; min-width: 0; }
+.workflow-name {
   color: var(--c-white);
   font-weight: 600;
   font-size: 14px;
@@ -319,17 +320,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chain-pane-steps {
+.workflow-meta {
   color: var(--c-text-faint);
   font-size: 12px;
   margin-top: 2px;
 }
-.chain-pane-steps delluna-icon svg,
-.chain-pane-steps delluna-icon svg * {
+.workflow-meta delluna-icon svg,
+.workflow-meta delluna-icon svg * {
   fill: var(--c-text-faint);
   stroke: var(--c-text-faint);
 }
-.chain-pane-edit {
+.workflow-edit {
   background: transparent;
   border: none;
   color: var(--c-text-dim);
@@ -340,60 +341,73 @@
   align-items: center;
   justify-content: center;
 }
-.chain-pane-edit delluna-icon svg,
-.chain-pane-edit delluna-icon svg * {
+.workflow-edit delluna-icon svg,
+.workflow-edit delluna-icon svg * {
   fill: var(--c-text-dim);
   stroke: var(--c-text-dim);
 }
-.chain-pane-edit:hover { color: var(--c-accent); background: var(--c-border-soft); }
-.chain-pane-edit:hover delluna-icon svg,
-.chain-pane-edit:hover delluna-icon svg * {
+.workflow-edit:hover { color: var(--c-accent); background: var(--c-border-soft); }
+.workflow-edit:hover delluna-icon svg,
+.workflow-edit:hover delluna-icon svg * {
   fill: var(--c-accent);
   stroke: var(--c-accent);
 }
-.chain-empty {
+.workflow-empty {
   color: var(--c-text-faint);
   font-size: 13.5px;
   padding: 16px 4px;
   text-align: center;
 }
 
-#chainStepsList {
+#workflowStepsList {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin: 8px 0 10px;
 }
-.chain-step-row {
+.workflow-step-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
-.chain-step-row .modal-input { flex: 1; min-width: 0; }
-.chain-step-arrow {
+.workflow-step-params {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 4px 26px;
+}
+.workflow-step-params:empty { display: none; }
+.workflow-param { display: flex; flex-direction: column; gap: 4px; }
+.workflow-param-check { flex-direction: row; align-items: center; gap: 8px; }
+.workflow-param-check .modal-input { flex: none; width: auto; }
+.workflow-param .modal-input { width: 100%; box-sizing: border-box; }
+.workflow-step-row .modal-input { flex: 1; min-width: 0; }
+.workflow-step-arrow {
   color: var(--c-text-faint);
   flex-shrink: 0;
 }
-.chain-step-arrow delluna-icon svg,
-.chain-step-arrow delluna-icon svg *,
-delluna-icon.chain-step-arrow svg,
-delluna-icon.chain-step-arrow svg * {
+.workflow-step-arrow delluna-icon svg,
+.workflow-step-arrow delluna-icon svg *,
+delluna-icon.workflow-step-arrow svg,
+delluna-icon.workflow-step-arrow svg * {
   fill: var(--c-text-faint);
   stroke: var(--c-text-faint);
 }
-.chain-step-row-fn .custom-dropdown { flex: 1; min-width: 0; }
-.chain-step-kind-icon {
+.workflow-step-row-fn .custom-dropdown { flex: 1; min-width: 0; }
+.workflow-step-kind-icon {
   color: var(--c-accent);
   flex-shrink: 0;
 }
-.chain-step-kind-icon delluna-icon svg,
-.chain-step-kind-icon delluna-icon svg *,
-delluna-icon.chain-step-kind-icon svg,
-delluna-icon.chain-step-kind-icon svg * {
+.workflow-step-kind-icon delluna-icon svg,
+.workflow-step-kind-icon delluna-icon svg *,
+delluna-icon.workflow-step-kind-icon svg,
+delluna-icon.workflow-step-kind-icon svg * {
   fill: var(--c-accent);
   stroke: var(--c-accent);
 }
-.chain-step-remove {
+.workflow-step-remove {
   background: transparent;
   border: none;
   color: var(--c-text-faint);
@@ -405,20 +419,20 @@ delluna-icon.chain-step-kind-icon svg * {
   justify-content: center;
   border-radius: 6px;
 }
-.chain-step-remove delluna-icon svg,
-.chain-step-remove delluna-icon svg * {
+.workflow-step-remove delluna-icon svg,
+.workflow-step-remove delluna-icon svg * {
   fill: var(--c-text-faint);
   stroke: var(--c-text-faint);
 }
-.chain-step-remove:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
-.chain-step-remove:hover delluna-icon svg,
-.chain-step-remove:hover delluna-icon svg * {
+.workflow-step-remove:hover { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 10%, transparent); }
+.workflow-step-remove:hover delluna-icon svg,
+.workflow-step-remove:hover delluna-icon svg * {
   fill: var(--c-danger);
   stroke: var(--c-danger);
 }
 
-.chain-add-row { display: flex; gap: 8px; margin-top: 6px; }
-.chain-add-btn {
+.workflow-add-row { display: flex; gap: 8px; margin-top: 6px; }
+.workflow-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;

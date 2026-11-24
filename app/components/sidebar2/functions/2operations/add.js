@@ -1,3 +1,25 @@
+// Pure: string in → string out. Shared by the sidebar function and workflows.
+export function addTextToLines(text, { insertText, insertPosition, columnNumber }) {
+  const col = parseInt(columnNumber, 10) || 1;
+  const lines = text.split("\n");
+  let result = "";
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    const replacement = (insertText || "").replace(/%L/g, String(i + 1)).replace(/%N/g, "\n");
+    if (insertPosition === "start") {
+      line = replacement + line;
+    } else if (insertPosition === "end") {
+      line = line + replacement;
+    } else if (insertPosition === "column") {
+      const idx = Math.max(0, col - 1);
+      if (line.length < idx) line = line.padEnd(idx, " ");
+      line = line.slice(0, idx) + replacement + line.slice(idx);
+    }
+    result += line + (i < lines.length - 1 ? "\n" : "");
+  }
+  return result;
+}
+
 export const handleAdd = async () => {
   if (!currentNote || !noteTextarea) return;
   const r = await showModal({
@@ -8,27 +30,7 @@ export const handleAdd = async () => {
   });
   if (!r || r.action !== "submit") return;
   const { insertText, insertPosition, columnNumber } = r;
-  const col = parseInt(columnNumber, 10) || 1;
-  const lines = noteTextarea.value.split("\n");
-  let result = "";
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    const replacement = insertText
-      .replace(/%L/g, String(i + 1))
-      .replace(/%N/g, "\n");
-    if (insertPosition === "start") {
-      line = replacement + line;
-    } else if (insertPosition === "end") {
-      line = line + replacement;
-    } else if (insertPosition === "column") {
-      const idx = Math.max(0, col - 1);
-      if (line.length < idx) {
-        line = line.padEnd(idx, " ");
-      }
-      line = line.slice(0, idx) + replacement + line.slice(idx);
-    }
-    result += line + (i < lines.length - 1 ? "\n" : "");
-  }
+  const result = addTextToLines(noteTextarea.value, { insertText, insertPosition, columnNumber });
   noteTextarea.value = result;
   if (typeof updateNoteMetadata === "function") updateNoteMetadata();
   if (typeof updatecounts === "function") updatecounts();

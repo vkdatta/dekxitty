@@ -25,6 +25,39 @@ export function findPairs(text, startDelim, endDelim) {
   return pairs.sort((a, b) => a.startIndex - b.startIndex);
 }
 
+// Pure: string in → { text, count } or { error }. Shared by the sidebar function and workflows.
+export function replaceBetweenDelimiters(text, o) {
+  const { startDelim, endDelim, includeDelims, replaceText, mode, singleInstance, rangeFrom, rangeTo } = o;
+  if (!startDelim) return { error: "Start delimiter required" };
+  if (!endDelim) return { error: "End delimiter required" };
+  const pairs = findPairs(text, startDelim, endDelim);
+  if (!pairs.length) return { error: "No matches found" };
+  let from = 1,
+    to = pairs.length;
+  if (mode === "single") {
+    const n = parseInt(singleInstance, 10);
+    if (isNaN(n) || n < 1) return { error: "Invalid instance number" };
+    from = to = Math.min(Math.max(n, 1), pairs.length);
+  } else if (mode === "range") {
+    const f = parseInt(rangeFrom, 10),
+      t = parseInt(rangeTo, 10);
+    if (isNaN(f) || isNaN(t)) return { error: "Invalid range" };
+    from = Math.min(Math.max(f, 1), pairs.length);
+    to = Math.min(Math.max(t, from), pairs.length);
+  }
+  let out = text;
+  for (let i = pairs.length - 1; i >= 0; i--) {
+    const pair = pairs[i],
+      idx1 = i + 1;
+    if (idx1 < from || idx1 > to) continue;
+    const before = out.slice(0, pair.startIndex),
+      after = out.slice(pair.endIndex);
+    const middle = includeDelims ? replaceText : startDelim + replaceText + endDelim;
+    out = before + middle + after;
+  }
+  return { text: out, count: Math.max(0, Math.min(to, pairs.length) - from + 1) };
+}
+
 export async function handlePattern() {
   if (!currentNote || !noteTextarea) return;
   const r = await showModal({
@@ -45,48 +78,13 @@ export async function handlePattern() {
   } = r;
   if (!startDelim) return showNotification("Start delimiter required");
   if (!endDelim) return showNotification("End delimiter required");
-  const text = noteTextarea.value,
-    pairs = findPairs(text, startDelim, endDelim);
-  if (!pairs.length) return showNotification("No matches found");
-  let from = 1,
-    to = pairs.length;
-  if (mode === "single") {
-    const n = parseInt(singleInstance, 10);
-    if (isNaN(n) || n < 1) return showNotification("Invalid instance number");
-    from = to = Math.min(Math.max(n, 1), pairs.length);
-  } else if (mode === "range") {
-    const f = parseInt(rangeFrom, 10),
-      t = parseInt(rangeTo, 10);
-    if (isNaN(f) || isNaN(t)) return showNotification("Invalid range");
-    from = Math.min(Math.max(f, 1), pairs.length);
-    to = Math.min(Math.max(t, from), pairs.length);
-  }
-  try {
-    let out = text;
-    for (let i = pairs.length - 1; i >= 0; i--) {
-      const pair = pairs[i],
-        idx1 = i + 1;
-      if (idx1 < from || idx1 > to) continue;
-      const before = out.slice(0, pair.startIndex),
-        after = out.slice(pair.endIndex);
-      let middle;
-      if (includeDelims) {
-        middle = replaceText;
-      } else {
-        middle = startDelim + replaceText + endDelim;
-      }
-      out = before + middle + after;
-    }
-    noteTextarea.value = out;
-    typeof updateNoteMetadata === "function" && updateNoteMetadata();
-    const replacedCount = Math.max(0, Math.min(to, pairs.length) - from + 1);
-    showNotification(
-      `Replacement done! (${replacedCount} instance(s) replaced)`
-    );
-  } catch (err) {
-    console.error("Replacement error", err);
-    showNotification("Replacement failed — see console");
-  }
+  const out = replaceBetweenDelimiters(noteTextarea.value, {
+    startDelim, endDelim, includeDelims, replaceText, mode, singleInstance, rangeFrom, rangeTo
+  });
+  if (out.error) return showNotification(out.error);
+  noteTextarea.value = out.text;
+  typeof updateNoteMetadata === "function" && updateNoteMetadata();
+  showNotification(`Replacement done! (${out.count} instance(s) replaced)`);
 }
 
 export function handlePatternSubmit() {

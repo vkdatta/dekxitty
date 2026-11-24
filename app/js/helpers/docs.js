@@ -68,10 +68,13 @@ clipboard actions, pinned shortcuts, and your categorized function collection. T
 organized by category with cascading dropdowns and live search. Pin any function to the sidebar
 or add it to your personal collection (User DB) so it appears under <em>Categories</em>.</p>
 
-<h2>Chains</h2>
-<p>A &ldquo;chain&rdquo; is a saved sequence of find/replace steps (and certain functions) you can
-re-run on any note, or across many notes at once via batch apply. Build one from
-Operations &rarr; Chains.</p>
+<h2>Automated Workflows</h2>
+<p>A workflow performs its steps one after another on the whole note: find/replace steps plus any
+automatable function (uppercase, MD5, fetch URL, designer fonts &hellip;). Each function step asks
+for everything it needs when you add it &mdash; the URL to fetch, the font to apply, the cipher keys
+&mdash; so running the workflow never stops to prompt. Functions that open files, recover versions
+or otherwise aren&rsquo;t pure text actions can&rsquo;t be added. Re-run a workflow on any note, or
+across many notes at once via batch apply. Build one from Operations &rarr; Workflows.</p>
 
 <h2>Asteroid Belt</h2>
 <p>Link two notes by writing <code>{{note title}}</code> in either one&rsquo;s content. Open

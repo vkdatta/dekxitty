@@ -397,4 +397,4 @@ export const minifycss = (...a) => preserveSelection(async () => {
     window.showNotification = originalShowNotification;
   }
   showNotification("Minified CSS");
-});
+})(...a);

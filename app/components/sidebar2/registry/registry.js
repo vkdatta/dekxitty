@@ -66,9 +66,17 @@
    *                                   def.under[0] must match a registerLevel1 id
    * @param {string}   [def.batch]   - batch attribute (file | app | exclude | once:*)
    * @param {string}   [def.onclick] - JS to execute, default = def.function + '()'
+   * @param {boolean}  def.isAutomatable - REQUIRED tag. true only when the function is a
+   *                   whole-document text action whose every input can be captured up front
+   *                   (needs a matching entry in functions/2operations/automations.js).
+   *                   false for anything that opens UI, needs a selection/cursor, or acts
+   *                   on the app (Open File, Recover Versions, Debug, Sync, md block tools...).
    */
   function register(def) {
     if (!def || !def.function) throw new Error('register: function required');
+    if (typeof def.isAutomatable !== 'boolean') {
+      console.warn('FunctionRegistry: "' + def.function + '" has no isAutomatable tag (defaulting to false)');
+    }
     const under = Array.isArray(def.under) ? def.under : [def.under].filter(Boolean);
     _functions.push({
       id:      _idSeq++,
@@ -78,6 +86,7 @@
       under:   under,
       leafId:  slug(under[under.length - 1] || def.function),
       batch:   def.batch    || null,
+      isAutomatable: def.isAutomatable === true,
       onclick: def.onclick  || (def.function + '()'),
     });
   }
@@ -94,6 +103,7 @@
 
   function getAllLevel1()     { return Array.from(_level1Map.values()); }
   function getAllFunctions()  { return _functions.slice(); }
+  function getAutomatableFunctions() { return _functions.filter(f => f.isAutomatable); }
 
   function getLevel1(id)     { return _level1Map.get(id) || null; }
 
@@ -187,6 +197,7 @@
     registerMany,
     getAllLevel1,
     getAllFunctions,
+    getAutomatableFunctions,
     getLevel1,
     getFunctionsForLevel1,
     buildTree,
@@ -216,97 +227,97 @@ FunctionRegistry.registerLevel1({ id: 'markdown',    name: 'Markdown',    icon: 
 FunctionRegistry.registerMany([
 
   // ── Formatting › Basic ────────────────────────────────────────────────────
-  { function: 'handleUppercase',       icon: 'uppercase',             name: 'Uppercase',             under: ['formatting', 'Basic'], batch: 'file',    onclick: 'handleUppercase()' },
-  { function: 'handleLowercase',       icon: 'lowercase',             name: 'Lowercase',             under: ['formatting', 'Basic'], batch: 'file',    onclick: 'handleLowercase()' },
-  { function: 'capitalizeWords',       icon: 'match_case',            name: 'Capitalise Words',      under: ['formatting', 'Basic'], batch: 'file',    onclick: 'capitalizeWords()' },
-  { function: 'capitalizeSentences',   icon: 'text_up',               name: 'Capitalise Sentences',  under: ['formatting', 'Basic'], batch: 'file',    onclick: 'capitalizeSentences()' },
-  { function: 'reverseWords',          icon: 'arrow_left',            name: 'Reverse Words',         under: ['formatting', 'Basic'], batch: 'file',    onclick: 'reverseWords()' },
-  { function: 'reverseText',           icon: 'fast_rewind',           name: 'Reverse All',           under: ['formatting', 'Basic'], batch: 'file',    onclick: 'reverseText()' },
+  { function: 'handleUppercase', isAutomatable: true,       icon: 'uppercase',             name: 'Uppercase',             under: ['formatting', 'Basic'], batch: 'file',    onclick: 'handleUppercase()' },
+  { function: 'handleLowercase', isAutomatable: true,       icon: 'lowercase',             name: 'Lowercase',             under: ['formatting', 'Basic'], batch: 'file',    onclick: 'handleLowercase()' },
+  { function: 'capitalizeWords', isAutomatable: true,       icon: 'match_case',            name: 'Capitalise Words',      under: ['formatting', 'Basic'], batch: 'file',    onclick: 'capitalizeWords()' },
+  { function: 'capitalizeSentences', isAutomatable: true,   icon: 'text_up',               name: 'Capitalise Sentences',  under: ['formatting', 'Basic'], batch: 'file',    onclick: 'capitalizeSentences()' },
+  { function: 'reverseWords', isAutomatable: true,          icon: 'arrow_left',            name: 'Reverse Words',         under: ['formatting', 'Basic'], batch: 'file',    onclick: 'reverseWords()' },
+  { function: 'reverseText', isAutomatable: true,           icon: 'fast_rewind',           name: 'Reverse All',           under: ['formatting', 'Basic'], batch: 'file',    onclick: 'reverseText()' },
 
   // ── Formatting › Alignment ────────────────────────────────────────────────
-  { function: 'handleAlignLeft',       icon: 'format_align_left',     name: 'Align Left',            under: ['formatting', 'Alignment'], batch: 'file', onclick: 'handleAlignLeft()' },
-  { function: 'handleAlignCenter',     icon: 'format_align_center',   name: 'Align Center',          under: ['formatting', 'Alignment'], batch: 'file', onclick: 'handleAlignCenter()' },
-  { function: 'handleAlignRight',      icon: 'format_align_right',    name: 'Align Right',           under: ['formatting', 'Alignment'], batch: 'file', onclick: 'handleAlignRight()' },
-  { function: 'decreaseIndentation',   icon: 'format_indent_decrease',name: 'Decrease Indentation',  under: ['formatting', 'Alignment'], batch: 'file', onclick: 'decreaseIndentation()' },
-  { function: 'increaseIndentation',   icon: 'format_indent_increase',name: 'Increase Indentation',  under: ['formatting', 'Alignment'], batch: 'file', onclick: 'increaseIndentation()' },
+  { function: 'handleAlignLeft', isAutomatable: false,       icon: 'format_align_left',     name: 'Align Left',            under: ['formatting', 'Alignment'], batch: 'file', onclick: 'handleAlignLeft()' },
+  { function: 'handleAlignCenter', isAutomatable: false,     icon: 'format_align_center',   name: 'Align Center',          under: ['formatting', 'Alignment'], batch: 'file', onclick: 'handleAlignCenter()' },
+  { function: 'handleAlignRight', isAutomatable: false,      icon: 'format_align_right',    name: 'Align Right',           under: ['formatting', 'Alignment'], batch: 'file', onclick: 'handleAlignRight()' },
+  { function: 'decreaseIndentation', isAutomatable: true,   icon: 'format_indent_decrease',name: 'Decrease Indentation',  under: ['formatting', 'Alignment'], batch: 'file', onclick: 'decreaseIndentation()' },
+  { function: 'increaseIndentation', isAutomatable: true,   icon: 'format_indent_increase',name: 'Increase Indentation',  under: ['formatting', 'Alignment'], batch: 'file', onclick: 'increaseIndentation()' },
 
   // ── Formatting › Markup / Markdown ───────────────────────────────────────
-  { function: 'handleBold',            icon: 'format_bold',           name: 'Bold',                  under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('bold')" },
-  { function: 'handleItalic',          icon: 'format_italic',         name: 'Italic',                under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('italic')" },
-  { function: 'handleUnderline',       icon: 'format_underlined',     name: 'Underline',             under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('underline')" },
-  { function: 'handleBulletList',      icon: 'format_list_bulleted',  name: 'Bullet List',           under: ['formatting', 'Markup/Markdown'], batch: 'file', onclick: 'handleBulletList()' },
-  { function: 'handleNumberedList',    icon: 'format_list_numbered',  name: 'Numbered List',         under: ['formatting', 'Markup/Markdown'], batch: 'file', onclick: 'handleNumberedList()' },
-  { function: 'handleCode',            icon: 'code',                  name: 'Code',                  under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('code')" },
-  { function: 'handleInsertLink',      icon: 'link',                  name: 'Insert Link',           under: ['formatting', 'Markup/Markdown'], batch: 'exclude', onclick: 'handleInsertLink()' },
-  { function: 'handleInsertImage',     icon: 'image',                 name: 'Insert Image',          under: ['formatting', 'Markup/Markdown'], batch: 'exclude', onclick: 'handleInsertImage()' },
+  { function: 'handleBold', isAutomatable: false,            icon: 'format_bold',           name: 'Bold',                  under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('bold')" },
+  { function: 'handleItalic', isAutomatable: false,          icon: 'format_italic',         name: 'Italic',                under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('italic')" },
+  { function: 'handleUnderline', isAutomatable: false,       icon: 'format_underlined',     name: 'Underline',             under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('underline')" },
+  { function: 'handleBulletList', isAutomatable: true,      icon: 'format_list_bulleted',  name: 'Bullet List',           under: ['formatting', 'Markup/Markdown'], batch: 'file', onclick: 'handleBulletList()' },
+  { function: 'handleNumberedList', isAutomatable: true,    icon: 'format_list_numbered',  name: 'Numbered List',         under: ['formatting', 'Markup/Markdown'], batch: 'file', onclick: 'handleNumberedList()' },
+  { function: 'handleCode', isAutomatable: false,            icon: 'code',                  name: 'Code',                  under: ['formatting', 'Markup/Markdown'], onclick: "handleFormat('code')" },
+  { function: 'handleInsertLink', isAutomatable: false,      icon: 'link',                  name: 'Insert Link',           under: ['formatting', 'Markup/Markdown'], batch: 'exclude', onclick: 'handleInsertLink()' },
+  { function: 'handleInsertImage', isAutomatable: false,     icon: 'image',                 name: 'Insert Image',          under: ['formatting', 'Markup/Markdown'], batch: 'exclude', onclick: 'handleInsertImage()' },
 
   // ── Formatting › Designer Fonts ───────────────────────────────────────────
-  { function: 'openFontPickerModal',   icon: 'slab_serif',            name: 'Designer Fonts',        under: ['formatting', 'Fonts'], batch: 'once:font', onclick: 'openFontPickerModal()' },
+  { function: 'openFontPickerModal', isAutomatable: true,   icon: 'slab_serif',            name: 'Designer Fonts',        under: ['formatting', 'Fonts'], batch: 'once:font', onclick: 'openFontPickerModal()' },
 
   // ── Operations ───────────────────────────────────────────────────────────
-  { function: 'findandreplace',        icon: 'find_replace',          name: 'Find and Replace',      under: ['operations'], batch: 'app', onclick: 'findandreplace()' },
-  { function: 'openChainPanel',        icon: 'link',                  name: 'Chains',                under: ['operations'], batch: 'app', onclick: 'window.openChainPanel && window.openChainPanel()' },
-  { function: 'handleCleanupText',     icon: 'cleaning_services',     name: 'Cleanup Text',          under: ['operations'], batch: 'exclude', onclick: 'handleCleanupText()' },
-  { function: 'handlePattern',         icon: 'swap_horiz',            name: 'Pattern Replacement',   under: ['operations'], batch: 'exclude', onclick: 'handlePattern()' },
-  { function: 'handleAdd',             icon: 'add',                   name: 'Add Text',              under: ['operations'], batch: 'exclude', onclick: 'handleAdd()' },
+  { function: 'findandreplace', isAutomatable: false,        icon: 'find_replace',          name: 'Find and Replace',      under: ['operations'], batch: 'app', onclick: 'findandreplace()' },
+  { function: 'openWorkflowPanel', isAutomatable: false,     icon: 'link',                  name: 'Workflows',             under: ['operations'], batch: 'app', onclick: 'window.openWorkflowPanel && window.openWorkflowPanel()' },
+  { function: 'handleCleanupText', isAutomatable: true,     icon: 'cleaning_services',     name: 'Cleanup Text',          under: ['operations'], batch: 'exclude', onclick: 'handleCleanupText()' },
+  { function: 'handlePattern', isAutomatable: true,         icon: 'swap_horiz',            name: 'Pattern Replacement',   under: ['operations'], batch: 'exclude', onclick: 'handlePattern()' },
+  { function: 'handleAdd', isAutomatable: true,             icon: 'add',                   name: 'Add Text',              under: ['operations'], batch: 'exclude', onclick: 'handleAdd()' },
 
   // ── Code ──────────────────────────────────────────────────────────────────
-  { function: 'cipher',                icon: 'key',                   name: 'Cipher',                under: ['code'], batch: 'once:cipher', onclick: 'cipher()' },
-  { function: 'MD5',                   icon: 'encrypted',             name: 'MD5 Hash',              under: ['code'], batch: 'file', onclick: 'MD5()' },
-  { function: 'SHA256',                icon: 'encrypted',             name: 'SHA256 Hash',           under: ['code'], batch: 'file', onclick: 'SHA256()' },
-  { function: 'handleRemoveHtml',      icon: 'html',                  name: 'Remove HTML',           under: ['code'], batch: 'file', onclick: 'handleRemoveHtml()' },
-  { function: 'handleEscapeHtml',      icon: 'html',                  name: 'Escape HTML',           under: ['code'], batch: 'file', onclick: 'handleEscapeHtml()' },
-  { function: 'handleUnescapeHtml',    icon: 'html',                  name: 'Unescape HTML',         under: ['code'], batch: 'file', onclick: 'handleUnescapeHtml()' },
-  { function: 'handleTextToTable',     icon: 'table',                 name: 'Text To HTML Table',    under: ['code'], batch: 'once:tabletext', onclick: 'handleTextToTable()' },
-  { function: 'optimisecss',           icon: 'css',                   name: 'Optimise CSS',          under: ['code'], batch: 'file', onclick: 'optimisecss()' },
-  { function: 'minifycss',             icon: 'css',                   name: 'Minify CSS',            under: ['code'], batch: 'file', onclick: 'minifycss()' },
-  { function: 'optimisejs',            icon: 'javascript',            name: 'Optimise JS',           under: ['code'], batch: 'file', onclick: 'optimisejs()' },
-  { function: 'minifyjs',              icon: 'javascript',            name: 'Minify JS',             under: ['code'], batch: 'file', onclick: 'minifyjs()' },
-  { function: 'handleLatex',           icon: 'data_object',           name: 'Handle Latex',          under: ['code'], batch: 'file', onclick: 'handleLatex()' },
-  { function: 'openCsvexecFunctions',  icon: 'table',                 name: 'CSVExec Functions',     under: ['code'], batch: 'exclude', onclick: 'openCsvexecFunctions()' },
+  { function: 'cipher', isAutomatable: true,                icon: 'key',                   name: 'Cipher',                under: ['code'], batch: 'once:cipher', onclick: 'cipher()' },
+  { function: 'MD5', isAutomatable: true,                   icon: 'encrypted',             name: 'MD5 Hash',              under: ['code'], batch: 'file', onclick: 'MD5()' },
+  { function: 'SHA256', isAutomatable: true,                icon: 'encrypted',             name: 'SHA256 Hash',           under: ['code'], batch: 'file', onclick: 'SHA256()' },
+  { function: 'handleRemoveHtml', isAutomatable: true,      icon: 'html',                  name: 'Remove HTML',           under: ['code'], batch: 'file', onclick: 'handleRemoveHtml()' },
+  { function: 'handleEscapeHtml', isAutomatable: true,      icon: 'html',                  name: 'Escape HTML',           under: ['code'], batch: 'file', onclick: 'handleEscapeHtml()' },
+  { function: 'handleUnescapeHtml', isAutomatable: true,    icon: 'html',                  name: 'Unescape HTML',         under: ['code'], batch: 'file', onclick: 'handleUnescapeHtml()' },
+  { function: 'handleTextToTable', isAutomatable: true,     icon: 'table',                 name: 'Text To HTML Table',    under: ['code'], batch: 'once:tabletext', onclick: 'handleTextToTable()' },
+  { function: 'optimisecss', isAutomatable: true,           icon: 'css',                   name: 'Optimise CSS',          under: ['code'], batch: 'file', onclick: 'optimisecss()' },
+  { function: 'minifycss', isAutomatable: true,             icon: 'css',                   name: 'Minify CSS',            under: ['code'], batch: 'file', onclick: 'minifycss()' },
+  { function: 'optimisejs', isAutomatable: true,            icon: 'javascript',            name: 'Optimise JS',           under: ['code'], batch: 'file', onclick: 'optimisejs()' },
+  { function: 'minifyjs', isAutomatable: true,              icon: 'javascript',            name: 'Minify JS',             under: ['code'], batch: 'file', onclick: 'minifyjs()' },
+  { function: 'handleLatex', isAutomatable: false,           icon: 'data_object',           name: 'Handle Latex',          under: ['code'], batch: 'file', onclick: 'handleLatex()' },
+  { function: 'openCsvexecFunctions', isAutomatable: false,  icon: 'table',                 name: 'CSVExec Functions',     under: ['code'], batch: 'exclude', onclick: 'openCsvexecFunctions()' },
 
   // ── Document ─────────────────────────────────────────────────────────────
-  { function: 'openFetchModal',        icon: 'data_object',           name: 'Fetch URL',             under: ['document'], batch: 'exclude', onclick: 'openFetchModal()' },
-  { function: 'handleOpenFile',        icon: 'folder_open',           name: 'Open File',             under: ['document'], batch: 'app', onclick: 'handleOpenFile()' },
-  { function: 'debug',                 icon: 'bug_report',            name: 'Debug',                 under: ['document'], batch: 'app', onclick: 'debug()' },
-  { function: 'openVersionRecovery',   icon: 'history',               name: 'Recover Versions',      under: ['document'], batch: 'app', onclick: 'openVersionRecovery()' },
-  { function: 'forceSyncToCloud',      icon: 'cloud_upload',          name: 'Force Sync to Cloud',   under: ['document'], batch: 'app', onclick: 'forceSyncToCloud()' },
-{ function: 'foldAll',                   icon: 'unfold_less',   name: 'Fold All',                    under: ['document'], onclick: 'foldAll()' },
-{ function: 'unfoldAll',                 icon: 'unfold_more',   name: 'Unfold All',                  under: ['document'], onclick: 'unfoldAll()' },
-{ function: 'removeContentInsideFolds',  icon: 'compress',      name: 'Remove Folded Contents',      under: ['document'], onclick: 'removeContentInsideFolds()' },
+  { function: 'openFetchModal', isAutomatable: true,        icon: 'data_object',           name: 'Fetch URL',             under: ['document'], batch: 'exclude', onclick: 'openFetchModal()' },
+  { function: 'handleOpenFile', isAutomatable: false,        icon: 'folder_open',           name: 'Open File',             under: ['document'], batch: 'app', onclick: 'handleOpenFile()' },
+  { function: 'debug', isAutomatable: false,                 icon: 'bug_report',            name: 'Debug',                 under: ['document'], batch: 'app', onclick: 'debug()' },
+  { function: 'openVersionRecovery', isAutomatable: false,   icon: 'history',               name: 'Recover Versions',      under: ['document'], batch: 'app', onclick: 'openVersionRecovery()' },
+  { function: 'forceSyncToCloud', isAutomatable: false,      icon: 'cloud_upload',          name: 'Force Sync to Cloud',   under: ['document'], batch: 'app', onclick: 'forceSyncToCloud()' },
+{ function: 'foldAll', isAutomatable: false,                   icon: 'unfold_less',   name: 'Fold All',                    under: ['document'], onclick: 'foldAll()' },
+{ function: 'unfoldAll', isAutomatable: false,                 icon: 'unfold_more',   name: 'Unfold All',                  under: ['document'], onclick: 'unfoldAll()' },
+{ function: 'removeContentInsideFolds', isAutomatable: false,  icon: 'compress',      name: 'Remove Folded Contents',      under: ['document'], onclick: 'removeContentInsideFolds()' },
 
   // ── Transformer ──────────────────────────────────────────────────────────
-  { function: 'openDocsCopier',        icon: 'paste',                 name: 'Docscopier', under: ['transformer'], batch: 'exclude', onclick: 'openDocsCopier()' },
+  { function: 'openDocsCopier', isAutomatable: false,        icon: 'paste',                 name: 'Docscopier', under: ['transformer'], batch: 'exclude', onclick: 'openDocsCopier()' },
 
   // ── Markdown (Design mode) ────────────────────────────────────────────────
   // Block type
-  { function: 'mdParagraph', icon: 'text_fields',            name: 'Paragraph',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('p')" },
-  { function: 'mdH1',        icon: 'title',                  name: 'Heading 1',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h1')" },
-  { function: 'mdH2',        icon: 'title',                  name: 'Heading 2',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h2')" },
-  { function: 'mdH3',        icon: 'title',                  name: 'Heading 3',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h3')" },
-  { function: 'mdBullets',   icon: 'format_list_bulleted',   name: 'Bullet List',        under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('ul')" },
-  { function: 'mdNumbers',   icon: 'format_list_numbered',   name: 'Numbered List',      under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('ol')" },
-  { function: 'mdTasks',     icon: 'format_list_bulleted',   name: 'Task List',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('task')" },
-  { function: 'mdQuote',     icon: 'format_indent_increase', name: 'Quote',              under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('quote')" },
-  { function: 'mdCode',      icon: 'code',                   name: 'Code Block',         under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('code')" },
-  { function: 'mdMermaid',   icon: 'hub',                    name: 'Mermaid Diagram',    under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('mermaid')" },
+  { function: 'mdParagraph', isAutomatable: false, icon: 'text_fields',            name: 'Paragraph',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('p')" },
+  { function: 'mdH1', isAutomatable: false,        icon: 'title',                  name: 'Heading 1',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h1')" },
+  { function: 'mdH2', isAutomatable: false,        icon: 'title',                  name: 'Heading 2',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h2')" },
+  { function: 'mdH3', isAutomatable: false,        icon: 'title',                  name: 'Heading 3',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('h3')" },
+  { function: 'mdBullets', isAutomatable: false,   icon: 'format_list_bulleted',   name: 'Bullet List',        under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('ul')" },
+  { function: 'mdNumbers', isAutomatable: false,   icon: 'format_list_numbered',   name: 'Numbered List',      under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('ol')" },
+  { function: 'mdTasks', isAutomatable: false,     icon: 'format_list_bulleted',   name: 'Task List',          under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('task')" },
+  { function: 'mdQuote', isAutomatable: false,     icon: 'format_indent_increase', name: 'Quote',              under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('quote')" },
+  { function: 'mdCode', isAutomatable: false,      icon: 'code',                   name: 'Code Block',         under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('code')" },
+  { function: 'mdMermaid', isAutomatable: false,   icon: 'hub',                    name: 'Mermaid Diagram',    under: ['markdown', 'Block type'], batch: 'exclude', onclick: "dexMdRun('mermaid')" },
   // Inline
-  { function: 'mdBold',      icon: 'format_bold',            name: 'Bold (toggle)',      under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('bold')" },
-  { function: 'mdItalic',    icon: 'format_italic',          name: 'Italic (toggle)',    under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('italic')" },
-  { function: 'mdStrike',    icon: 'format_underlined',      name: 'Strikethrough',      under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('strike')" },
-  { function: 'mdInlineCode',icon: 'code',                   name: 'Inline Code',        under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('icode')" },
-  { function: 'mdLink',      icon: 'link',                   name: 'Link…',              under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('link')" },
-  { function: 'mdImage',     icon: 'image',                  name: 'Image…',             under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('image')" },
+  { function: 'mdBold', isAutomatable: false,      icon: 'format_bold',            name: 'Bold (toggle)',      under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('bold')" },
+  { function: 'mdItalic', isAutomatable: false,    icon: 'format_italic',          name: 'Italic (toggle)',    under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('italic')" },
+  { function: 'mdStrike', isAutomatable: false,    icon: 'format_underlined',      name: 'Strikethrough',      under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('strike')" },
+  { function: 'mdInlineCode', isAutomatable: false,icon: 'code',                   name: 'Inline Code',        under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('icode')" },
+  { function: 'mdLink', isAutomatable: false,      icon: 'link',                   name: 'Link…',              under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('link')" },
+  { function: 'mdImage', isAutomatable: false,     icon: 'image',                  name: 'Image…',             under: ['markdown', 'Inline'],     batch: 'exclude', onclick: "dexMdRun('image')" },
   // Insert
-  { function: 'mdTable',     icon: 'table',                  name: 'Insert Table…',      under: ['markdown', 'Insert'],     batch: 'exclude', onclick: "dexMdRun('table')" },
-  { function: 'mdDivider',   icon: 'ttt_separator',          name: 'Insert Divider',     under: ['markdown', 'Insert'],     batch: 'exclude', onclick: "dexMdRun('hr')" },
+  { function: 'mdTable', isAutomatable: false,     icon: 'table',                  name: 'Insert Table…',      under: ['markdown', 'Insert'],     batch: 'exclude', onclick: "dexMdRun('table')" },
+  { function: 'mdDivider', isAutomatable: false,   icon: 'ttt_separator',          name: 'Insert Divider',     under: ['markdown', 'Insert'],     batch: 'exclude', onclick: "dexMdRun('hr')" },
   // Arrange
-  { function: 'mdUp',        icon: 'keyboard_double_arrow_up',   name: 'Move Block Up',   under: ['markdown', 'Arrange'],   batch: 'exclude', onclick: "dexMdRun('up')" },
-  { function: 'mdDown',      icon: 'keyboard_double_arrow_down', name: 'Move Block Down', under: ['markdown', 'Arrange'],   batch: 'exclude', onclick: "dexMdRun('down')" },
-  { function: 'mdDup',       icon: 'copy',                   name: 'Duplicate Block',    under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('dup')" },
-  { function: 'mdDel',       icon: 'delete',                 name: 'Delete Block',       under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('del')" },
-  { function: 'mdSelBlock',  icon: 'selectAll',              name: 'Select Block',       under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('selblock')" },
-  { function: 'mdIndent',    icon: 'format_indent_increase', name: 'Indent List Item',   under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('indent')" },
-  { function: 'mdOutdent',   icon: 'format_indent_decrease', name: 'Outdent List Item',  under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('outdent')" },
+  { function: 'mdUp', isAutomatable: false,        icon: 'keyboard_double_arrow_up',   name: 'Move Block Up',   under: ['markdown', 'Arrange'],   batch: 'exclude', onclick: "dexMdRun('up')" },
+  { function: 'mdDown', isAutomatable: false,      icon: 'keyboard_double_arrow_down', name: 'Move Block Down', under: ['markdown', 'Arrange'],   batch: 'exclude', onclick: "dexMdRun('down')" },
+  { function: 'mdDup', isAutomatable: false,       icon: 'copy',                   name: 'Duplicate Block',    under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('dup')" },
+  { function: 'mdDel', isAutomatable: false,       icon: 'delete',                 name: 'Delete Block',       under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('del')" },
+  { function: 'mdSelBlock', isAutomatable: false,  icon: 'selectAll',              name: 'Select Block',       under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('selblock')" },
+  { function: 'mdIndent', isAutomatable: false,    icon: 'format_indent_increase', name: 'Indent List Item',   under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('indent')" },
+  { function: 'mdOutdent', isAutomatable: false,   icon: 'format_indent_decrease', name: 'Outdent List Item',  under: ['markdown', 'Arrange'],    batch: 'exclude', onclick: "dexMdRun('outdent')" },
 
 ]);

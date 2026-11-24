@@ -9,8 +9,30 @@ export function handleFetchSubmit() {
   });
 }
 
+const FETCH_API_URL = "https://fetch-300199660511.us-central1.run.app/fetch";
+
+// Network part only: returns the fetched page as plain text, or throws an Error
+// whose message is safe to show the user. Shared by the sidebar function and workflows.
+export async function fetchPageText(url) {
+  const target = (url || "").trim();
+  if (!target) throw new Error("Please enter a URL");
+  const resp = await window.fetch(FETCH_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: target })
+  });
+  if (!resp.ok) throw new Error("Fetch failed: " + resp.status + " " + resp.statusText);
+  const data = await resp.json();
+  const source = data.source_url || data.source || data.html || null;
+  if (!source) throw new Error("No source returned");
+  const temp = document.createElement("div");
+  temp.innerHTML = source;
+  return temp.textContent || temp.innerText || "";
+}
+
+export const FETCH_APPEND_MARKER = "\n\n<!-- appended from fetch -->\n\n";
+
 export async function fetchUrlToCurrentNote(url) {
-  const API_URL = "https://fetch-300199660511.us-central1.run.app/fetch";
   if (!currentNote || !noteTextarea) {
     showNotification("No note selected or editor missing");
     return;
@@ -21,25 +43,8 @@ export async function fetchUrlToCurrentNote(url) {
   }
   showNotification("Fetching...");
   try {
-    const resp = await window.fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: url.trim() })
-    });
-    if (!resp.ok) {
-      showNotification("Fetch failed: " + resp.status + " " + resp.statusText);
-      return;
-    }
-    const data = await resp.json();
-    const source = data.source_url || data.source || data.html || null;
-    if (!source) {
-      showNotification("No source returned");
-      return;
-    }
-    const temp = document.createElement("div");
-    temp.innerHTML = source || "";
-    const html = temp.textContent || temp.innerText || "";
-    noteTextarea.value = (noteTextarea.value || "") + "\n\n<!-- appended from fetch -->\n\n" + html;
+    const html = await fetchPageText(url);
+    noteTextarea.value = (noteTextarea.value || "") + FETCH_APPEND_MARKER + html;
     currentNote.extension = "html";
     currentNote.lastEdited = new Date().toISOString();
     const idx = notes.findIndex((n) => n.id === currentNote.id);
@@ -54,7 +59,7 @@ export async function fetchUrlToCurrentNote(url) {
     if (typeof scheduleUpdate === "function") scheduleUpdate(true);
     showNotification("Fetched and appended. Note extension set to .html");
   } catch (err) {
-    showNotification("Request failed: " + (err && err.message ? err.message : err));
+    showNotification(err && err.message ? err.message : "Request failed: " + err);
   }
 }
 

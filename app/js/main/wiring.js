@@ -36,7 +36,7 @@
     "mermaid-pick":     () => call("dexMermaidPickFile"),
     "diff-bottom":      (el) => call("dexBottomClick", el.dataset.target, el),
     "mermaid-bottom":   (el) => call("dexMermaidBottomClick", el.dataset.target),
-    "chain":            () => call("openChainPanel")
+    "workflow":         () => call("openWorkflowPanel")
   };
 
   const CHANGE_ACTIONS = {

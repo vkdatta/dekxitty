@@ -1,60 +1,35 @@
-import { listPaneNotes, parsePane, getBatchEligibleFunctions, applyPaneToEditor } from "../sidebar2/functions/2operations/chain.js";
-import { cipherTransform } from "../sidebar2/functions/3code/cipher.js";
-import { applyDesignerFont, listFontChoices } from "../sidebar2/functions/1formatting/fontpicker.js";
-import { textToHtmlTable, showTextToTableOptionsModal } from "../sidebar2/functions/3code/html.js";
+import { listWorkflowNotes, parseWorkflow, getAutomatableFunctions, applyWorkflowToEditor, promptFunctionParams } from "../sidebar2/functions/2operations/workflow.js";
 
-const ONCE_HANDLERS = {
-  cipher: {
-    async prompt() { return promptCipherKeyOnce(); },
-    async apply(text, settings) { return cipherTransform(text, settings.pw1, settings.pw2, settings.mode); }
-  },
-  font: {
-    async prompt() { return promptFontOnce(); },
-    async apply(text, settings) { return applyDesignerFont(text, settings.textFont, settings.numFont); }
-  },
-  tabletext: {
-    async prompt() { return showTextToTableOptionsModal(); },
-    async apply(text, settings) { return textToHtmlTable(text, settings); }
-  }
-};
-
-function paneOnceKind(pane) {
-  if (pane.steps.length !== 1 || pane.steps[0].kind !== "fn") return null;
-  const fn = getBatchEligibleFunctions().find((f) => f.value === pane.steps[0].fnName);
-  return fn ? fn.once : null;
-}
-
-function paneStepsAreBatchSafe(pane) {
-  const eligibleNames = new Set(getBatchEligibleFunctions().map((f) => f.value));
-  return pane.steps.every((s) => s.kind !== "fn" || eligibleNames.has(s.fnName));
-}
+// Workflows carry all of their inputs, so a batch run never prompts per file.
+// A single function chosen directly is the one exception: its inputs are asked
+// once, up front, and reused for every selected file.
 
 async function pickBatchAction() {
-  const paneEntries = listPaneNotes()
-    .map((n) => ({ note: n, pane: parsePane(n) }))
-    .filter((x) => x.pane && paneStepsAreBatchSafe(x.pane));
+  const entries = listWorkflowNotes()
+    .map((n) => parseWorkflow(n))
+    .filter((wf) => wf && !wf.dropped.length);
 
-  const paneRows = paneEntries
-    .map(({ pane }) =>
-      '<div class="chain-pane-row batch-action-row" data-kind="pane" data-id="' + escapeHtml(pane.name) + '" data-search="' + escapeHtml(pane.name.toLowerCase()) + '">' +
-        '<div class="chain-pane-info">' +
-          '<div class="chain-pane-name">' + escapeHtml(pane.name) + "</div>" +
-          '<div class="chain-pane-steps">' + pane.steps.length + " step" + (pane.steps.length === 1 ? "" : "s") + "</div>" +
+  const wfRows = entries
+    .map((wf) =>
+      '<div class="workflow-row batch-action-row" data-kind="workflow" data-id="' + escapeHtml(wf.name) + '" data-search="' + escapeHtml(wf.name.toLowerCase()) + '">' +
+        '<div class="workflow-info">' +
+          '<div class="workflow-name">' + escapeHtml(wf.name) + "</div>" +
+          '<div class="workflow-meta">Workflow · ' + wf.steps.length + " step" + (wf.steps.length === 1 ? "" : "s") + "</div>" +
         "</div>" +
       "</div>"
     ).join("");
 
-  const fnRows = getBatchEligibleFunctions()
+  const fnRows = getAutomatableFunctions()
     .map((f) =>
-      '<div class="chain-pane-row batch-action-row" data-kind="fn" data-id="' + f.value + '" data-search="' + escapeHtml(f.label.toLowerCase()) + '">' +
-        '<div class="chain-pane-info">' +
-          '<div class="chain-pane-name">' + escapeHtml(f.label) + "</div>" +
-          '<div class="chain-pane-steps">' + (f.once ? "Prompts once, applies to every file" : "Single function") + "</div>" +
+      '<div class="workflow-row batch-action-row" data-kind="fn" data-id="' + f.value + '" data-search="' + escapeHtml((f.label + " " + f.path).toLowerCase()) + '">' +
+        '<div class="workflow-info">' +
+          '<div class="workflow-name">' + escapeHtml(f.label) + "</div>" +
+          '<div class="workflow-meta">Single function</div>' +
         "</div>" +
       "</div>"
     ).join("");
 
-  const rows = paneRows + fnRows || '<div class="chain-empty">No chainable panes or functions found.</div>';
+  const rows = wfRows + fnRows || '<div class="workflow-empty">No workflows or automatable functions found.</div>';
 
   const modalPromise = showModal({
     header: '<div class="modal-title">Batch apply — choose an action</div>',
@@ -80,65 +55,13 @@ async function pickBatchAction() {
 
   const sel = await modalPromise;
   if (!sel) return null;
-  if (sel.kind === "pane") {
-    const note = listPaneNotes().find((n) => { const p = parsePane(n); return p && p.name === sel.id; });
-    return note ? parsePane(note) : null;
-  }
-  const fn = getBatchEligibleFunctions().find((f) => f.value === sel.id);
-  return fn ? { name: fn.label, steps: [{ kind: "fn", fnName: fn.value, label: fn.label }] } : null;
-}
+  if (sel.kind === "workflow") return entries.find((wf) => wf.name === sel.id) || null;
 
-function promptCipherKeyOnce() {
-  const modalPromise = showModal({
-    header: '<div class="modal-title">Cipher key — applied to every selected file</div>',
-    body:
-      "<div><label class=\"modal-label\">Key I</label><input id=\"batchCipherPw1\" class=\"modal-input\" placeholder=\"Key I\"></div>" +
-      "<div style=\"margin-top:8px;\"><label class=\"modal-label\">Key II</label><input id=\"batchCipherPw2\" class=\"modal-input\" placeholder=\"Key II\"></div>" +
-      '<div style="display:flex;gap:8px;margin-top:10px;">' +
-        '<button type="button" id="batchCipherEnc" class="modal-btn active" onclick="window.__dexBatchCipherMode(\'encrypt\')">Encrypt</button>' +
-        '<button type="button" id="batchCipherDec" class="modal-btn" onclick="window.__dexBatchCipherMode(\'decrypt\')">Decrypt</button>' +
-      "</div>",
-    footer: '<button onclick="closeModal()">Cancel</button><button onclick="window.__dexBatchCipherSubmit()" class="modal-btn">Continue</button>'
-  });
-
-  window.__dexBatchCipherMode = function (mode) {
-    const enc = document.getElementById("batchCipherEnc");
-    const dec = document.getElementById("batchCipherDec");
-    if (enc) enc.classList.toggle("active", mode === "encrypt");
-    if (dec) dec.classList.toggle("active", mode === "decrypt");
-  };
-  window.__dexBatchCipherSubmit = function () {
-    const pw1 = (document.getElementById("batchCipherPw1") || {}).value || "";
-    const pw2 = (document.getElementById("batchCipherPw2") || {}).value || "";
-    if (!pw1 || !pw2) { showNotification("Both keys are required"); return; }
-    const mode = (document.getElementById("batchCipherEnc") || {}).classList.contains("active") ? "encrypt" : "decrypt";
-    closeModal({ pw1, pw2, mode });
-  };
-
-  return modalPromise;
-}
-
-function promptFontOnce() {
-  const choices = listFontChoices();
-  const optionsHtml = choices.map((c) => '<option value="' + escapeHtml(c.value) + '">' + escapeHtml(c.label) + '</option>').join("");
-  const modalPromise = showModal({
-    header: '<div class="modal-title">Designer font — applied to every selected file</div>',
-    body:
-      '<div><label class="modal-label">Text font</label>' +
-      '<select id="batchFontText" class="modal-select"><option value="">None</option>' + optionsHtml + '</select></div>' +
-      '<div style="margin-top:8px;"><label class="modal-label">Numeral font</label>' +
-      '<select id="batchFontNum" class="modal-select"><option value="">None</option>' + optionsHtml + '</select></div>',
-    footer: '<button onclick="closeModal()">Cancel</button><button onclick="window.__dexBatchFontSubmit()" class="modal-btn">Continue</button>'
-  });
-
-  window.__dexBatchFontSubmit = function () {
-    const textFont = (document.getElementById("batchFontText") || {}).value || "";
-    const numFont = (document.getElementById("batchFontNum") || {}).value || "";
-    if (!textFont && !numFont) { showNotification("Pick at least one font"); return; }
-    closeModal({ textFont: textFont || null, numFont: numFont || null });
-  };
-
-  return modalPromise;
+  const fn = getAutomatableFunctions().find((f) => f.value === sel.id);
+  if (!fn) return null;
+  const params = await promptFunctionParams(fn.value);
+  if (!params) return null;
+  return { name: fn.label, dropped: [], steps: [{ kind: "fn", fn: fn.value, label: fn.label, params }] };
 }
 
 function showBatchProgress(total) {
@@ -179,7 +102,7 @@ function showBatchProgress(total) {
   };
 }
 
-async function runBatch(fileIds, pane, onceHandler, onceSettings) {
+async function runBatch(fileIds, workflow) {
   const results = { ok: 0, fail: 0 };
   const prevNoteId = typeof currentNote !== "undefined" && currentNote ? currentNote.id : null;
   const progress = showBatchProgress(fileIds.length);
@@ -191,19 +114,7 @@ async function runBatch(fileIds, pane, onceHandler, onceSettings) {
     progress.update(i + 1, note.title || ("note " + note.id));
     try {
       openNote(id);
-      if (onceHandler) {
-        const cm = window.dexEditor && window.dexEditor.cm;
-        const before = cm ? cm.getValue() : (typeof noteTextarea !== "undefined" && noteTextarea ? noteTextarea.value : "");
-        const after = await onceHandler.apply(before, onceSettings);
-        if (cm) {
-          const lastLine = cm.lineCount() - 1;
-          cm.operation(() => { cm.replaceRange(after, { line: 0, ch: 0 }, { line: lastLine, ch: cm.getLine(lastLine).length }); });
-        } else if (typeof noteTextarea !== "undefined" && noteTextarea) {
-          noteTextarea.value = after;
-        }
-      } else {
-        await applyPaneToEditor(pane);
-      }
+      await applyWorkflowToEditor(workflow, { quiet: true });
       if (typeof updateNoteMetadata === "function") updateNoteMetadata();
       results.ok++;
     } catch (err) {
@@ -224,26 +135,10 @@ export async function openBatchApply() {
   const fileIds = [...selected].filter((k) => k[0] === "n").map((k) => k.slice(2));
   if (!fileIds.length) { showNotification("Select files (not folders) to batch-apply to"); return; }
 
-  const pane = await pickBatchAction();
-  if (!pane) return;
+  const workflow = await pickBatchAction();
+  if (!workflow) return;
 
-  const onceKind = paneOnceKind(pane);
-  let onceHandler = null;
-  let onceSettings = null;
-  if (onceKind) {
-    onceHandler = ONCE_HANDLERS[onceKind];
-    onceSettings = await onceHandler.prompt();
-    if (!onceSettings) return;
-  } else if (pane.steps.length > 1) {
-    const onceStepNames = new Set(getBatchEligibleFunctions().filter((f) => f.once).map((f) => f.value));
-    const hasEmbeddedOnceStep = pane.steps.some((s) => s.kind === "fn" && onceStepNames.has(s.fnName));
-    if (hasEmbeddedOnceStep) {
-      showNotification("A step that needs its own prompt can't be combined with others in a batch run — save it as its own pane");
-      return;
-    }
-  }
-
-  runBatch(fileIds, pane, onceHandler, onceSettings);
+  runBatch(fileIds, workflow);
 }
 
 window.openBatchApply = openBatchApply;
