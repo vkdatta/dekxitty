@@ -241,6 +241,9 @@ export function normalizeTextTables(md) {
       while (j < lines.length && isBlank(lines[j])) j++;
       if (j < lines.length && lines[j].includes("|") && PIPE_SEP.test(lines[j])) {
         const h = pipeCells(line), s = pipeCells(lines[j]);
+        // A table straight after "1. Heading" (no blank line) is read by Markdown as part of that
+        // list item: Docs then indents every cell by the list indent. Always start it on its own.
+        if (out.length && !isBlank(out[out.length - 1])) out.push("");
         out.push(line);
         out.push("| " + h.map((_, c) => s[c] || "---").join(" | ") + " |");
         i = j + 1;
@@ -268,6 +271,11 @@ export function normalizeTextTables(md) {
             out.push(row);
           }
           if (k < lines.length && !isBlank(lines[k])) out.push("");  // keep the next paragraph out of the table
+          i = k;
+        } else {
+          let k = i;
+          while (k < lines.length && !isBlank(lines[k]) && HAS_PIPE.test(lines[k])) { out.push(lines[k]); k++; }
+          if (k < lines.length && !isBlank(lines[k])) out.push("");
           i = k;
         }
         continue;
@@ -563,6 +571,16 @@ export function markdownToDocsHtml(md, prefs = {}) {
 
   // Tables first (so the later passes never touch table internals twice).
   root.querySelectorAll("table").forEach((t) => rebuildTable(doc, t, p));
+
+  // Safety net: a table left inside a list item or quote would paste indented. Lift it out,
+  // placing it right after the outermost list / quote that held it.
+  Array.from(root.querySelectorAll("table")).forEach((t) => {
+    const holder = t.closest("li,blockquote");
+    if (!holder) return;
+    let top = holder;
+    while (top.parentElement && top.parentElement !== root) top = top.parentElement;
+    top.after(t);
+  });
 
   // Headings → keep, bold paragraph, or plain paragraph.
   if (!p.headings) {
