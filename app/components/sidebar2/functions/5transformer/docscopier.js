@@ -127,7 +127,10 @@ function flattenList(doc, list, typed, depth, out) {
 const isBlank = (l) => l == null || !l.trim();
 const LIST_MARK = /^\s*([-*+]|\d+[.)])\s/;
 const PIPE_SEP = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
-const SEP_CELL = /^:?[-=_─━—–]{2,}:?$/;                  // "---", "----", ":--:", "====" …
+const ENDS_PIPE = /(^|[^\\])\|\s*$/;                        // closing, unescaped pipe
+const HAS_PIPE = /(^|[^\\])\|/;                           // any unescaped pipe
+const BLOCK_START = /^\s*(```|~~~|#{1,6}\s|>)/;           // fence, heading, quote
+const SEP_CELL =/^:?[-=_─━—–]{2,}:?$/;                  // "---", "----", ":--:", "====" …
 const RULE_TEXT = /^\s*([-*_=─━—–]\s*){3,}$/;           // a line made only of rule characters
 
 /** Row made only of separator cells (e.g. "----  ---  -----" or "---<tab>---"): not data. */
@@ -195,6 +198,32 @@ export function normalizeTextTables(md) {
         out.push(line);
         out.push("| " + h.map((_, c) => s[c] || "---").join(" | ") + " |");
         i = j + 1;
+
+        // Body rows. AI answers often break one row over several physical lines (a cell with
+        // bullets, a "Proviso:" paragraph…), which Markdown reads as one row per line and scatters
+        // the cells. When the header closes its rows with a trailing pipe, a row is only finished
+        // at its own closing pipe: lines that follow an unfinished row are glued onto it with <br>,
+        // so every "|" keeps its original column. Without trailing pipes there is no safe signal,
+        // so those tables are left to marked as before.
+        if (ENDS_PIPE.test(line)) {
+          let k = i;
+          while (k < lines.length) {
+            const l = lines[k];
+            if (isBlank(l) || BLOCK_START.test(l)) break;
+            if (!/^\s*\|/.test(l) && !HAS_PIPE.test(l)) break;       // plain text: the table is over
+            let row = l.trim();
+            k++;
+            while (!ENDS_PIPE.test(row) && k < lines.length) {
+              const nx = lines[k];
+              if (isBlank(nx) || BLOCK_START.test(nx) || /^\s*\|/.test(nx)) break;
+              row += "<br>" + nx.trim();
+              k++;
+            }
+            out.push(row);
+          }
+          if (k < lines.length && !isBlank(lines[k])) out.push("");  // keep the next paragraph out of the table
+          i = k;
+        }
         continue;
       }
     }
