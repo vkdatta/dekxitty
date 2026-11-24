@@ -59,15 +59,61 @@ function tightenCells(doc, table, p) {
     while (td.firstChild && ((td.firstChild.nodeType === 1 && td.firstChild.tagName === "BR") || (td.firstChild.nodeType === 3 && !td.firstChild.textContent.trim()))) td.firstChild.remove();
     const spacing = p.tableSpacing ? `line-height:${p.tableLineHeight};` : "";
     const blocks = Array.from(td.children).filter((c) => /^(P|DIV)$/.test(c.tagName));
+    const flat = (b) => { b.style.margin = "0"; b.style.padding = "0"; b.style.textIndent = "0"; b.style.border = "none"; b.style.background = "transparent"; if (spacing) b.style.lineHeight = String(p.tableLineHeight); };
     if (blocks.length && blocks.length === td.children.length && Array.from(td.childNodes).every((n) => n.nodeType === 1)) {
-      blocks.forEach((b) => { b.style.margin = "0"; b.style.padding = "0"; b.style.border = "none"; b.style.background = "transparent"; if (spacing) b.style.lineHeight = String(p.tableLineHeight); });
+      blocks.forEach(flat);
     } else {
-      const para = doc.createElement("p");
-      para.setAttribute("style", `margin:0;padding:0;border:none;background:transparent;${spacing}`);
-      while (td.firstChild) para.appendChild(td.firstChild);
-      td.appendChild(para);
+      // One real paragraph per line (<br> splits). A soft break inside one paragraph is what made
+      // Docs hang-indent every wrapped line of a multi-line cell; separate paragraphs with zero
+      // margins and zero indent paste cleanly.
+      const lines = [[]];
+      Array.from(td.childNodes).forEach((n) => { if (n.nodeType === 1 && n.tagName === "BR") lines.push([]); else lines[lines.length - 1].push(n); });
+      td.textContent = "";
+      lines.filter((ns) => ns.some((n) => n.nodeType === 1 || n.textContent.trim())).forEach((ns) => {
+        const para = doc.createElement("p");
+        ns.forEach((n) => para.appendChild(n));
+        flat(para);
+        para.style.marginLeft = "0";
+        td.appendChild(para);
+      });
+      if (!td.firstChild) { const para = doc.createElement("p"); flat(para); td.appendChild(para); }
     }
   });
+}
+
+/**
+ * Column widths (px) from the content, so "Section 31(1)" never breaks mid-word while long text
+ * columns get the room. Each column gets at least its longest word; the rest of the total is shared
+ * by how much text the column holds. The total only grows (up to a Docs page, 624px) when the
+ * longest words alone don't fit it.
+ */
+function columnWidths(rows, total) {
+  const n = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  if (!n) return null;
+  const CH = 7, PAD = 14, MIN = 44;
+  const mins = [], len = [];
+  for (let j = 0; j < n; j++) {
+    let lw = 0, tl = 0;
+    rows.forEach((r) => {
+      const t = r[j] || "";
+      t.split(/\s+/).forEach((w) => { lw = Math.max(lw, w.length); });
+      tl += Math.min(t.length, 200);
+    });
+    mins.push(Math.max(MIN, Math.min(lw, 14) * CH + PAD));
+    len.push(Math.max(tl, 1));
+  }
+  const sum = mins.reduce((a, b) => a + b, 0);
+  const eff = total >= sum ? total : Math.min(sum, Math.max(total, 624));
+  let extra = eff - sum;
+  const ws = mins.slice();
+  if (extra > 0) {
+    const L = len.reduce((a, b) => a + b, 0);
+    for (let j = 0; j < n; j++) ws[j] += Math.floor(extra * len[j] / L);
+  } else if (extra < 0) {                           // even the minimums overshoot: scale down evenly
+    for (let j = 0; j < n; j++) ws[j] = Math.max(MIN, Math.floor(mins[j] * eff / sum));
+  }
+  ws[n - 1] += eff - ws.reduce((a, b) => a + b, 0);   // absorb rounding so the total is exact
+  return ws[n - 1] > 0 ? ws : null;
 }
 
 function rebuildTable(doc, table, p) {
@@ -87,7 +133,7 @@ function rebuildTable(doc, table, p) {
 
   // The table transformer lays out the widths (total ÷ columns); the original inline markup goes back in.
   const holder = doc.createElement("div");
-  holder.innerHTML = toClipboardHtml(rows, fmts, p.tableWidth);
+  holder.innerHTML = toClipboardHtml(rows, fmts, p.tableWidth, columnWidths(rows, p.tableWidth));
   holder.querySelectorAll("tr").forEach((tr, i) => {
     Array.from(tr.children).forEach((td, j) => { if (cells[i] && cells[i][j] != null) td.innerHTML = cells[i][j]; });
   });

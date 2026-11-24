@@ -302,7 +302,7 @@ function dexBuildExpandedDrill(animate,direction) {
         +(canMoveIn?'<button type="button" class="expanded-drill-move" aria-label="Drill in"><delluna-icon name="arrow_forward"></delluna-icon></button>':"")
         +(isDeletable?'<button type="button" class="expanded-drill-delete" aria-label="Remove"><delluna-icon name="delete"></delluna-icon></button>':"")
         +'<button type="button" class="expanded-drill-visibility '+(visible?"is-on":"is-off")+'" aria-pressed="'+visible+'" aria-label="'+(visible?"Hide ":"Show ")+(item.label||item.name||"")+'">'
-        +'<delluna-icon name="'+(visible?"check_box":"check_box_outline_blank")+'"></delluna-icon></button>';
+        +'<delluna-icon name="'+(visible?"check_box":"check_box_outline_blank-fill")+'"></delluna-icon></button>';
 
       /* drill in */
       row.addEventListener("click",function(e){

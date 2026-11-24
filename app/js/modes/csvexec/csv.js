@@ -69,7 +69,7 @@ export function toClipboardText(rows) {
   }).join("\t")).join("\n");
 }
 
-/** Total width (px) a copied table gets in Docs / Word; columns share it equally (2 cols → 225px, 3 → 150px). */
+/** Total width (px) a copied table gets in Docs / Word; columns share it equally (2 cols → 225px, 3 → 150px) unless per-column widths are passed. */
 export const CLIPBOARD_TABLE_WIDTH = 450;
 
 const escHtml = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -81,17 +81,20 @@ const escHtml = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace
  *  - no row height set + wrapping enabled, so rows auto-size to wrapped text
  * `fmts` (optional, same shape as rows) carries bold / italic / align / colour / background.
  */
-export function toClipboardHtml(rows, fmts, totalWidth) {
+export function toClipboardHtml(rows, fmts, totalWidth, colWidths) {
   const nCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
   if (!rows.length || !nCols) return "";
   const total = totalWidth > 0 ? totalWidth : CLIPBOARD_TABLE_WIDTH;   // optional override (Docs copier setting); default 450
-  const colW = Math.max(1, Math.floor(total / nCols));
-  const tblW = colW * nCols;
+  const colW0 = Math.max(1, Math.floor(total / nCols));
+  // Optional per-column widths (px); anything unusable falls back to equal columns.
+  const ws = Array.from({ length: nCols }, (_, j) => (colWidths && colWidths.length === nCols && colWidths[j] > 0) ? Math.floor(colWidths[j]) : colW0);
+  const tblW = ws.reduce((a, b) => a + b, 0);
   const border = "border:1px solid #000000;";
-  const cols = Array.from({ length: nCols }, () => `<col width="${colW}" style="width:${colW}px">`).join("");
+  const cols = ws.map((w) => `<col width="${w}" style="width:${w}px">`).join("");
   const body = rows.map((r, i) => {
     let tds = "";
     for (let j = 0; j < nCols; j++) {
+      const colW = ws[j];
       const f = (fmts && fmts[i] && fmts[i][j]) || {};
       let st = `${border}width:${colW}px;padding:4px 6px;vertical-align:top;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;`;
       const al = { l: "left", c: "center", r: "right" }[f.al];

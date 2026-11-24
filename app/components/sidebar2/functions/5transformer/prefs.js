@@ -38,7 +38,7 @@ export const DOCS_COPIER_OPTIONS = [
     desc: "Keep tables as real Docs tables, whether written with pipes or with tabs / aligned columns. Off turns them into tab-separated lines.",
     children: [
       { key: "tableWidth", type: "number", label: "Table width", def: 450, min: 100, max: 2000, unit: "px", showWhen: "on",
-        desc: "Total width, shared equally between the columns (450 → 2 columns = 225 each). Default 450." },
+        desc: "Total width. Columns are sized to their content (long words never break); the table only grows past this, up to a page width, when the longest words need it. Default 450." },
       { key: "tableHeader", label: "Bold, shaded header row", def: true, showWhen: "on",
         desc: "Make the first row bold with a light grey background." },
       { key: "tableBorders", label: "Table borders", def: true, showWhen: "on",
