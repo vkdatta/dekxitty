@@ -112,6 +112,7 @@
 
   loadScript(APP + "components/sidebar2/registry/fx_ui.js");
   loadScript(APP + "components/sidebar2/registry/registry.js");
+  loadScript(APP + "components/sidebar2/functions/6tools/registry.js"); // "Tools" category (code loads on first use)
 
   // Sidebar2
 

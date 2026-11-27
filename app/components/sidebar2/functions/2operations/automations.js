@@ -184,6 +184,12 @@ export const AUTOMATIONS = {
   }
 };
 
+// ── Tools ─────────────────────────────────────────────────────────────────
+// Loaded on the side so a problem there can never take the other operations down.
+import("../6tools/automation.js")
+  .then((m) => Object.assign(AUTOMATIONS, m.TOOL_AUTOMATIONS))
+  .catch((e) => console.warn("Tools automations unavailable:", e));
+
 function resolveOptions(field) {
   return typeof field.options === "function" ? field.options() : field.options || [];
 }
